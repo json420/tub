@@ -1,6 +1,7 @@
 use blake2::{Blake2b, Digest};
 use digest::consts::{U30,U10};
 use generic_array::GenericArray;
+use libc;
 
 
 type Blake2b80 = Blake2b<U10>;
@@ -13,11 +14,19 @@ fn hash80(buf: &[u8]) -> GenericArray<u8, U10> {
     h.finalize()
 }
 
-
 fn hash240(buf: &[u8]) -> GenericArray<u8, U30> {
     let mut h = Blake2b240::new();
     h.update(buf);
     h.finalize()
+}
+
+fn get_random(buf: &mut [u8]) {
+    let size1 = buf.len();
+    let p = buf.as_mut_ptr() as *mut libc::c_void;
+    let size2 = unsafe {
+        libc::getrandom(p, size1, 0)
+    } as usize;
+    if size1 != size2 {panic!("something went wrong")}
 }
 
 
@@ -50,5 +59,16 @@ mod tests {
 
         let res = hash240(d1);
         assert_eq!(res[..], d1h240[..]);
+    }
+
+    #[test]
+    fn test_get_random() {
+        let b1 = &mut [0_u8; 30];
+        assert_eq!(b1[..], [0_u8; 30][..]);
+        get_random(b1);
+        assert_ne!(b1[..], [0_u8; 30][..]);
+        let b2 = &mut [0_u8, 30];
+        get_random(b2);
+        assert_ne!(b1[..], b2[..]);
     }
 }

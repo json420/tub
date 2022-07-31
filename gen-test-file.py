@@ -19,7 +19,7 @@ def random_entry():
     h = hash_data(d)
     s = len(d).to_bytes(8, 'little')
     print(h.hex(), len(d))
-    return b''.join([d, h, s])
+    return b''.join([h, s, d])
 
 
 fp = open('test.btdb', 'xb')

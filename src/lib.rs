@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::prelude::*;
+
 use blake2::{Blake2b, Digest};
 use digest::consts::{U30,U10};
 use generic_array::GenericArray;
@@ -28,6 +31,30 @@ fn get_random(buf: &mut [u8]) {
     } as usize;
     if size1 != size2 {panic!("something went wrong")}
 }
+
+
+
+struct Object {
+    hash: [u8; 30],
+    data: Vec<u8>,
+}
+
+struct Store {
+    file: File,
+}
+
+impl Store {
+    fn write_object(&mut self, obj: &Object) -> std::io::Result<()> {
+        // FIXME: Use write_all_vectored()
+        self.file.write_all(&obj.hash)?;
+        let size = obj.data.len() as u64;
+        self.file.write_all(&size.to_le_bytes())?;
+        self.file.write_all(&obj.data);
+        Ok(())
+    }
+}
+
+
 
 
 #[cfg(test)]
@@ -70,5 +97,10 @@ mod tests {
         let b2 = &mut [0_u8, 30];
         get_random(b2);
         assert_ne!(b1[..], b2[..]);
+    }
+
+    #[test]
+    fn test_store() {
+    
     }
 }

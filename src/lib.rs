@@ -39,6 +39,12 @@ struct Object {
     data: Vec<u8>,
 }
 
+impl Object {
+    fn size(&self) -> u64 {
+        self.data.len() as u64
+    } 
+}
+
 struct Store {
     file: File,
 }
@@ -47,10 +53,23 @@ impl Store {
     fn write_object(&mut self, obj: &Object) -> std::io::Result<()> {
         // FIXME: Use write_all_vectored()
         self.file.write_all(&obj.hash)?;
-        let size = obj.data.len() as u64;
+        let size: u64 = obj.data.len() as u64;
         self.file.write_all(&size.to_le_bytes())?;
         self.file.write_all(&obj.data);
         Ok(())
+    }
+
+    fn read_next_object(&mut self) -> Option<Object> {
+        let mut header = [0_u8; 38];
+        if let Err(_) = self.file.read_exact(&mut header) {
+            return None;
+        }
+        let size_buf: [u8; 8] = header[0..8].try_into().expect("no good");
+        let size = u64::from_le_bytes(size_buf);
+        let hash: [u8; 30] = header[8..40].try_into().expect("no good");
+        let mut data: Vec<u8> = Vec::with_capacity(size as usize);
+        
+        Some(Object{hash: hash, data})
     }
 }
 
@@ -62,30 +81,30 @@ mod tests {
     use hex_literal::hex;
     use super::*;
 
-    static d1: &[u8] = b"my_input";
-    static d1h80: [u8; 10] = hex!("2cc55c84e416924e6400");
-    static d1h240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
+    static D1: &[u8] = b"my_input";
+    static D1H80: [u8; 10] = hex!("2cc55c84e416924e6400");
+    static D1H240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
 
     #[test]
     fn test_hash80() {
         let mut h = Blake2b80::new();
-        h.update(d1);
+        h.update(D1);
         let res = h.finalize();
-        assert_eq!(res[..], (d1h80[..])[..]);
+        assert_eq!(res[..], (D1H80[..])[..]);
 
-        let res = hash80(d1);
-        assert_eq!(res[..], d1h80[..]);
+        let res = hash80(D1);
+        assert_eq!(res[..], D1H80[..]);
     }
 
     #[test]
     fn test_hash240() {
         let mut h = Blake2b240::new();
-        h.update(d1);
+        h.update(D1);
         let res = h.finalize();
-        assert_eq!(res[..], (d1h240[..])[..]);
+        assert_eq!(res[..], (D1H240[..])[..]);
 
-        let res = hash240(d1);
-        assert_eq!(res[..], d1h240[..]);
+        let res = hash240(D1);
+        assert_eq!(res[..], D1H240[..]);
     }
 
     #[test]
@@ -100,7 +119,11 @@ mod tests {
     }
 
     #[test]
-    fn test_store() {
-    
+    fn test_object() {
+        let o = Object {
+            hash: [0_u8; 30],
+            data: vec![],
+        };
+        assert_eq!(o.size(), 0);
     }
 }

@@ -1,19 +1,8 @@
 mod protocol;
+mod util;
 
 use std::fs::File;
 use std::io::prelude::*;
-
-use libc;
-
-
-fn get_random(buf: &mut [u8]) {
-    let size1 = buf.len();
-    let p = buf.as_mut_ptr() as *mut libc::c_void;
-    let size2 = unsafe {
-        libc::getrandom(p, size1, 0)
-    } as usize;
-    if size1 != size2 {panic!("something went wrong")}
-}
 
 
 
@@ -51,28 +40,16 @@ impl Store {
         let size = u64::from_le_bytes(size_buf);
         let hash: [u8; 30] = header[8..40].try_into().expect("no good");
         let mut data: Vec<u8> = Vec::with_capacity(size as usize);
-        
+
         Some(Object{hash: hash, data})
     }
 }
 
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_get_random() {
-        let b1 = &mut [0_u8; 30];
-        assert_eq!(b1[..], [0_u8; 30][..]);
-        get_random(b1);
-        assert_ne!(b1[..], [0_u8; 30][..]);
-        let b2 = &mut [0_u8, 30];
-        get_random(b2);
-        assert_ne!(b1[..], b2[..]);
-    }
 
     #[test]
     fn test_object() {
@@ -83,3 +60,4 @@ mod tests {
         assert_eq!(o.size(), 0);
     }
 }
+

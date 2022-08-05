@@ -1,27 +1,10 @@
+mod protocol;
+
 use std::fs::File;
 use std::io::prelude::*;
 
-use blake2::{Blake2b, Digest};
-use digest::consts::{U30,U10};
-use generic_array::GenericArray;
 use libc;
 
-
-type Blake2b80 = Blake2b<U10>;
-type Blake2b240 = Blake2b<U30>;
-
-
-fn hash80(buf: &[u8]) -> GenericArray<u8, U10> {
-    let mut h = Blake2b80::new();
-    h.update(buf);
-    h.finalize()
-}
-
-fn hash240(buf: &[u8]) -> GenericArray<u8, U30> {
-    let mut h = Blake2b240::new();
-    h.update(buf);
-    h.finalize()
-}
 
 fn get_random(buf: &mut [u8]) {
     let size1 = buf.len();
@@ -78,34 +61,7 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use super::*;
-
-    static D1: &[u8] = b"my_input";
-    static D1H80: [u8; 10] = hex!("2cc55c84e416924e6400");
-    static D1H240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
-
-    #[test]
-    fn test_hash80() {
-        let mut h = Blake2b80::new();
-        h.update(D1);
-        let res = h.finalize();
-        assert_eq!(res[..], (D1H80[..])[..]);
-
-        let res = hash80(D1);
-        assert_eq!(res[..], D1H80[..]);
-    }
-
-    #[test]
-    fn test_hash240() {
-        let mut h = Blake2b240::new();
-        h.update(D1);
-        let res = h.finalize();
-        assert_eq!(res[..], (D1H240[..])[..]);
-
-        let res = hash240(D1);
-        assert_eq!(res[..], D1H240[..]);
-    }
 
     #[test]
     fn test_get_random() {

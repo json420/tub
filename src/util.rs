@@ -21,8 +21,13 @@ mod tests {
         assert_eq!(b1[..], [0_u8; 30][..]);
         get_random(b1);
         assert_ne!(b1[..], [0_u8; 30][..]);
-        let b2 = &mut [0_u8, 30];
+        let b2 = &mut [0_u8; 30];
         get_random(b2);
         assert_ne!(b1[..], b2[..]);
+
+        let b3 = &mut [0_u8; 65536];
+        assert_eq!(b3[..], [0_u8; 65536][..]);
+        get_random(b3);
+        assert_ne!(b3[..], [0_u8; 65536][..]);
     }
 }

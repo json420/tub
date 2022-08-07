@@ -6,6 +6,7 @@ use std::io::prelude::*;
 
 
 
+#[derive(Debug, PartialEq)]
 struct Object {
     hash: [u8; 30],
     data: Vec<u8>,
@@ -46,10 +47,20 @@ impl Store {
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
+    use std::fs::File;
+
+    #[test]
+    fn test_store() {
+        let tmp = TempDir::new().unwrap();
+        let mut pb = tmp.path().to_path_buf();
+        pb.push("example.btdb");
+        let mut store = Store{file: File::create(pb).unwrap()};
+        assert_eq!(store.read_next_object(), None);
+    }
 
     #[test]
     fn test_object() {

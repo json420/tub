@@ -60,6 +60,18 @@ mod tests {
     }
 
     #[test]
+    fn test_write() {
+        let tmp = TempDir::new().unwrap();
+        let mut pb = tmp.path().to_path_buf();
+        pb.push("example.btdb");
+        let mut store = Store{file: File::create(pb).unwrap()};
+        assert_eq!(store.read_next_object(), None);
+        let obj = Object{hash: [0_u8; 30], data: vec![1_u8; 99]};
+        assert!(store.write_object(&obj).is_ok());
+        //assert_eq!(store.read_next_object(), Some(obj));
+    }
+
+    #[test]
     fn test_object() {
         let o = Object {
             hash: [0_u8; 30],

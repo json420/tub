@@ -1,5 +1,19 @@
 use std::fs::File;
 use std::io::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+
+
+type ID = [u8; 30];
+
+#[derive(Debug, PartialEq)]
+struct Entry {
+    offset: u64,
+    size: u64,
+}
+
+type Index = Arc<Mutex<HashMap<ID, Entry>>>;
 
 
 #[derive(Debug, PartialEq)]

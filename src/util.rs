@@ -1,7 +1,7 @@
 use libc;
 
 
-fn get_random(buf: &mut [u8]) {
+fn getrandom(buf: &mut [u8]) {
     let size1 = buf.len();
     let p = buf.as_mut_ptr() as *mut libc::c_void;
     let size2 = unsafe {
@@ -16,18 +16,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_random() {
+    fn test_getrandom() {
         let b1 = &mut [0_u8; 30];
         assert_eq!(b1[..], [0_u8; 30][..]);
-        get_random(b1);
+        getrandom(b1);
         assert_ne!(b1[..], [0_u8; 30][..]);
         let b2 = &mut [0_u8; 30];
-        get_random(b2);
+        getrandom(b2);
         assert_ne!(b1[..], b2[..]);
 
         let b3 = &mut [0_u8; 65536];
         assert_eq!(b3[..], [0_u8; 65536][..]);
-        get_random(b3);
+        getrandom(b3);
         assert_ne!(b3[..], [0_u8; 65536][..]);
     }
 }

@@ -3,6 +3,8 @@ use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::protocol::hash;
+
 
 type Size = u64;
 const HASH_LENGTH: usize = 30;
@@ -10,7 +12,7 @@ type ID = [u8; HASH_LENGTH];
 
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Entry {
     offset: u64,
     size: u64,
@@ -62,19 +64,32 @@ struct PartialObject {
 #[derive(Debug)]
 struct Store {
     file: File,
+    index: Index,
 }
 
 
 impl Store {
+    fn new(file: File) -> Store {
+        let index: Index = Arc::new(Mutex::new(HashMap::new()));
+        Store {
+            file: file,
+            index: index,
+        }
+    }
+
+    fn get(&self, id: &ID) -> Option<Entry> {
+        let index = self.index.lock().unwrap();
+        if let Some(val) = index.get(id) {
+            Some(val.clone())
+        }
+        else {
+            None
+        }
+    }
+
     fn open(&mut self, id: ID) -> std::io::Result<Object2> {
         Ok(Object2{id: [0u8; 30], leaves: vec![], offset: 0, size: 0})
     }
-
-/*
-    fn remove(id: ID) -> {
-          
-    }
- */  
 
     fn allocate_tmp(&mut self, size: Option<Size>) -> TmpObject{
         TmpObject {size: None}
@@ -103,7 +118,7 @@ impl Store {
         let size = u64::from_le_bytes(size_buf);
         let hash: [u8; 30] = header[8..40].try_into().expect("no good");
         let mut data: Vec<u8> = Vec::with_capacity(size as usize);
-        self.file.read_exact(&mut data);
+        self.file.read_exact(&mut data).unwrap();
         Some(Object{hash: hash, data})
     }
 }
@@ -121,8 +136,24 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store{file: File::create(pb).unwrap()};
+        let mut store = Store::new(File::create(pb).unwrap());
         assert_eq!(store.read_next_object(), None);
+    }
+
+    #[test]
+    fn test_get() {
+        let tmp = TempDir::new().unwrap();
+        let mut pb = tmp.path().to_path_buf();
+        pb.push("example.btdb");
+        let mut store = Store::new(File::create(pb).unwrap());
+        assert_eq!(store.get(&[0u8; HASH_LENGTH]), None);
+        let mut guard = store.index.lock().unwrap();
+        let id = [2_u8; 30];
+        let entry = Entry {size: 3, offset: 5};
+        assert_eq!(guard.insert(id.clone(), entry.clone()), None);
+        // Release mutex lock otherwise following will deadlock:
+        Mutex::unlock(guard);
+        assert_eq!(store.get(&id), Some(entry));
     }
 
     #[test]
@@ -130,7 +161,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store{file: File::create(pb).unwrap()};
+        let mut store = Store::new(File::create(pb).unwrap());
         assert_eq!(store.read_next_object(), None);
         let obj = Object{hash: [0_u8; 30], data: vec![1_u8; 420]};
         assert!(store.write_object(&obj).is_ok());

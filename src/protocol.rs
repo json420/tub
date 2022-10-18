@@ -8,7 +8,7 @@ use generic_array::GenericArray;
 type Blake2b240 = Blake2b<U30>;
 
 
-fn hash(buf: &[u8]) -> GenericArray<u8, U30> {
+pub fn hash(buf: &[u8]) -> GenericArray<u8, U30> {
     let mut h = Blake2b240::new();
     h.update(buf);
     h.finalize()

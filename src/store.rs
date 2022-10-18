@@ -4,8 +4,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 
+type Size = u64;
+const HASH_LENGTH: usize = 30;
+type ID = [u8; HASH_LENGTH];
 
-type ID = [u8; 30];
+
 
 #[derive(Debug, PartialEq)]
 struct Entry {
@@ -18,7 +21,7 @@ type Index = Arc<Mutex<HashMap<ID, Entry>>>;
 
 #[derive(Debug, PartialEq)]
 struct Object {
-    hash: [u8; 30],
+    hash: ID,
     data: Vec<u8>,
 }
 
@@ -28,11 +31,59 @@ impl Object {
     }
 }
 
+
+#[derive(Debug, PartialEq)]
+struct Info {
+    id: ID,
+    size: Size,
+    leaves: Vec<ID>,
+}
+
+
+#[derive(Debug, PartialEq)]
+struct Object2 {
+    offset: u64,
+    size: u64,
+    id: ID,
+    leaves: Vec<ID>,
+}
+
+#[derive(Debug)]
+struct TmpObject {
+    size: Option<Size>,
+}
+
+#[derive(Debug)]
+struct PartialObject {
+    size: Option<Size>,
+}
+
+
+#[derive(Debug)]
 struct Store {
     file: File,
 }
 
+
 impl Store {
+    fn open(&mut self, id: ID) -> std::io::Result<Object2> {
+        Ok(Object2{id: [0u8; 30], leaves: vec![], offset: 0, size: 0})
+    }
+
+/*
+    fn remove(id: ID) -> {
+          
+    }
+ */  
+
+    fn allocate_tmp(&mut self, size: Option<Size>) -> TmpObject{
+        TmpObject {size: None}
+    }
+
+    fn allocate_partial(&mut self, size: Option<Size>) -> PartialObject{
+        PartialObject {size: None}
+    }
+
     fn write_object(&mut self, obj: &Object) -> std::io::Result<()> {
         // FIXME: Use write_all_vectored()
         self.file.write_all(&obj.hash)?;

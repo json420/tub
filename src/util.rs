@@ -1,4 +1,5 @@
 use libc;
+use crate::base::*;
 
 
 fn getrandom(buf: &mut [u8]) {
@@ -8,6 +9,20 @@ fn getrandom(buf: &mut [u8]) {
         libc::getrandom(p, size1, 0)
     } as usize;
     if size1 != size2 {panic!("something went wrong")}
+}
+
+
+fn random_id() -> AbstractID {
+    let mut id = [0_u8; ABSTRACT_ID_SIZE];
+    getrandom(&mut id);
+    id
+}
+
+
+fn random_object_id() -> ObjectID {
+    let mut id = [0_u8; OBJECT_ID_SIZE];
+    getrandom(&mut id);
+    id
 }
 
 
@@ -29,5 +44,19 @@ mod tests {
         assert_eq!(b3[..], [0_u8; 65536][..]);
         getrandom(b3);
         assert_ne!(b3[..], [0_u8; 65536][..]);
+    }
+
+    #[test]
+    fn test_random_id() {
+        let a = random_id();
+        let b = random_id();
+        assert_ne!(a, b);        
+    }
+
+    #[test]
+    fn test_random_object_id() {
+        let a = random_object_id();
+        let b = random_object_id();
+        assert_ne!(a, b);        
     }
 }

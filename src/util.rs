@@ -2,7 +2,7 @@ use libc;
 use crate::base::*;
 
 
-fn getrandom(buf: &mut [u8]) {
+pub fn getrandom(buf: &mut [u8]) {
     let size1 = buf.len();
     let p = buf.as_mut_ptr() as *mut libc::c_void;
     let size2 = unsafe {
@@ -12,14 +12,14 @@ fn getrandom(buf: &mut [u8]) {
 }
 
 
-fn random_id() -> AbstractID {
+pub fn random_id() -> AbstractID {
     let mut id = [0_u8; ABSTRACT_ID_SIZE];
     getrandom(&mut id);
     id
 }
 
 
-fn random_object_id() -> ObjectID {
+pub fn random_object_id() -> ObjectID {
     let mut id = [0_u8; OBJECT_ID_SIZE];
     getrandom(&mut id);
     id

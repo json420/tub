@@ -3,12 +3,8 @@ use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::base::*;
 use crate::protocol::hash;
-
-
-type Size = u64;
-const HASH_LENGTH: usize = 30;
-type ID = [u8; HASH_LENGTH];
 
 
 
@@ -18,12 +14,12 @@ struct Entry {
     size: u64,
 }
 
-type Index = Arc<Mutex<HashMap<ID, Entry>>>;
+type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
 
 
 #[derive(Debug, PartialEq)]
 struct Object {
-    hash: ID,
+    hash: ObjectID,
     data: Vec<u8>,
 }
 
@@ -36,9 +32,9 @@ impl Object {
 
 #[derive(Debug, PartialEq)]
 struct Info {
-    id: ID,
-    size: Size,
-    leaves: Vec<ID>,
+    id: ObjectID,
+    size: ObjectSize,
+    leaves: Vec<ObjectID>,
 }
 
 
@@ -46,18 +42,18 @@ struct Info {
 struct Object2 {
     offset: u64,
     size: u64,
-    id: ID,
-    leaves: Vec<ID>,
+    id: ObjectID,
+    leaves: Vec<ObjectID>,
 }
 
 #[derive(Debug)]
 struct TmpObject {
-    size: Option<Size>,
+    size: Option<ObjectSize>,
 }
 
 #[derive(Debug)]
 struct PartialObject {
-    size: Option<Size>,
+    size: Option<ObjectSize>,
 }
 
 
@@ -77,7 +73,7 @@ impl Store {
         }
     }
 
-    fn get(&self, id: &ID) -> Option<Entry> {
+    fn get(&self, id: &ObjectID) -> Option<Entry> {
         let index = self.index.lock().unwrap();
         if let Some(val) = index.get(id) {
             Some(val.clone())
@@ -87,15 +83,15 @@ impl Store {
         }
     }
 
-    fn open(&mut self, id: ID) -> std::io::Result<Object2> {
+    fn open(&mut self, id: ObjectID) -> std::io::Result<Object2> {
         Ok(Object2{id: [0u8; 30], leaves: vec![], offset: 0, size: 0})
     }
 
-    fn allocate_tmp(&mut self, size: Option<Size>) -> TmpObject{
+    fn allocate_tmp(&mut self, size: Option<ObjectSize>) -> TmpObject{
         TmpObject {size: None}
     }
 
-    fn allocate_partial(&mut self, size: Option<Size>) -> PartialObject{
+    fn allocate_partial(&mut self, size: Option<ObjectSize>) -> PartialObject{
         PartialObject {size: None}
     }
 
@@ -130,6 +126,7 @@ mod tests {
     use tempfile::TempDir;
     use std::fs::File;
     use std::io::SeekFrom;
+    use crate::util::*;
 
     #[test]
     fn test_store() {
@@ -146,9 +143,9 @@ mod tests {
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
         let mut store = Store::new(File::create(pb).unwrap());
-        assert_eq!(store.get(&[0u8; HASH_LENGTH]), None);
+        let id = random_object_id();
+        assert_eq!(store.get(&id), None);
         let mut guard = store.index.lock().unwrap();
-        let id = [2_u8; 30];
         let entry = Entry {size: 3, offset: 5};
         assert_eq!(guard.insert(id.clone(), entry.clone()), None);
         // Release mutex lock otherwise following will deadlock:

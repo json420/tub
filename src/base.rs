@@ -1,6 +1,7 @@
 pub const ABSTRACT_ID_LEN: usize = 15;
 pub const OBJECT_ID_LEN: usize = 30;
 pub const LEAF_HASH_LEN: usize = 30;
+pub const LEAF_SIZE: usize = 8388608;  // 8 MiB leaf size
 
 pub type AbstractID = [u8; ABSTRACT_ID_LEN];
 pub type ObjectID = [u8; OBJECT_ID_LEN];

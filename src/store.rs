@@ -83,6 +83,11 @@ impl Store {
         }
     }
 
+    fn set(&self, id: ObjectID, entry: Entry) -> Option<Entry> {
+        let mut index = self.index.lock().unwrap();
+        index.insert(id, entry)
+    }
+
     fn open(&mut self, id: ObjectID) -> std::io::Result<Object2> {
         Ok(Object2{id: [0u8; 30], leaves: vec![], offset: 0, size: 0})
     }
@@ -151,6 +156,19 @@ mod tests {
         // Release mutex lock otherwise following will deadlock:
         Mutex::unlock(guard);
         assert_eq!(store.get(&id), Some(entry));
+    }
+
+    #[test]
+    fn test_set() {
+        let tmp = TempDir::new().unwrap();
+        let mut pb = tmp.path().to_path_buf();
+        pb.push("example.btdb");
+        let mut store = Store::new(File::create(pb).unwrap());
+        let id = random_object_id();
+        let entry = Entry {size: 3, offset: 5};
+        assert_eq!(store.set(id.clone(), entry.clone()), None);
+        let entry2 = Entry {size: 7, offset: 11};
+        assert_eq!(store.set(id.clone(), entry2.clone()), Some(entry));
     }
 
     #[test]

@@ -1,6 +1,7 @@
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */
+use std::cmp::min;
 use blake2::{Blake2b, Digest};
 use digest::consts::{U30};
 use generic_array::GenericArray;
@@ -13,6 +14,33 @@ pub fn hash(buf: &[u8]) -> GenericArray<u8, U30> {
     let mut h = HashFunc::new();
     h.update(buf);
     h.finalize()
+}
+
+
+struct LeafHasher {
+    h: HashFunc,
+    size: usize,
+}
+
+impl LeafHasher {
+    fn new() -> Self {
+        Self {
+            h: HashFunc::new(),
+            size: 0,
+        }
+    }
+
+    fn update(&mut self, data: &[u8]) {
+        self.size += data.len();
+        assert!(self.size <= LEAF_SIZE);
+        self.h.update(data);
+    }
+
+    fn finalize(self) -> (LeafHash, usize) {
+        assert!(self.size > 0);
+        (LeafHash::from(self.h.finalize()), self.size)
+    }
+
 }
 
 
@@ -57,6 +85,12 @@ mod tests {
 
         let res = hash(D1);
         assert_eq!(res[..], D1H240[..]);
+    }
+
+    #[test]
+    fn test_LeafHasher() {
+        let mut lh = LeafHasher::new();
+        assert_eq!(lh.size, 0);
     }
 
     #[test]

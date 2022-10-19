@@ -13,14 +13,14 @@ pub fn getrandom(buf: &mut [u8]) {
 
 
 pub fn random_id() -> AbstractID {
-    let mut id = [0_u8; ABSTRACT_ID_SIZE];
+    let mut id = [0_u8; ABSTRACT_ID_LEN];
     getrandom(&mut id);
     id
 }
 
 
 pub fn random_object_id() -> ObjectID {
-    let mut id = [0_u8; OBJECT_ID_SIZE];
+    let mut id = [0_u8; OBJECT_ID_LEN];
     getrandom(&mut id);
     id
 }

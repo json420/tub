@@ -1,10 +1,14 @@
-pub const ABSTRACT_ID_SIZE: usize = 15;
-pub const OBJECT_ID_SIZE: usize = 30;
+pub const ABSTRACT_ID_LEN: usize = 15;
+pub const OBJECT_ID_LEN: usize = 30;
+pub const LEAF_HASH_LEN: usize = 30;
 
-pub type AbstractID = [u8; ABSTRACT_ID_SIZE];
-pub type ObjectID = [u8; OBJECT_ID_SIZE];
+pub type AbstractID = [u8; ABSTRACT_ID_LEN];
+pub type ObjectID = [u8; OBJECT_ID_LEN];
+pub type LeafHash = [u8; LEAF_HASH_LEN];
+pub type LeafHashList = Vec<LeafHash>;
 
 pub type ObjectSize = u64;
+pub type OffsetSize = u64;
 
 
 
@@ -13,10 +17,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sizes() {
-        assert_eq!(ABSTRACT_ID_SIZE % 5, 0);
-        assert_eq!(OBJECT_ID_SIZE % 5, 0);
-        assert!(OBJECT_ID_SIZE > ABSTRACT_ID_SIZE);
+    fn test_lengths() {
+        assert_eq!(ABSTRACT_ID_LEN % 5, 0);
+        assert_eq!(OBJECT_ID_LEN % 5, 0);
+        assert_eq!(LEAF_HASH_LEN % 5, 0);
+        assert!(OBJECT_ID_LEN > ABSTRACT_ID_LEN);
     }
 }
 

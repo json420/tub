@@ -17,48 +17,8 @@ pub fn hash(buf: &[u8]) -> GenericArray<u8, U30> {
 }
 
 
-
-struct LeafHasher {
-    h: HashFunc,
-    size: usize,
-}
-
-
-impl LeafHasher {
-    fn new() -> Self {
-        Self {
-            h: HashFunc::new(),
-            size: 0,
-        }
-    }
-
-    fn remaining(&self) -> usize {
-        LEAF_SIZE - self.size
-    }
-
-    fn update(&mut self, data: &Vec<u8>) {
-        self.size += data.len();
-        assert!(self.size <= LEAF_SIZE);
-        self.h.update(data);
-    }
-
-    fn finalize_reset(&mut self) -> (LeafHash, usize) {
-        assert!(self.size > 0);
-        assert!(self.size <= LEAF_SIZE);
-        (LeafHash::from(self.h.finalize_reset()), self.size)
-    }
-
-    fn finalize(self) -> (LeafHash, usize) {
-        assert!(self.size > 0);
-        assert!(self.size <= LEAF_SIZE);
-        (LeafHash::from(self.h.finalize()), self.size)
-    }
-}
-
-
 struct Hasher {
-    h: HashFunc::new(),
-    leaf_hasher: LeafHasher,
+    closed: bool,
     size: ObjectSize,
     leaf_hashes: LeafHashList,
 }
@@ -67,34 +27,36 @@ struct Hasher {
 impl Hasher {
     fn new() -> Self {
         Self {
-            h: HashFunc::new(),
-            leaf_hasher: LeafHasher::new(),
+            closed: false,
             size: 0,
             leaf_hashes: vec![],
         }
     }
 
-    fn next_leaf(&mut self) {
-        //self.leaf_hasher = LeafHasher::new();
-        //let (leaf_hash, size) = self.leaf_hasher.finalize();
-    }
-
-    fn update(&mut self, data: &Vec<u8>) {
-        let mut cur: usize = 0;
-        while cur < data.len() {
-            let s = min(data.len() - cur, self.leaf_hasher.remaining());
-            let myslice = &data[cur..cur+s];
-            cur += s;
+    fn hash_leaf(&mut self, index: usize, data: &[u8]) {
+        assert!(!self.closed);
+        assert_eq!(index as ObjectSize, self.size / LEAF_SIZE);
+        assert!(data.len() > 0);
+        assert!(data.len() <= LEAF_SIZE as usize);
+        let mut h = HashFunc::new();
+        h.update(index.to_le_bytes());
+        h.update(data);
+        self.leaf_hashes.push(LeafHash::from(h.finalize()));
+        self.size += data.len() as ObjectSize;
+        if data.len() < LEAF_SIZE as usize {
+            self.closed = true;
         }
-        self.size += data.len() as ObjectSize;
     }
 
-
-    fn hash_leaf(&mut self, data: &[u8]) {
-        self.leaf_hashes.push(LeafHash::from(hash(data)));
-        self.size += data.len() as ObjectSize;
+    fn content_hash(&mut self) -> ObjectID {
+        self.closed = true;
+        let mut h = HashFunc::new();
+        h.update(self.size.to_le_bytes());
+        for leaf_hash in self.leaf_hashes.iter() {
+            h.update(leaf_hash);
+        }
+        ObjectID::from(h.finalize())
     }
-
 }
 
 
@@ -119,9 +81,28 @@ mod tests {
 
     #[test]
     fn test_Hasher() {
-        let h: Hasher = Hasher::new();
+        let mut h: Hasher = Hasher::new();
+        assert_eq!(h.closed, false);
         assert_eq!(h.size, 0);
         assert_eq!(h.leaf_hashes.len(),  0);
+
+        h.hash_leaf(0, b"my_input");
+        assert_eq!(h.closed, true);
+        assert_eq!(h.size, 8);
+        assert_eq!(h.leaf_hashes.len(),  1);
+
+        let mut h: Hasher = Hasher::new();
+        h.hash_leaf(0, &vec![44_u8; LEAF_SIZE as usize]);
+        assert_eq!(h.closed, false);
+        assert_eq!(h.size, LEAF_SIZE);
+        assert_eq!(h.leaf_hashes.len(),  1);
+
+        h.hash_leaf(1, b"my_input");
+        assert_eq!(h.closed, true);
+        assert_eq!(h.size, LEAF_SIZE + 8);
+        assert_eq!(h.leaf_hashes.len(),  2);
+        
+
     }
 
 }

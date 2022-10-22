@@ -57,6 +57,7 @@ impl LeafHasher {
 
 
 struct Hasher {
+    h: HashFunc::new(),
     leaf_hasher: LeafHasher,
     size: ObjectSize,
     leaf_hashes: LeafHashList,
@@ -66,6 +67,7 @@ struct Hasher {
 impl Hasher {
     fn new() -> Self {
         Self {
+            h: HashFunc::new(),
             leaf_hasher: LeafHasher::new(),
             size: 0,
             leaf_hashes: vec![],
@@ -116,35 +118,11 @@ mod tests {
     }
 
     #[test]
-    fn test_LeafHasher() {
-        let mut lh = LeafHasher::new();
-        assert_eq!(lh.size, 0);
-        assert_eq!(lh.remaining(), LEAF_SIZE);
-    }
-
-    #[test]
-    fn test_Hasher_new() {
+    fn test_Hasher() {
         let h: Hasher = Hasher::new();
         assert_eq!(h.size, 0);
         assert_eq!(h.leaf_hashes.len(),  0);
     }
 
-    #[test]
-    fn test_Hasher_update() {
-        let mut h = Hasher::new();
-        let data = Box::new(vec![1_u8;  231]);
-        h.update(&data);
-        assert_eq!(h.size, 231);
-        //assert_eq!(h.leaf_hashes.len(),  1);
-    }
-
-    #[test]
-    fn test_Hasher_hash_leaf() {
-        let mut h = Hasher::new();
-        let data = [1_u8;  231];
-        h.hash_leaf(&data);
-        assert_eq!(h.size, 231);
-        assert_eq!(h.leaf_hashes.len(),  1);
-    }
 }
 

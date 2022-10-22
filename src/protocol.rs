@@ -10,10 +10,10 @@ use crate::base::*;
 type HashFunc = Blake2b<U30>;
 
 
-pub fn hash(buf: &[u8]) -> GenericArray<u8, U30> {
+pub fn hash(buf: &[u8]) -> ObjectID {
     let mut h = HashFunc::new();
     h.update(buf);
-    h.finalize()
+    ObjectID::from(h.finalize())
 }
 
 

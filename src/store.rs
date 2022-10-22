@@ -8,10 +8,10 @@ use crate::protocol::hash;
 
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct Entry {
-    offset: u64,
-    size: u64,
+    offset: OffsetSize,
+    size: ObjectSize,
 }
 
 type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
@@ -88,16 +88,24 @@ impl Store {
         index.insert(id, entry)
     }
 
-    fn open(&mut self, id: ObjectID) -> std::io::Result<Object2> {
-        Ok(Object2{id: [0u8; 30], leaves: vec![], offset: 0, size: 0})
-    }
+    fn add_object(&mut self, data: &[u8]) -> ObjectID {
+        let id = hash(data);
+        let mut index = self.index.lock().unwrap();
+        if let Some(entry) = index.get(&id) {
+            return id;  // Already in object store
+        }
 
-    fn allocate_tmp(&mut self, size: Option<ObjectSize>) -> TmpObject{
-        TmpObject {size: None}
-    }
-
-    fn allocate_partial(&mut self, size: Option<ObjectSize>) -> PartialObject{
-        PartialObject {size: None}
+        let entry = Entry {
+            offset: self.file.stream_position().unwrap(),
+            size: data.len() as ObjectSize,
+        };
+        self.file.write_all(&id).expect("nope");
+        self.file.write_all(&entry.size.to_le_bytes()).expect("nope");
+        self.file.write_all(data).expect("nope");
+        self.file.flush().expect("nope");
+        index.insert(id, entry);
+        self.file.write_all_vectored(
+        id
     }
 
     fn write_object(&mut self, obj: &Object) -> std::io::Result<()> {

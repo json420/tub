@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use btdb_layer0::util::*;
-use btdb_layer0::protocol::hash;
+use bathtub_db::util::*;
+use bathtub_db::protocol::hash;
 
 
 fn bm_random_id(c: &mut Criterion) {

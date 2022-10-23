@@ -43,17 +43,34 @@ impl Store {
         }
     }
 
-    fn reindex(&mut self) {
+    /*
+    fn read_next_object(&mut self) -> Option<Object> {
+        let mut header = [0_u8; 38];
+        if let Err(_) = self.file.read_exact(&mut header) {
+            return None;
+        }
+        let size_buf: [u8; 8] = header[0..8].try_into().expect("no good");
+        let size = u64::from_le_bytes(size_buf);
+        let hash: [u8; 30] = header[8..40].try_into().expect("no good");
+        let mut data: Vec<u8> = Vec::with_capacity(size as usize);
+        self.file.read_exact(&mut data).unwrap();
+        Some(Object{hash: hash, data})
+    }
+    */
+
+    pub fn reindex(&mut self) {
         let mut index = self.index.lock().unwrap();
         index.clear();
+
         self.file.seek(SeekFrom::Start(0)).unwrap();
         let mut header = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.file.read_exact(&mut header) {
                 break;
             }
-            let id = &header[0..OBJECT_ID_LEN];
-            let size = u64::from_le_bytes(&header[OBJECT_ID_LEN..]);
+            //let size_buf: [u8; 8] = header[].try_into().expect("no good");
+            //let size = u64::from_le_bytes(size_buf);
+            //let hash: [u8; 30] = header[8..40].try_into().expect("no good");
         }
     }
 

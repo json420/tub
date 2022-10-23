@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -88,11 +89,11 @@ impl Store {
         index.insert(id, entry)
     }
 
-    fn add_object(&mut self, data: &[u8]) -> ObjectID {
+    fn add_object(&mut self, data: &[u8]) -> (ObjectID, Entry) {
         let id = hash(data);
         let mut index = self.index.lock().unwrap();
         if let Some(entry) = index.get(&id) {
-            return id;  // Already in object store
+            return (id, entry.clone());  // Already in object store
         }
 
         let entry = Entry {
@@ -104,8 +105,20 @@ impl Store {
         self.file.write_all(data).expect("nope");
         self.file.flush().expect("nope");
         index.insert(id, entry);
-        self.file.write_all_vectored(
-        id
+        (id, entry)
+    }
+
+    fn get_object(&mut self, id: &ObjectID) -> Option<Entry> {
+        if let Some(entry) = self.get(id) {
+            let mut buf = vec![0_u8; entry.size as usize];
+            assert_eq!(buf.len(), entry.size as usize);
+            self.file.read_exact_at(
+                &mut buf[0..entry.size as usize],
+                entry.offset
+            );
+            return Some(entry);
+        }
+        None
     }
 
     fn write_object(&mut self, obj: &Object) -> std::io::Result<()> {
@@ -140,6 +153,10 @@ mod tests {
     use std::fs::File;
     use std::io::SeekFrom;
     use crate::util::*;
+    use hex_literal::hex;
+
+    static D1: &[u8] = b"my_input";
+    static D1H240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
 
     #[test]
     fn test_store() {
@@ -147,7 +164,14 @@ mod tests {
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
         let mut store = Store::new(File::create(pb).unwrap());
-        assert_eq!(store.read_next_object(), None);
+
+        let id = random_object_id();
+        assert_eq!(store.get_object(&id), None);
+        assert_eq!(store.add_object(D1),
+            (D1H240, Entry {offset: 0, size: 8})
+        );
+        assert_eq!(store.get(&D1H240), Some(Entry {offset: 0, size: 8}));
+        assert_eq!(store.get_object(&D1H240), Some(Entry {offset: 0, size: 8}));
     }
 
     #[test]

@@ -11,6 +11,7 @@ pub type ObjectSize = u64;
 pub type OffsetSize = u64;
 
 pub const LEAF_SIZE: ObjectSize = 8388608;  // 8 MiB leaf size
+pub type LeafBuf = Box<[u8; LEAF_SIZE as usize]>;
 
 
 

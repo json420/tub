@@ -4,4 +4,5 @@ mod base;
 pub mod protocol;
 pub mod util;
 pub mod store;
+pub mod dbase32;
 

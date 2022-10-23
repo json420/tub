@@ -3,6 +3,7 @@ use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::io::IoSlice;
 
 use crate::base::*;
 use crate::protocol::hash;
@@ -55,15 +56,17 @@ impl Store {
         if let Some(entry) = index.get(&id) {
             return (id, entry.clone());  // Already in object store
         }
-
         let entry = Entry {
             offset: self.file.stream_position().unwrap(),
             size: data.len() as ObjectSize,
         };
-        self.file.write_all(&id).expect("nope");
-        self.file.write_all(&entry.size.to_le_bytes()).expect("nope");
-        self.file.write_all(data).expect("nope");
+        self.file.write_all_vectored(&mut [
+            IoSlice::new(&id),
+            IoSlice::new(&entry.size.to_le_bytes()),
+            IoSlice::new(data),
+        ]).expect("object append failed");
         self.file.flush().expect("nope");
+        
         index.insert(id, entry);
         (id, entry)
     }

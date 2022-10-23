@@ -4,5 +4,6 @@ mod base;
 pub mod protocol;
 pub mod util;
 pub mod store;
+pub mod tree;
 pub mod dbase32;
 

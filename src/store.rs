@@ -73,7 +73,6 @@ impl Store {
             IoSlice::new(data),
         ]).expect("object append failed");
         self.file.flush().expect("nope");
-        
         index.insert(id, entry);
         (id, entry)
     }

@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::path::Path;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
@@ -27,8 +28,14 @@ struct Store {
 
 
 impl Store {
-    fn new(file: File) -> Store {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
         let index: Index = Arc::new(Mutex::new(HashMap::new()));
+        let file = File::options()
+            .append(true)
+            .read(true)
+            .create(true)
+            .open(path)
+            .expect("could not open pack file");
         Store {
             file: file,
             index: index,
@@ -78,7 +85,7 @@ impl Store {
             self.file.read_exact_at(
                 &mut buf[0..entry.size as usize],
                 entry.offset
-            );
+            ).expect("oops");
             return Some(entry);
         }
         None
@@ -103,7 +110,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(File::create(pb).unwrap());
+        let mut store = Store::new(pb);
 
         let id = random_object_id();
         assert_eq!(store.get_object(&id), None);
@@ -119,7 +126,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(File::create(pb).unwrap());
+        let mut store = Store::new(pb);
         let id = random_object_id();
         assert_eq!(store.get(&id), None);
         let mut guard = store.index.lock().unwrap();
@@ -135,7 +142,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(File::create(pb).unwrap());
+        let mut store = Store::new(pb);
         let id = random_object_id();
         let entry = Entry {size: 3, offset: 5};
         assert_eq!(store.set(id.clone(), entry.clone()), None);

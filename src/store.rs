@@ -58,19 +58,44 @@ impl Store {
     }
     */
 
-    pub fn reindex(&mut self) {
+    pub fn reindex(&mut self, check: bool) {
         let mut index = self.index.lock().unwrap();
         index.clear();
 
+        let mut offset: OffsetSize = 0;
+        let mut buf = vec![0_u8; 4096];
+
         self.file.seek(SeekFrom::Start(0)).unwrap();
-        let mut header = [0_u8; HEADER_LEN];
+        let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.file.read_exact(&mut header) {
                 break;
             }
-            //let size_buf: [u8; 8] = header[].try_into().expect("no good");
-            //let size = u64::from_le_bytes(size_buf);
-            //let hash: [u8; 30] = header[8..40].try_into().expect("no good");
+            let id: ObjectID = header[0..30].try_into().expect("oops");
+            let size = u64::from_le_bytes(
+                header[30..38].try_into().expect("oops")
+            );
+            println!("{}\t{}", offset, size);
+
+            let entry = Entry {
+                offset: offset,
+                size: size,
+            };
+            let r = index.insert(id, entry);
+            assert_eq!(r, None);
+
+            offset += HEADER_LEN as ObjectSize + size;
+
+            if check {
+                buf.resize(size as usize, 0);
+                let s = &mut buf[0..size as usize];
+                self.file.read_exact(s).expect("oops");
+                //assert_eq!(hash(s), id);
+            }
+            else {
+                self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
+            };
+            
         }
     }
 

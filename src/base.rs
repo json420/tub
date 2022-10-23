@@ -13,6 +13,7 @@ pub type ObjectSize = u64;
 pub type OffsetSize = u64;
 
 pub const HEADER_LEN: usize = OBJECT_ID_LEN + size_of::<ObjectSize>();
+pub type HeaderBuf = [u8; HEADER_LEN];
 
 
 
@@ -31,6 +32,7 @@ mod tests {
         assert_eq!(OBJECT_ID_LEN % 5, 0);
         assert_eq!(LEAF_HASH_LEN % 5, 0);
         assert!(OBJECT_ID_LEN > ABSTRACT_ID_LEN);
+        assert_eq!(HEADER_LEN, 38);
     }
 }
 

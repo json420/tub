@@ -119,7 +119,7 @@ fn _validate(text: &str) -> bool {
 }
 
 //make one where you give both buffers  (this way with the string is handy too)
-pub fn encode(bin_text: &str) -> String {
+pub fn encode(bin_text: &[u8]) -> String {
     let block: usize;
     let count: usize;
     let mut taxi: u64;
@@ -128,11 +128,11 @@ pub fn encode(bin_text: &str) -> String {
     
     count = bin_text.len()/5;
     for block in 0..count {
-        taxi = bin_text.bytes().nth(5*block + 0).unwrap() as u64;
-        taxi = bin_text.bytes().nth(5*block + 1).unwrap() as u64 | (taxi << 8);
-        taxi = bin_text.bytes().nth(5*block + 2).unwrap() as u64 | (taxi << 8);
-        taxi = bin_text.bytes().nth(5*block + 3).unwrap() as u64 | (taxi << 8);
-        taxi = bin_text.bytes().nth(5*block + 4).unwrap() as u64 | (taxi << 8);
+        taxi = bin_text[5*block + 0] as u64;
+        taxi = bin_text[5*block + 1] as u64 | (taxi << 8);
+        taxi = bin_text[5*block + 2] as u64 | (taxi << 8);
+        taxi = bin_text[5*block + 3] as u64 | (taxi << 8);
+        taxi = bin_text[5*block + 4] as u64 | (taxi << 8);
         
         text.push(DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char);
         text.push(DB32_FORWARD.bytes().nth(((taxi >> 30) & 31) as usize).unwrap() as char);
@@ -149,7 +149,7 @@ pub fn encode(bin_text: &str) -> String {
 }
 
 
-pub fn decode(text: &str) -> String {
+pub fn decode(text: &[u8]) -> String {
     let block: usize;
     let count: usize;
     let mut taxi: u64;
@@ -159,14 +159,14 @@ pub fn decode(text: &str) -> String {
     let mut r: u8 = 0;
     count = text.len()/8;
     for block in 0..count {
-        let mut i = text.bytes().nth(8*block + 0).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64;
-        i = text.bytes().nth(8*block + 1).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 2).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 3).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 4).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 5).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 6).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text.bytes().nth(8*block + 7).unwrap();    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        let mut i = text[8*block + 0];    r = rotate!(i) | r & 224;    taxi = r as u64;
+        i = text[8*block + 1];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 2];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 3];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 4];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 5];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 6];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
+        i = text[8*block + 7];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
         
         bin_text.push(((taxi >> 32) & 255) as u8 as char);
         bin_text.push(((taxi >> 24) & 255) as u8 as char);
@@ -209,7 +209,7 @@ pub fn random_id() -> String {
     let b: String = std::str::from_utf8(&buf).unwrap().to_string();
     //let b: String = buf.iter().into<char>().collect();
     
-    encode(&b)
+    encode(&buf)
 }
 
 //time_id
@@ -284,13 +284,13 @@ mod tests {
     
     #[test]
     fn test_encode() {
-        let result = super::encode("binary foo");
+        let result = super::encode(b"binary foo");
         assert_eq!(result, "FCNPVRELI7J9FUUI");
     }
     
     #[test]
     fn test_decode() {
-        let result = super::decode("FCNPVRELI7J9FUUI");
+        let result = super::decode(b"FCNPVRELI7J9FUUI");
         assert_eq!(result, "binary foo");
     }
     

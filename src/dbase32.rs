@@ -70,11 +70,11 @@ fn _text_to_bytes(text: &str) -> std::str::Bytes {
     return b;
 }
 
-fn _check_length(text: &str) -> Result<(&str), &str> {
-    if (text.len() < 8 || text.len() > MAX_TXT_LEN) {
+fn _check_length(text: &str) -> Result<&str, &str> {
+    if text.len() < 8 || text.len() > MAX_TXT_LEN {
         return Err(text)
     }
-    if (text.len() % 8 != 0) {
+    if text.len() % 8 != 0 {
         return Err(text)
     }
     
@@ -93,7 +93,7 @@ fn _validate(text: &str) -> bool {
     let count: usize;
     let mut r: u8 = 0;
     
-    if (text.len() < 8 || text.len() > MAX_TXT_LEN || text.len() % 8 != 0) {
+    if text.len() < 8 || text.len() > MAX_TXT_LEN || text.len() % 8 != 0 {
         return false
     }
     
@@ -189,7 +189,7 @@ pub fn isdb32(text: &str) -> bool {
 }
 
 //check_db32
-pub fn check_db32(text: &str) -> Result<(), (String)> {
+pub fn check_db32(text: &str) -> Result<(), String> {
     let valid = _validate(text);
     
     if !valid {
@@ -213,7 +213,7 @@ pub fn random_id() -> String {
 }
 
 //time_id
-fn _check_join(string_list: Vec<&str>) -> Result<(String), (String)> {
+fn _check_join(string_list: Vec<&str>) -> Result<String, String> {
     let pre: &str = "/";
     let s = string_list.last().unwrap();
     print!("{}",s);
@@ -237,7 +237,7 @@ pub fn db32_join(string_list: Vec<&str>) -> Result<String, String> {
 
 //db32_join_2
 pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
-    let last_part = (*(string_list.last().unwrap()));
+    let last_part = *(string_list.last().unwrap());
     let i = last_part.chars().map(|c| c.len_utf8()).take(2).sum();
     let parts = match &string_list.len() {
        0..=1 => "".to_string(),

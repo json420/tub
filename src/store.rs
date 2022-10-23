@@ -81,16 +81,15 @@ impl Store {
                 offset: offset,
                 size: size,
             };
-            let r = index.insert(id, entry);
-            assert_eq!(r, None);
+            assert_eq!(index.insert(id, entry), None);
 
             offset += HEADER_LEN as ObjectSize + size;
 
             if check {
                 buf.resize(size as usize, 0);
-                let s = &mut buf[0..size as usize];
+                let s = &mut buf[0..(size as usize)];
                 self.file.read_exact(s).expect("oops");
-                //assert_eq!(hash(s), id);
+                assert_eq!(hash(s), id);
             }
             else {
                 self.file.seek(SeekFrom::Current(size as i64)).expect("oops");

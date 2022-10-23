@@ -1,5 +1,5 @@
 [package]
-name = "btdb_layer0"
+name = "bathtub_db"
 version = "0.1.0"
 edition = "2021"
 

@@ -5,6 +5,7 @@ use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::io::IoSlice;
+use std::io::SeekFrom;
 
 use crate::base::*;
 use crate::protocol::hash;
@@ -21,7 +22,7 @@ type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
 
 
 #[derive(Debug)]
-struct Store {
+pub struct Store {
     file: File,
     index: Index,
 }
@@ -39,6 +40,20 @@ impl Store {
         Store {
             file: file,
             index: index,
+        }
+    }
+
+    fn reindex(&mut self) {
+        let mut index = self.index.lock().unwrap();
+        index.clear();
+        self.file.seek(SeekFrom::Start(0)).unwrap();
+        let mut header = [0_u8; HEADER_LEN];
+        loop {
+            if let Err(_) = self.file.read_exact(&mut header) {
+                break;
+            }
+            let id = &header[0..OBJECT_ID_LEN];
+            let size = u64::from_le_bytes(&header[OBJECT_ID_LEN..]);
         }
     }
 

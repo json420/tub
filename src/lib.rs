@@ -3,5 +3,5 @@
 mod base;
 pub mod protocol;
 pub mod util;
-mod store;
+pub mod store;
 

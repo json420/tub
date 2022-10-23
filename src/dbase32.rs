@@ -237,14 +237,7 @@ pub fn db32_join(string_list: Vec<&str>) -> Result<String, String> {
 
 //db32_join_2
 pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
-    //let last_part = (*(string_list.last().unwrap()));
-    let last_part: &str;
-    if let Some(last_part) = string_list.last() {
-        //last_part = (string_list.last().unwrap())
-    }
-    else { 
-        Err("nope".to_string())
-    }
+    let last_part = (*(string_list.last().unwrap()));
     let i = last_part.chars().map(|c| c.len_utf8()).take(2).sum();
     let parts = match &string_list.len() {
        0..=1 => "".to_string(),

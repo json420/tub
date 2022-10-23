@@ -5,6 +5,7 @@ use std::cmp::min;
 use blake2::{Blake2b, Digest};
 use digest::consts::{U30};
 use generic_array::GenericArray;
+use blake3;
 use crate::base::*;
 
 type HashFunc = Blake2b<U30>;
@@ -14,6 +15,10 @@ pub fn hash(buf: &[u8]) -> ObjectID {
     let mut h = HashFunc::new();
     h.update(buf);
     ObjectID::from(h.finalize())
+}
+
+pub fn hash2(buf: &[u8]) -> blake3::Hash {
+    blake3::hash(buf)
 }
 
 

@@ -1,12 +1,12 @@
 use libc;
 
-const DB32ALPHABET: &str = "3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
+const DB32ALPHABET: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 //const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
 
 //const DB32_START: u32 = 51;
 //const DB32_END: u32 = 89;
-const DB32_FORWARD: &str = DB32ALPHABET;
+static DB32_FORWARD: &[u8; 32] = DB32ALPHABET;
 const DB32_REVERSE: [u8; 256] = [
     255,255,255,255,255,255,255,255,255,
         // [Original] -> [Rotated]
@@ -117,6 +117,34 @@ fn _validate(text: &str) -> bool {
     
 }
 
+//forward table should be u8 too
+//static tables instead of const because there's only one copy in memory too
+pub fn db32enc(src: &[u8], dst: &mut [u8]) {
+    //TODO: validate in/out lengths
+    let count: usize = src.len()/5;
+    let mut taxi: u64;
+    for block in 0..count {
+        taxi = src[5*block + 0] as u64;
+        taxi = src[5*block + 1] as u64 | (taxi << 8);
+        taxi = src[5*block + 2] as u64 | (taxi << 8);
+        taxi = src[5*block + 3] as u64 | (taxi << 8);
+        taxi = src[5*block + 4] as u64 | (taxi << 8);
+        
+        dst[8*block + 0] = DB32_FORWARD[((taxi >> 35) & 31) as usize];
+        dst[8*block + 1] = DB32_FORWARD[((taxi >> 30) & 31) as usize];
+        dst[8*block + 2] = DB32_FORWARD[((taxi >> 25) & 31) as usize];
+        dst[8*block + 3] = DB32_FORWARD[((taxi >> 20) & 31) as usize];
+        dst[8*block + 4] = DB32_FORWARD[((taxi >> 15) & 31) as usize];
+        dst[8*block + 5] = DB32_FORWARD[((taxi >> 10) & 31) as usize];
+        dst[8*block + 6] = DB32_FORWARD[((taxi >> 5) & 31) as usize];
+        dst[8*block + 7] = DB32_FORWARD[((taxi >> 0) & 31) as usize];
+        
+        //text.push(
+        //DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char
+        //);
+    }
+}
+
 //make one where you give both buffers  (this way with the string is handy too)
 pub fn encode(bin_text: &[u8]) -> String {
     let count: usize;
@@ -132,14 +160,14 @@ pub fn encode(bin_text: &[u8]) -> String {
         taxi = bin_text[5*block + 3] as u64 | (taxi << 8);
         taxi = bin_text[5*block + 4] as u64 | (taxi << 8);
         
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 30) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 25) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 20) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 15) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 10) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi >> 5) & 31) as usize).unwrap() as char);
-        text.push(DB32_FORWARD.bytes().nth(((taxi) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 30) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 25) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 20) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 15) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 10) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 5) & 31) as usize).unwrap() as char);
+        //text.push(DB32_FORWARD.bytes().nth(((taxi) & 31) as usize).unwrap() as char);
     }
     
     text
@@ -273,8 +301,14 @@ mod tests {
     
     #[test]
     fn test_encode() {
-        let result = super::encode(b"binary foo");
-        assert_eq!(result, "FCNPVRELI7J9FUUI");
+        //let result = super::encode(b"binary foo");
+        let bin: &[u8;10] = b"binary foo";
+        //let result: &[u8; bin.len()*8/5];
+        //let mut result: Vec<u8>::with_capacity((bin::len()));
+        let mut result: [u8;16] = [0;16];// = Vec::with_capacity(15);//vec![0u8,15].into_boxed_slice();
+        
+        super::db32enc(bin, &mut result);
+        assert_eq!(&result, b"FCNPVRELI7J9FUUI");
     }
     
     #[test]

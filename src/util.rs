@@ -33,6 +33,13 @@ pub fn random_u16() -> u16 {
 }
 
 
+pub fn random_u64() -> u64 {
+    let mut buf = [0_u8; 8];
+    getrandom(&mut buf);
+    u64::from_le_bytes(buf)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

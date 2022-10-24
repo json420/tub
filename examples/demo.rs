@@ -12,7 +12,7 @@ fn main() {
     store.reindex(false);
 
     let index = store.index.lock().unwrap();
-    let keys = index.keys().cloned().collect::<Vec<ObjectID>>();
+    let keys = Vec::from_iter(index.keys().cloned());
     Mutex::unlock(index);
 
     for id in keys.iter() {

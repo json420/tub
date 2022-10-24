@@ -46,6 +46,10 @@ mod tests {
         let mut tree = Tree::new();
         tree.add();
         let ret = tree.read_next_id();
-        assert_eq!(ret, [0u8; 15]);
+        //assert_eq!(ret, [0u8; 15]);
+    }
+    
+    fn add_db() {
+        let 
     }
 }

@@ -26,6 +26,13 @@ pub fn random_object_id() -> ObjectID {
 }
 
 
+pub fn random_u16() -> u16 {
+    let mut buf = [0_u8; 2];
+    getrandom(&mut buf);
+    u16::from_le_bytes(buf)
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

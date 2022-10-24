@@ -13,7 +13,7 @@ use crate::protocol::hash;
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-struct Entry {
+pub struct Entry {
     offset: OffsetSize,
     size: ObjectSize,
 }
@@ -89,7 +89,7 @@ impl Store {
                 buf.resize(size as usize, 0);
                 let s = &mut buf[0..(size as usize)];
                 self.file.read_exact(s).expect("oops");
-                hash(s);
+                assert_eq!(hash(s), id);
             }
             else {
                 self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
@@ -113,7 +113,7 @@ impl Store {
         index.insert(id, entry)
     }
 
-    fn add_object(&mut self, data: &[u8]) -> (ObjectID, Entry) {
+    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, Entry) {
         let id = hash(data);
         let mut index = self.index.lock().unwrap();
         if let Some(entry) = index.get(&id) {

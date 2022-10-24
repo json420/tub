@@ -1,11 +1,11 @@
 use libc;
 
 const DB32ALPHABET: &str = "3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
-const MAX_BIN_LEN: usize = 60; //480 bits
+//const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
 
-const DB32_START: u32 = 51;
-const DB32_END: u32 = 89;
+//const DB32_START: u32 = 51;
+//const DB32_END: u32 = 89;
 const DB32_FORWARD: &str = DB32ALPHABET;
 const DB32_REVERSE: [u8; 256] = [
     255,255,255,255,255,255,255,255,255,
@@ -62,8 +62,8 @@ const DB32_REVERSE: [u8; 256] = [
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
 ];
 
-const DB32_SET: &str = DB32_FORWARD; //encode()???
-static _ASCII: [u8; 128] = [0;128];
+//const DB32_SET: &str = DB32_FORWARD; //encode()???
+//static _ASCII: [u8; 128] = [0;128];
 
 fn _text_to_bytes(text: &str) -> std::str::Bytes {
     let b: std::str::Bytes = text.bytes();
@@ -89,7 +89,6 @@ macro_rules! rotate {
 }
 
 fn _validate(text: &str) -> bool {
-    let block: usize;
     let count: usize;
     let mut r: u8 = 0;
     
@@ -99,7 +98,7 @@ fn _validate(text: &str) -> bool {
     
     count = text.len() / 8;
     for block in 0..count {
-        let mut i = text.bytes().nth(8*block + 0).unwrap();    r != rotate!(i);
+        let mut i = text.bytes().nth(8*block + 0).unwrap();    r |= rotate!(i);
         i = text.bytes().nth(8*block + 1).unwrap();    r |= rotate!(i);
         i = text.bytes().nth(8*block + 2).unwrap();    r |= rotate!(i);
         i = text.bytes().nth(8*block + 3).unwrap();    r |= rotate!(i);
@@ -120,7 +119,6 @@ fn _validate(text: &str) -> bool {
 
 //make one where you give both buffers  (this way with the string is handy too)
 pub fn encode(bin_text: &[u8]) -> String {
-    let block: usize;
     let count: usize;
     let mut taxi: u64;
     
@@ -150,7 +148,6 @@ pub fn encode(bin_text: &[u8]) -> String {
 
 
 pub fn decode(text: &[u8]) -> String {
-    let block: usize;
     let count: usize;
     let mut taxi: u64;
     
@@ -181,9 +178,6 @@ pub fn decode(text: &[u8]) -> String {
 //db32dec
 //isdb32
 pub fn isdb32(text: &str) -> bool {
-    
-    let txt_len: usize;
-    
     _validate(text)
     
 }
@@ -206,15 +200,11 @@ pub fn random_id() -> String {
     let mut buf: [u8; 15] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
     unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }; 
     
-    let b: String = std::str::from_utf8(&buf).unwrap().to_string();
-    //let b: String = buf.iter().into<char>().collect();
-    
     encode(&buf)
 }
 
 //time_id
 fn _check_join(string_list: Vec<&str>) -> Result<String, String> {
-    let pre: &str = "/";
     let s = string_list.last().unwrap();
     print!("{}",s);
     if _validate(&s) {
@@ -226,11 +216,10 @@ fn _check_join(string_list: Vec<&str>) -> Result<String, String> {
 }
 //db32_join
 pub fn db32_join(string_list: Vec<&str>) -> Result<String, String> {
-    let pre: &str = "/";
     let s = "/".to_string() + &string_list.join("/");
     match _check_join(string_list) {
-        Ok(o) => Ok(s),
-        Err(e) => Err(s),
+        Ok(_) => Ok(s),
+        Err(_) => Err(s),
         
     }
 }
@@ -246,8 +235,8 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
    
     let s = "/".to_string() + &parts + &last_part[..i] + "/" + &last_part[i..];
     match _check_join(string_list) {
-        Ok(o) => Ok(s),
-        Err(e) => Err(s),
+        Ok(_) => Ok(s),
+        Err(_) => Err(s),
         
     }
 }
@@ -315,6 +304,7 @@ mod tests {
         
         let parts = vec!["first", "second", "11111111ABRYRYAB"];
         let result = super::db32_join(parts);
+        assert_eq!(result, Err("/first/second/11111111ABRYRYAB".to_string()));
     }
     
 }

@@ -9,13 +9,16 @@ fn main() {
     println!("hello");
     let mut store = Store::new("test.btdb");
     store.reindex(false);
-
+/*
     let index = store.index.lock().unwrap();
     let keys = Vec::from_iter(index.keys().cloned());
     Mutex::unlock(index);
 
+    let mut i = 0;
     for id in keys.iter() {
-        println!("{}", encode(id));
+        //println!("{} {}", encode(id), i);
         store.get_object(id);
+        i += 1;
     }
+*/
 }

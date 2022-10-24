@@ -59,7 +59,7 @@ impl Store {
             let size = u64::from_le_bytes(
                 header[30..38].try_into().expect("oops")
             );
-            println!("{} {}\t{}", encode(&id), offset, size);
+            //println!("{} {}\t{}", encode(&id), offset, size);
 
             let entry = Entry {
                 offset: offset,

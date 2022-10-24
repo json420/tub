@@ -4,7 +4,6 @@ use std::sync::Mutex;
 
 use bathtub_db::store::Store;
 use bathtub_db::dbase32::encode;
-use bathtub_db::base::*;
 
 fn main() {
     println!("hello");

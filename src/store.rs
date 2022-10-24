@@ -44,21 +44,6 @@ impl Store {
         }
     }
 
-    /*
-    fn read_next_object(&mut self) -> Option<Object> {
-        let mut header = [0_u8; 38];
-        if let Err(_) = self.file.read_exact(&mut header) {
-            return None;
-        }
-        let size_buf: [u8; 8] = header[0..8].try_into().expect("no good");
-        let size = u64::from_le_bytes(size_buf);
-        let hash: [u8; 30] = header[8..40].try_into().expect("no good");
-        let mut data: Vec<u8> = Vec::with_capacity(size as usize);
-        self.file.read_exact(&mut data).unwrap();
-        Some(Object{hash: hash, data})
-    }
-    */
-
     pub fn reindex(&mut self, check: bool) {
         let mut index = self.index.lock().unwrap();
         index.clear();
@@ -107,11 +92,6 @@ impl Store {
         else {
             None
         }
-    }
-
-    fn set(&self, id: ObjectID, entry: Entry) -> Option<Entry> {
-        let mut index = self.index.lock().unwrap();
-        index.insert(id, entry)
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, Entry) {
@@ -191,17 +171,5 @@ mod tests {
         assert_eq!(store.get(&id), Some(entry));
     }
 
-    #[test]
-    fn test_set() {
-        let tmp = TempDir::new().unwrap();
-        let mut pb = tmp.path().to_path_buf();
-        pb.push("example.btdb");
-        let store = Store::new(pb);
-        let id = random_object_id();
-        let entry = Entry {size: 3, offset: 5};
-        assert_eq!(store.set(id.clone(), entry.clone()), None);
-        let entry2 = Entry {size: 7, offset: 11};
-        assert_eq!(store.set(id.clone(), entry2.clone()), Some(entry));
-    }
 }
 

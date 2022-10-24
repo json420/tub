@@ -1,7 +1,7 @@
 use libc;
 
 const DB32ALPHABET: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
-//const MAX_BIN_LEN: usize = 60; //480 bits
+const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
 
 //const DB32_START: u32 = 51;
@@ -119,9 +119,18 @@ fn _validate(text: &str) -> bool {
 
 //forward table should be u8 too
 //static tables instead of const because there's only one copy in memory too
-pub fn db32enc(src: &[u8], dst: &mut [u8]) {
+pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
     //TODO: validate in/out lengths
     let count: usize = src.len()/5;
+    
+    if (src.len() < 5) | (src.len() > MAX_BIN_LEN) | (src.len() % 5 != 0) {
+        panic!("Incorrect src length");
+    }
+    
+    if (dst.len()/8) != count {
+        panic!("Incorrect dst length");
+    }
+    
     let mut taxi: u64;
     for block in 0..count {
         taxi = src[5*block + 0] as u64;
@@ -300,15 +309,16 @@ mod tests {
     }
     
     #[test]
+    #[should_panic (expected = "Incorrect dst length")]
     fn test_encode() {
-        //let result = super::encode(b"binary foo");
         let bin: &[u8;10] = b"binary foo";
-        //let result: &[u8; bin.len()*8/5];
-        //let mut result: Vec<u8>::with_capacity((bin::len()));
-        let mut result: [u8;16] = [0;16];// = Vec::with_capacity(15);//vec![0u8,15].into_boxed_slice();
+        let mut result: [u8;16] = [0;16];
         
-        super::db32enc(bin, &mut result);
+        super::db32enc_into(bin, &mut result);
         assert_eq!(&result, b"FCNPVRELI7J9FUUI");
+        
+        let mut result: [u8;14] = [0;14];
+        super::db32enc_into(bin, &mut result);
     }
     
     #[test]

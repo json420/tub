@@ -25,7 +25,7 @@ type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
 #[derive(Debug)]
 pub struct Store {
     file: File,
-    index: Index,
+    pub index: Index,
 }
 
 
@@ -134,14 +134,14 @@ impl Store {
         (id, entry)
     }
 
-    fn get_object(&mut self, id: &ObjectID) -> Option<Entry> {
+    pub fn get_object(&mut self, id: &ObjectID) -> Option<Entry> {
         if let Some(entry) = self.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             assert_eq!(buf.len(), entry.size as usize);
-            self.file.read_exact_at(
-                &mut buf[0..entry.size as usize],
-                entry.offset
-            ).expect("oops");
+            let s = &mut buf[0..entry.size as usize];
+            let offset = entry.offset + (HEADER_LEN as ObjectSize);
+            self.file.read_exact_at(s, offset).expect("oops");
+            assert_eq!(hash(s), *id);
             return Some(entry);
         }
         None

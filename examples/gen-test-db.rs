@@ -14,7 +14,7 @@ fn main() {
         buf.resize(size, 0);
         let s = &mut buf[0..size];
         getrandom(s);
-        let (id, entry) = store.add_object(s);
+        let (id, _entry) = store.add_object(s);
         println!("{}\t{}\t{}", encode(&id), i, size);
     }
     println!("{} objects, {} bytes total", COUNT, total);

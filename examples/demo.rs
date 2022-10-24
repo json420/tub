@@ -11,7 +11,7 @@ fn main() {
     let mut store = Store::new("test.btdb");
     store.reindex(false);
 
-    let mut index = store.index.lock().unwrap();
+    let index = store.index.lock().unwrap();
     let keys = index.keys().cloned().collect::<Vec<ObjectID>>();
     Mutex::unlock(index);
 

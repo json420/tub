@@ -1,7 +1,6 @@
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */
-use std::cmp::min;
 use blake3;
 use crate::base::*;
 
@@ -67,20 +66,15 @@ impl Hasher {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use super::*;
-
-    static D1: &[u8] = b"my_input";
-    static D1H240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
 
     #[test]
     fn test_hash() {
-        let res = hash(D1);
-        //assert_eq!(res[..], D1H240[..]);
+        
     }
 
     #[test]
-    fn test_Hasher() {
+    fn test_hasher() {
         let mut h: Hasher = Hasher::new();
         assert_eq!(h.closed, false);
         assert_eq!(h.size, 0);
@@ -101,9 +95,6 @@ mod tests {
         assert_eq!(h.closed, true);
         assert_eq!(h.size, LEAF_SIZE + 8);
         assert_eq!(h.leaf_hashes.len(),  2);
-        
-
     }
-
 }
 

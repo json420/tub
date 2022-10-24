@@ -156,10 +156,6 @@ mod tests {
     use std::fs::File;
     use std::io::SeekFrom;
     use crate::util::*;
-    use hex_literal::hex;
-
-    static D1: &[u8] = b"my_input";
-    static D1H240: [u8; 30] = hex!("35f6b8fe184790c47717de56324629309370b1f37b1be1736027d414c122");
 
     #[test]
     fn test_store() {
@@ -184,7 +180,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(pb);
+        let store = Store::new(pb);
         let id = random_object_id();
         assert_eq!(store.get(&id), None);
         let mut guard = store.index.lock().unwrap();
@@ -200,7 +196,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(pb);
+        let store = Store::new(pb);
         let id = random_object_id();
         let entry = Entry {size: 3, offset: 5};
         assert_eq!(store.set(id.clone(), entry.clone()), None);

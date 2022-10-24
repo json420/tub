@@ -1,4 +1,3 @@
-use bathtub_db::dbase32::encode;
 use bathtub_db::util::{random_object_id, random_u64};
 use bathtub_db::base::*;
 use std::collections::HashMap;
@@ -12,9 +11,9 @@ pub struct Entry {
 }
 
 fn main() {
-    println!("hello");
+    println!("Inserting {} random entries into index...", COUNT);
     let mut index: HashMap<ObjectID, Entry> = HashMap::new();
-    for i in 0..COUNT {
+    for _i in 0..COUNT {
         let id = random_object_id();
         let entry = Entry {
             offset: random_u64(),
@@ -22,6 +21,6 @@ fn main() {
         };
         index.insert(id, entry);
     }
-    println!("entering infinite loop, dude");
+    println!("Entering the infinite loop, dude!");
     loop {}
 }

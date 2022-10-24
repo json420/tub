@@ -49,7 +49,7 @@ mod tests {
         //assert_eq!(ret, [0u8; 15]);
     }
     
-    fn add_db() {
-        let 
-    }
+    //fn add_db() {
+    //    let 
+    //}
 }

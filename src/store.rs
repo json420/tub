@@ -24,7 +24,7 @@ type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
 
 #[derive(Debug)]
 pub struct Store {
-    file: File,
+    pub file: File,
     pub index: Index,
 }
 
@@ -40,6 +40,14 @@ impl Store {
             file: file,
             index: index,
         }
+    }
+
+    pub fn len(&mut self) -> usize {
+        self.index.lock().unwrap().len()
+    }
+
+    pub fn keys(&mut self) -> Vec<ObjectID> {
+        Vec::from_iter(self.index.lock().unwrap().keys().cloned())
     }
 
     pub fn reindex(&mut self, check: bool) {
@@ -65,7 +73,7 @@ impl Store {
                 offset: offset,
                 size: size,
             };
-            assert_eq!(index.insert(id, entry), None);
+            index.insert(id, entry);
 
             offset += HEADER_LEN as ObjectSize + size;
 
@@ -73,7 +81,9 @@ impl Store {
                 buf.resize(size as usize, 0);
                 let s = &mut buf[0..(size as usize)];
                 self.file.read_exact(s).expect("oops");
-                assert_eq!(hash(s), id);
+                if id != hash(s) {
+                    panic!("hash does not equal expected");
+                }    
             }
             else {
                 self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
@@ -119,7 +129,12 @@ impl Store {
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
             self.file.read_exact_at(s, offset).expect("oops");
-            assert_eq!(hash(s), *id);
+            assert_eq!(&hash(s), id);
+            /*
+            if id != &hash(s) {
+                panic!("hash does not match");
+            }
+            */
             return Some(entry);
         }
         None

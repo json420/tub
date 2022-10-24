@@ -28,7 +28,6 @@ pub struct Store {
     pub index: Index,
 }
 
-
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         let index: Index = Arc::new(Mutex::new(HashMap::new()));
@@ -36,8 +35,7 @@ impl Store {
             .append(true)
             .read(true)
             .create(true)
-            .open(path)
-            .expect("could not open pack file");
+            .open(path).expect("could not open pack file");
         Store {
             file: file,
             index: index,

@@ -9,6 +9,7 @@ use std::io::SeekFrom;
 
 use crate::base::*;
 use crate::protocol::hash;
+use crate::dbase32::encode;
 
 
 
@@ -75,7 +76,7 @@ impl Store {
             let size = u64::from_le_bytes(
                 header[30..38].try_into().expect("oops")
             );
-            println!("{}\t{}", offset, size);
+            println!("{} {}\t{}", encode(&id), offset, size);
 
             let entry = Entry {
                 offset: offset,

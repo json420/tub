@@ -343,6 +343,7 @@ mod tests {
                 copy[i] = v;
                 if FORWARD.contains(&v) {
                     assert_eq!(isdb32(&copy), true);
+                    assert_ne!(db32dec(&copy).unwrap(), txt);
                 }
                 else {
                     assert_eq!(isdb32(&copy), false);

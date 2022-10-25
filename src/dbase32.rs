@@ -209,36 +209,6 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 }
 
 
-pub fn decode(text: &[u8]) -> String {
-    let count: usize;
-    let mut taxi: u64;
-    
-    let mut bin_text: String = String::new();
-    
-    let mut r: u8 = 0;
-    count = text.len()/8;
-    for block in 0..count {
-        let mut i = text[8*block + 0];    r = rotate!(i) | r & 224;    taxi = r as u64;
-        i = text[8*block + 1];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 2];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 3];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 4];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 5];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 6];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        i = text[8*block + 7];    r = rotate!(i) | r & 224;    taxi = r as u64 | (taxi << 5);
-        
-        bin_text.push(((taxi >> 32) & 255) as u8 as char);
-        bin_text.push(((taxi >> 24) & 255) as u8 as char);
-        bin_text.push(((taxi >> 16) & 255) as u8 as char);
-        bin_text.push(((taxi >> 8) & 255) as u8 as char);
-        bin_text.push(((taxi >> 0) & 255) as u8 as char);
-    }
-    bin_text
-}
-
-//db32enc
-//db32dec
-//isdb32
 pub fn isdb32(text: &str) -> bool {
     _validate(text)
     
@@ -361,12 +331,6 @@ mod tests {
     fn test_db32dec() {
         let txt = b"FCNPVRELI7J9FUUI";
         assert_eq!(&super::db32dec(txt).unwrap(), b"binary foo");
-    }
-
-    #[test]
-    fn test_decode() {
-        let result = super::decode(b"FCNPVRELI7J9FUUI");
-        assert_eq!(result, "binary foo");
     }
 
     #[test]

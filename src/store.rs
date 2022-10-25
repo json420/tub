@@ -9,7 +9,7 @@ use std::io::SeekFrom;
 
 use crate::base::*;
 use crate::protocol::hash;
-use crate::dbase32::encode;
+use crate::dbase32::db32enc;
 
 
 

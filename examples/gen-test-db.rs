@@ -1,6 +1,5 @@
 use bathtub_db::store::Store;
 use bathtub_db::util::{getrandom, random_u16};
-use bathtub_db::dbase32::encode;
 
 const COUNT: usize = 100_000;
 static NAME: &str  = "test.btdb";

@@ -1,4 +1,4 @@
-use libc;
+use crate::util::getrandom;
 
 const DB32ALPHABET: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 const MAX_BIN_LEN: usize = 60; //480 bits
@@ -7,7 +7,7 @@ const MAX_TXT_LEN: usize = 96;
 //const DB32_START: u32 = 51;
 //const DB32_END: u32 = 89;
 static DB32_FORWARD: &[u8; 32] = DB32ALPHABET;
-const DB32_REVERSE: [u8; 256] = [
+static DB32_REVERSE: [u8; 256] = [
     255,255,255,255,255,255,255,255,255,
         // [Original] -> [Rotated]
       0,  // '3' [51] -> [ 9]
@@ -117,70 +117,43 @@ fn _validate(text: &str) -> bool {
     
 }
 
-//forward table should be u8 too
-//static tables instead of const because there's only one copy in memory too
+
 pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
-    //TODO: validate in/out lengths
-    let count: usize = src.len()/5;
-    
-    if (src.len() < 5) | (src.len() > MAX_BIN_LEN) | (src.len() % 5 != 0) {
-        panic!("Incorrect src length");
+    if src.len() > 0 && dst.len() == src.len() * 8 / 5 {
+
+        let mut taxi: u64 = 0;
+        for block in 0..src.len() / 5 {
+            /* Pack 40 bits into the taxi (8 bits at a time) */
+            taxi = src[5*block + 0] as u64;
+            taxi = src[5*block + 1] as u64 | (taxi << 8);
+            taxi = src[5*block + 2] as u64 | (taxi << 8);
+            taxi = src[5*block + 3] as u64 | (taxi << 8);
+            taxi = src[5*block + 4] as u64 | (taxi << 8);
+
+            /* Unpack 40 bits from the taxi (5 bits at a time) */
+            dst[8*block + 0] = DB32_FORWARD[((taxi >> 35) & 31) as usize];
+            dst[8*block + 1] = DB32_FORWARD[((taxi >> 30) & 31) as usize];
+            dst[8*block + 2] = DB32_FORWARD[((taxi >> 25) & 31) as usize];
+            dst[8*block + 3] = DB32_FORWARD[((taxi >> 20) & 31) as usize];
+            dst[8*block + 4] = DB32_FORWARD[((taxi >> 15) & 31) as usize];
+            dst[8*block + 5] = DB32_FORWARD[((taxi >> 10) & 31) as usize];
+            dst[8*block + 6] = DB32_FORWARD[((taxi >> 5) & 31) as usize];
+            dst[8*block + 7] = DB32_FORWARD[((taxi >> 0) & 31) as usize];
+        }
     }
-    
-    if (dst.len()/8) != count {
-        panic!("Incorrect dst length");
-    }
-    
-    let mut taxi: u64;
-    for block in 0..count {
-        taxi = src[5*block + 0] as u64;
-        taxi = src[5*block + 1] as u64 | (taxi << 8);
-        taxi = src[5*block + 2] as u64 | (taxi << 8);
-        taxi = src[5*block + 3] as u64 | (taxi << 8);
-        taxi = src[5*block + 4] as u64 | (taxi << 8);
-        
-        dst[8*block + 0] = DB32_FORWARD[((taxi >> 35) & 31) as usize];
-        dst[8*block + 1] = DB32_FORWARD[((taxi >> 30) & 31) as usize];
-        dst[8*block + 2] = DB32_FORWARD[((taxi >> 25) & 31) as usize];
-        dst[8*block + 3] = DB32_FORWARD[((taxi >> 20) & 31) as usize];
-        dst[8*block + 4] = DB32_FORWARD[((taxi >> 15) & 31) as usize];
-        dst[8*block + 5] = DB32_FORWARD[((taxi >> 10) & 31) as usize];
-        dst[8*block + 6] = DB32_FORWARD[((taxi >> 5) & 31) as usize];
-        dst[8*block + 7] = DB32_FORWARD[((taxi >> 0) & 31) as usize];
-        
-        //text.push(
-        //DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char
-        //);
+    else {
+        panic!("db32enc_into(): Bad call");
     }
 }
 
-//make one where you give both buffers  (this way with the string is handy too)
-pub fn encode(bin_text: &[u8]) -> String {
-    let count: usize;
-    let mut taxi: u64;
-    
-    let mut text: String = String::new();
-    
-    count = bin_text.len()/5;
-    for block in 0..count {
-        taxi = bin_text[5*block + 0] as u64;
-        taxi = bin_text[5*block + 1] as u64 | (taxi << 8);
-        taxi = bin_text[5*block + 2] as u64 | (taxi << 8);
-        taxi = bin_text[5*block + 3] as u64 | (taxi << 8);
-        taxi = bin_text[5*block + 4] as u64 | (taxi << 8);
-        
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 35) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 30) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 25) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 20) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 15) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 10) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi >> 5) & 31) as usize).unwrap() as char);
-        //text.push(DB32_FORWARD.bytes().nth(((taxi) & 31) as usize).unwrap() as char);
-    }
-    
-    text
-    
+pub fn db32enc(bin: &[u8]) -> Vec<u8> {
+    let mut txt = vec![0; bin.len() * 8 / 5];
+    db32enc_into(bin, &mut txt);
+    txt
+}
+
+pub fn db32enc_str(bin_src: &[u8]) -> String {
+    String::from_utf8(db32enc(bin_src)).unwrap()
 }
 
 
@@ -232,12 +205,9 @@ pub fn check_db32(text: &str) -> Result<(), String> {
 
 //random_id
 pub fn random_id() -> String {
-    //wrap the getrandom syscall
-    
     let mut buf: [u8; 15] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-    unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }; 
-    
-    encode(&buf)
+    getrandom(&mut buf); 
+    db32enc_str(&buf)
 }
 
 //time_id
@@ -309,7 +279,7 @@ mod tests {
     }
     
     #[test]
-    #[should_panic (expected = "Incorrect dst length")]
+    #[should_panic (expected = "db32enc_into(): Bad call")]
     fn test_encode() {
         let bin: &[u8;10] = b"binary foo";
         let mut result: [u8;16] = [0;16];

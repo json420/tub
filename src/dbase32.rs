@@ -118,6 +118,7 @@ fn _validate(text: &str) -> bool {
 }
 
 
+
 pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
     if src.len() != 0 && src.len() % 5 == 0 && dst.len() == src.len() * 8 / 5 {
         assert!(dst.len() % 8 == 0);
@@ -162,6 +163,27 @@ macro_rules! rotate2 {
         DB32_REVERSE[($txt[8 * $i + $j] - 42) as usize]
     }
 }
+
+pub fn isdb32(txt: &[u8]) -> bool {
+    if txt.len() != 0 && txt.len() % 8 == 0 {
+        let mut r = 0_u8;
+        for i in 0..txt.len() / 8 {
+            r |= rotate2!(txt, i, 0);
+            r |= rotate2!(txt, i, 1);
+            r |= rotate2!(txt, i, 2);
+            r |= rotate2!(txt, i, 3);
+            r |= rotate2!(txt, i, 4);
+            r |= rotate2!(txt, i, 5);
+            r |= rotate2!(txt, i, 6);
+            r |= rotate2!(txt, i, 7);
+        }
+        r & 224 == 0
+    }
+    else {
+        false
+    }
+}
+
 
 pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     if txt.len() != 0 && txt.len() % 8 == 0 && bin.len() == txt.len() * 5 / 8 {
@@ -208,11 +230,6 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
     None
 }
 
-
-pub fn isdb32(text: &str) -> bool {
-    _validate(text)
-    
-}
 
 //check_db32
 pub fn check_db32(text: &str) -> Result<(), String> {
@@ -273,6 +290,7 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use crate::util::random_object_id;
+    use super::*;
 
     #[test]
     fn test_check_length() {
@@ -307,6 +325,30 @@ mod tests {
         
         let mut result: [u8;14] = [0;14];
         super::db32enc_into(bin, &mut result);
+    }
+
+    #[test]
+    fn test_isdb32() {
+        assert_eq!(isdb32(b""), false);
+        assert_eq!(isdb32(b"A"), false);
+        assert_eq!(isdb32(b"AA"), false);
+        assert_eq!(isdb32(b"AAA"), false);
+        assert_eq!(isdb32(b"AAAA"), false);
+        assert_eq!(isdb32(b"AAAAA"), false);
+        assert_eq!(isdb32(b"AAAAAA"), false);
+        assert_eq!(isdb32(b"AAAAAAA"), false);
+        assert_eq!(isdb32(b"AAAAAAAA"), true);
+        assert_eq!(isdb32(b"AAAAAAAAA"), false);
+
+        assert_eq!(isdb32(b"ABCDEFGH"), true);
+        assert_eq!(isdb32(b"ZBCDEFGH"), false);
+        assert_eq!(isdb32(b"AZCDEFGH"), false);
+        assert_eq!(isdb32(b"ABZDEFGH"), false);
+        assert_eq!(isdb32(b"ABCZEFGH"), false);
+        assert_eq!(isdb32(b"ABCDZFGH"), false);
+        assert_eq!(isdb32(b"ABCDEZGH"), false);
+        assert_eq!(isdb32(b"ABCDEFZH"), false);
+        assert_eq!(isdb32(b"ABCDEFGZ"), false);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use bathtub_db::util::*;
 use bathtub_db::protocol::hash;
-use bathtub_db::dbase32::{db32enc, db32enc_into, db32dec_into};
+use bathtub_db::dbase32::{db32enc, isdb32, db32enc_into, db32dec_into};
 use bathtub_db::base::*;
 
 
@@ -12,6 +12,13 @@ fn bm_random_id(c: &mut Criterion) {
 fn bm_hash(c: &mut Criterion) {
     let buf = vec![0_u8; 4096];
     c.bench_function("hash", |b| b.iter(|| hash(black_box(&buf[..]))));
+}
+
+fn bm_isdb32(c: &mut Criterion) {
+    let txt = db32enc(&random_object_id());
+    c.bench_function("isdb32",
+        |b| b.iter(|| isdb32(black_box(&txt[..])))
+    );
 }
 
 fn bm_db32enc_into(c: &mut Criterion) {
@@ -34,7 +41,7 @@ fn bm_db32dec_into(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_random_id, bm_hash, bm_db32enc_into, bm_db32dec_into
+    targets = bm_random_id, bm_hash, bm_isdb32, bm_db32enc_into, bm_db32dec_into
 }
 
 criterion_main!(benches);

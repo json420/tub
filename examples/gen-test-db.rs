@@ -12,19 +12,17 @@ fn main() {
     let mut buf = vec![0_u8; 4096];
     let mut total: usize = 0;
     for i in 0..COUNT {
-        let size = random_u16(16) as usize;
+        let size = random_u16(16) as usize;  // Cuz we want size >= 16 bytes
         total += size;
         buf.resize(size, 0);
         let s = &mut buf[0..size];
         getrandom(s);
         let (id, new) = store.add_object(s);
-        if !new {
-            println!("duplicate {} {} {:?}", i, size, id);
-        }
-        //println!("{}\t{}\t{}", encode(&id), i, size);
+        assert!(new);  // All objects should be unique cuz size >= 16 bytes
+        
     }
     //store.file.sync_all();
-    println!("Add {} objects, {} bytes total", COUNT, total);
+    println!("Added {} new objects, {} bytes in total", COUNT, total);
 }
 
 

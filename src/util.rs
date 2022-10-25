@@ -31,7 +31,7 @@ pub fn random_u16(minval: u16) -> u16 {
     loop {
         getrandom(&mut buf);
         let r = u16::from_le_bytes(buf);
-        if r > minval {
+        if r >= minval {
             return r;
         }
     }

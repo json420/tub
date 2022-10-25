@@ -122,19 +122,21 @@ impl Store {
         (id, true)
     }
 
-    pub fn get_object(&mut self, id: &ObjectID) -> Option<Entry> {
+    pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Entry> {
         if let Some(entry) = self.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             assert_eq!(buf.len(), entry.size as usize);
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
             self.file.read_exact_at(s, offset).expect("oops");
-            assert_eq!(&hash(s), id);
-            /*
-            if id != &hash(s) {
-                panic!("hash does not match");
+            if verify && id != &hash(s) {
+                /*  FIXME: When hash doesn't match, we should remove from index
+                    and then either (1) in the small object case append a
+                    deletion tombstone to the pack file or (2) in the large file
+                    case remove the object from the file system.
+                */
+                panic!("no good, {:?}", id);
             }
-            */
             return Some(entry);
         }
         None
@@ -158,14 +160,7 @@ mod tests {
         let mut store = Store::new(pb);
 
         let id = random_object_id();
-        assert_eq!(store.get_object(&id), None);
-        /*
-        assert_eq!(store.add_object(D1),
-            (D1H240, Entry {offset: 0, size: 8})
-        );
-        assert_eq!(store.get(&D1H240), Some(Entry {offset: 0, size: 8}));
-        assert_eq!(store.get_object(&D1H240), Some(Entry {offset: 0, size: 8}));
-        */
+        assert_eq!(store.get_object(&id, true), None);
     }
 
     #[test]

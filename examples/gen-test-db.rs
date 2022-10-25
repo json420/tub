@@ -12,12 +12,15 @@ fn main() {
     let mut buf = vec![0_u8; 4096];
     let mut total: usize = 0;
     for i in 0..COUNT {
-        let size = random_u16() as usize;
+        let size = random_u16(16) as usize;
         total += size;
         buf.resize(size, 0);
         let s = &mut buf[0..size];
         getrandom(s);
-        let (id, entry) = store.add_object(s);
+        let (id, new) = store.add_object(s);
+        if !new {
+            println!("duplicate {} {} {:?}", i, size, id);
+        }
         //println!("{}\t{}\t{}", encode(&id), i, size);
     }
     //store.file.sync_all();

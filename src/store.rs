@@ -102,11 +102,11 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, Entry) {
+    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
         let id = hash(data);
         let mut index = self.index.lock().unwrap();
         if let Some(entry) = index.get(&id) {
-            return (id, entry.clone());  // Already in object store
+            return (id, false);  // Already in object store
         }
         let entry = Entry {
             offset: self.file.stream_position().unwrap(),
@@ -119,7 +119,7 @@ impl Store {
         ]).expect("object append failed");
         self.file.flush().expect("nope");
         index.insert(id, entry);
-        (id, entry)
+        (id, true)
     }
 
     pub fn get_object(&mut self, id: &ObjectID) -> Option<Entry> {

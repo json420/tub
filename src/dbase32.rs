@@ -119,7 +119,7 @@ fn _validate(text: &str) -> bool {
 
 
 pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
-    if src.len() > 0 && dst.len() == src.len() * 8 / 5 {
+    if src.len() > 0 && dst.len() == src.len() * 8 / 5 && src.len() % 5 == 0 {
 
         let mut taxi: u64 = 0;
         for block in 0..src.len() / 5 {

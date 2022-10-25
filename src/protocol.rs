@@ -67,10 +67,14 @@ impl Hasher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::dbase32::db32enc_str;
 
     #[test]
     fn test_hash() {
-        
+        let id = hash(b"Federation44");
+        assert_eq!(&db32enc_str(&id),
+            "OK5UTJXH6H3Q9DU7EHY9LEAN8P6TPY553SIGLQH5KAXEG6EN"
+        );
     }
 
     #[test]

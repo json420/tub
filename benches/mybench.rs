@@ -10,8 +10,15 @@ fn bm_random_id(c: &mut Criterion) {
 }
 
 fn bm_hash(c: &mut Criterion) {
-    let buf = vec![0_u8; 4096];
-    c.bench_function("hash", |b| b.iter(|| hash(black_box(&buf[..]))));
+    let mut buf = vec![0_u8; 4096];
+    getrandom(&mut buf[..]);
+    c.bench_function("hash 4 KiB", |b| b.iter(|| hash(black_box(&buf[..]))));
+}
+
+fn bm_hash2(c: &mut Criterion) {
+    let mut buf = vec![0_u8; 65536];
+    getrandom(&mut buf[..]);
+    c.bench_function("hash 64 KiB", |b| b.iter(|| hash(black_box(&buf[..]))));
 }
 
 fn bm_isdb32(c: &mut Criterion) {
@@ -41,7 +48,7 @@ fn bm_db32dec_into(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_random_id, bm_hash, bm_isdb32, bm_db32enc_into, bm_db32dec_into
+    targets = bm_random_id, bm_hash, bm_hash2, bm_isdb32, bm_db32enc_into, bm_db32dec_into
 }
 
 criterion_main!(benches);

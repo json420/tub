@@ -6,8 +6,8 @@ const MAX_TXT_LEN: usize = 96;
 
 //const DB32_START: u32 = 51;
 //const DB32_END: u32 = 89;
-static DB32_FORWARD: &[u8; 32] = DB32ALPHABET;
-static DB32_REVERSE: [u8; 256] = [
+static Forward: &[u8; 32] = DB32ALPHABET;
+static DB32_REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,
         // [Original] -> [Rotated]
       0,  // '3' [51] -> [ 9]
@@ -62,7 +62,7 @@ static DB32_REVERSE: [u8; 256] = [
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
 ];
 
-//const DB32_SET: &str = DB32_FORWARD; //encode()???
+//const DB32_SET: &str = Forward; //encode()???
 //static _ASCII: [u8; 128] = [0;128];
 
 fn _text_to_bytes(text: &str) -> std::str::Bytes {
@@ -119,8 +119,8 @@ fn _validate(text: &str) -> bool {
 
 
 pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
-    if src.len() > 0 && dst.len() == src.len() * 8 / 5 && src.len() % 5 == 0 {
-
+    if src.len() != 0 && src.len() % 5 == 0 && dst.len() == src.len() * 8 / 5 {
+        assert!(dst.len() % 8 == 0);
         let mut taxi: u64 = 0;
         for block in 0..src.len() / 5 {
             /* Pack 40 bits into the taxi (8 bits at a time) */
@@ -131,14 +131,14 @@ pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
             taxi = src[5*block + 4] as u64 | (taxi << 8);
 
             /* Unpack 40 bits from the taxi (5 bits at a time) */
-            dst[8*block + 0] = DB32_FORWARD[((taxi >> 35) & 31) as usize];
-            dst[8*block + 1] = DB32_FORWARD[((taxi >> 30) & 31) as usize];
-            dst[8*block + 2] = DB32_FORWARD[((taxi >> 25) & 31) as usize];
-            dst[8*block + 3] = DB32_FORWARD[((taxi >> 20) & 31) as usize];
-            dst[8*block + 4] = DB32_FORWARD[((taxi >> 15) & 31) as usize];
-            dst[8*block + 5] = DB32_FORWARD[((taxi >> 10) & 31) as usize];
-            dst[8*block + 6] = DB32_FORWARD[((taxi >> 5) & 31) as usize];
-            dst[8*block + 7] = DB32_FORWARD[((taxi >> 0) & 31) as usize];
+            dst[8*block + 0] = Forward[((taxi >> 35) & 31) as usize];
+            dst[8*block + 1] = Forward[((taxi >> 30) & 31) as usize];
+            dst[8*block + 2] = Forward[((taxi >> 25) & 31) as usize];
+            dst[8*block + 3] = Forward[((taxi >> 20) & 31) as usize];
+            dst[8*block + 4] = Forward[((taxi >> 15) & 31) as usize];
+            dst[8*block + 5] = Forward[((taxi >> 10) & 31) as usize];
+            dst[8*block + 6] = Forward[((taxi >>  5) & 31) as usize];
+            dst[8*block + 7] = Forward[((taxi >>  0) & 31) as usize];
         }
     }
     else {
@@ -156,6 +156,49 @@ pub fn db32enc_str(bin_src: &[u8]) -> String {
     String::from_utf8(db32enc(bin_src)).unwrap()
 }
 
+
+macro_rules! rotate2 {
+    ($txt:ident, $i:ident, $j:literal) => {
+        DB32_REVERSE[($txt[8 * $i + $j] - 42) as usize]
+    }
+}
+
+pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
+    if txt.len() != 0 && txt.len() % 8 == 0 && bin.len() == txt.len() * 5 / 8 {
+
+        let mut taxi: u64 = 0;
+        let mut usize: u8 = 0;
+        let mut r: u8 = 0;
+        for i in 0..txt.len() / 8 {
+
+            /* Pack 40 bits into the taxi (5 bits at a time) */
+            r = rotate2!(txt, i, 0) | (r & 224);    taxi = r as u64;
+            r = rotate2!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate2!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
+
+            /* Unpack 40 bits from the taxi (8 bits at a time) */
+            bin[5 * i + 0] = (taxi >> 32) as u8 & 255;
+            bin[5 * i + 1] = (taxi >> 24) as u8 & 255;
+            bin[5 * i + 2] = (taxi >> 16) as u8 & 255;
+            bin[5 * i + 3] = (taxi >>  8) as u8 & 255;
+            bin[5 * i + 4] = (taxi >>  0) as u8 & 255;
+        }
+        
+        /* Return value is (r & 224):
+         *       31: 00011111 <= bits set in DB32_REVERSE for valid characters
+         *      224: 11100000 <= bits set in DB32_REVERSE for invalid characters
+         */
+        r & 224 == 0
+    }
+    else {
+        panic!("db32dec_into(): Bad call");
+    }
+}
 
 pub fn decode(text: &[u8]) -> String {
     let count: usize;
@@ -251,12 +294,6 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-    
-    #[test]
     fn test_check_length() {
         let short = super::_check_length("SHORT");
         assert_eq!(short, Err("SHORT"));
@@ -290,13 +327,21 @@ mod tests {
         let mut result: [u8;14] = [0;14];
         super::db32enc_into(bin, &mut result);
     }
-    
+
+    #[test]
+    fn test_db32dec_into() {
+        let txt = b"FCNPVRELI7J9FUUI";
+        let mut bin = [0_u8; 10];
+        assert_eq!(super::db32dec_into(txt, &mut bin), true);
+        assert_eq!(&bin, b"binary foo");
+    }
+
     #[test]
     fn test_decode() {
         let result = super::decode(b"FCNPVRELI7J9FUUI");
         assert_eq!(result, "binary foo");
     }
-    
+
     #[test]
     fn test_db32_join() {
         //let parts = vec!["first", "second"];

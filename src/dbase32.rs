@@ -82,43 +82,6 @@ fn _check_length(text: &str) -> Result<&str, &str> {
     
 }
 
-macro_rules! rotate {
-    ($i:ident) => {
-        DB32_REVERSE[$i as usize - 42]
-    }
-}
-
-fn _validate(text: &str) -> bool {
-    let count: usize;
-    let mut r: u8 = 0;
-    
-    if text.len() < 8 || text.len() > MAX_TXT_LEN || text.len() % 8 != 0 {
-        return false
-    }
-    
-    count = text.len() / 8;
-    for block in 0..count {
-        let mut i = text.bytes().nth(8*block + 0).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 1).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 2).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 3).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 4).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 5).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 6).unwrap();    r |= rotate!(i);
-        i = text.bytes().nth(8*block + 7).unwrap();    r |= rotate!(i);
-    }
-    
-    if (r & 224) != 0 { 
-        false 
-    }
-    else { 
-        true 
-    }
-    
-}
-
-
-
 pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
     if src.len() != 0 && src.len() % 5 == 0 && dst.len() == src.len() * 8 / 5 {
         assert!(dst.len() % 8 == 0);
@@ -158,7 +121,7 @@ pub fn db32enc_str(bin_src: &[u8]) -> String {
 }
 
 
-macro_rules! rotate2 {
+macro_rules! rotate {
     ($txt:ident, $i:ident, $j:literal) => {
         DB32_REVERSE[($txt[8 * $i + $j] - 42) as usize]
     }
@@ -168,14 +131,14 @@ pub fn isdb32(txt: &[u8]) -> bool {
     if txt.len() != 0 && txt.len() % 8 == 0 {
         let mut r = 0_u8;
         for i in 0..txt.len() / 8 {
-            r |= rotate2!(txt, i, 0);
-            r |= rotate2!(txt, i, 1);
-            r |= rotate2!(txt, i, 2);
-            r |= rotate2!(txt, i, 3);
-            r |= rotate2!(txt, i, 4);
-            r |= rotate2!(txt, i, 5);
-            r |= rotate2!(txt, i, 6);
-            r |= rotate2!(txt, i, 7);
+            r |= rotate!(txt, i, 0);
+            r |= rotate!(txt, i, 1);
+            r |= rotate!(txt, i, 2);
+            r |= rotate!(txt, i, 3);
+            r |= rotate!(txt, i, 4);
+            r |= rotate!(txt, i, 5);
+            r |= rotate!(txt, i, 6);
+            r |= rotate!(txt, i, 7);
         }
         r & 224 == 0
     }
@@ -194,14 +157,14 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
         for i in 0..txt.len() / 8 {
 
             /* Pack 40 bits into the taxi (5 bits at a time) */
-            r = rotate2!(txt, i, 0) | (r & 224);    taxi = r as u64;
-            r = rotate2!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate2!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 0) | (r & 224);    taxi = r as u64;
+            r = rotate!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
+            r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
 
             /* Unpack 40 bits from the taxi (8 bits at a time) */
             bin[5 * i + 0] = (taxi >> 32) as u8 & 255;
@@ -233,7 +196,7 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 
 //check_db32
 pub fn check_db32(text: &str) -> Result<(), String> {
-    let valid = _validate(text);
+    let valid = isdb32(text.as_bytes());
     
     if !valid {
         return Err("ER".to_string());
@@ -253,7 +216,7 @@ pub fn random_id() -> String {
 fn _check_join(string_list: Vec<&str>) -> Result<String, String> {
     let s = string_list.last().unwrap();
     print!("{}",s);
-    if _validate(&s) {
+    if isdb32(s.as_bytes()) {
         Ok(s.to_string())
     }
     else {

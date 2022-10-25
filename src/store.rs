@@ -9,7 +9,7 @@ use std::io::SeekFrom;
 
 use crate::base::*;
 use crate::protocol::hash;
-use crate::dbase32::db32enc;
+use crate::dbase32::{db32enc, db32enc_str};
 
 
 
@@ -51,6 +51,11 @@ impl Store {
     }
 
     pub fn reindex(&mut self, check: bool) {
+        // FIXME: We should truncate off the end of the file any partially
+        // written object we find.  Basically if after the last valid object
+        // is read there is still additional data, but not enough to make a
+        // valid object entry... then a prior object append operation was
+        // interrupted, and so we should discard the invalid partial object.
         let mut index = self.index.lock().unwrap();
         index.clear();
 
@@ -67,28 +72,33 @@ impl Store {
             let size = u64::from_le_bytes(
                 header[30..38].try_into().expect("oops")
             );
-            //println!("{} {}\t{}", encode(&id), offset, size);
+            if size > 0 {
+                let entry = Entry {
+                    offset: offset,
+                    size: size,
+                };
+                index.insert(id, entry);
 
-            let entry = Entry {
-                offset: offset,
-                size: size,
-            };
-            index.insert(id, entry);
+                offset += HEADER_LEN as ObjectSize + size;
 
-            offset += HEADER_LEN as ObjectSize + size;
-
-            if check {
-                buf.resize(size as usize, 0);
-                let s = &mut buf[0..(size as usize)];
-                self.file.read_exact(s).expect("oops");
-                if id != hash(s) {
-                    panic!("hash does not equal expected");
-                }    
+                if check {
+                    buf.resize(size as usize, 0);
+                    let s = &mut buf[0..(size as usize)];
+                    self.file.read_exact(s).expect("oops");
+                    if id != hash(s) {
+                        panic!("hash does not equal expected");
+                    }
+                }
+                else {
+                    self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
+                }
             }
             else {
-                self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
-            };
-            
+                println!("Tombstone {}", db32enc_str(&id));
+                if index.remove(&id) == None {
+                    panic!("{} not in index but tombstone found", db32enc_str(&id));
+                }
+            }
         }
     }
 
@@ -141,6 +151,22 @@ impl Store {
         }
         None
     }
+
+    pub fn delete_object(&mut self, id: &ObjectID) -> bool {
+        let mut index = self.index.lock().unwrap();
+        if let Some(entry) = index.get(id) {
+            println!("Deleting {}", db32enc_str(id));
+            self.file.write_all_vectored(&mut [
+                IoSlice::new(id),
+                IoSlice::new(&(0_u64).to_le_bytes()),
+            ]).expect("failed to write tombstone");
+            index.remove(id);
+            true
+        }
+        else {
+            false
+        }
+    }
 }
 
 
@@ -167,6 +193,7 @@ mod tests {
         let rid = random_object_id();
         assert_eq!(store.get_object(&rid, false), None);
         assert_eq!(store.get_object(&rid, true), None);
+        assert_eq!(store.delete_object(&rid), false);
         assert_eq!(store.len(), 0);
         assert_eq!(store.keys(), empty);
 

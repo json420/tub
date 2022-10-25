@@ -200,6 +200,15 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     }
 }
 
+pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
+    let mut bin = vec![0; txt.len() * 5 / 8];
+    if db32dec_into(txt, &mut bin) {
+        return Some(bin)
+    }
+    None
+}
+
+
 pub fn decode(text: &[u8]) -> String {
     let count: usize;
     let mut taxi: u64;
@@ -293,6 +302,8 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::util::random_object_id;
+
     #[test]
     fn test_check_length() {
         let short = super::_check_length("SHORT");
@@ -314,7 +325,7 @@ mod tests {
         assert_eq!(noteight, Ok("IAMEIGHT"));
         
     }
-    
+
     #[test]
     #[should_panic (expected = "db32enc_into(): Bad call")]
     fn test_encode() {
@@ -329,11 +340,27 @@ mod tests {
     }
 
     #[test]
+    fn test_roundtrip() {
+        for _ in 0..50_000 {
+            let bin = random_object_id();
+            let txt = super::db32enc(&bin);
+            let bin2 = super::db32dec(&txt).unwrap();
+            assert_eq!(&bin, &bin2[..]);
+        }
+    }
+
+    #[test]
     fn test_db32dec_into() {
         let txt = b"FCNPVRELI7J9FUUI";
         let mut bin = [0_u8; 10];
         assert_eq!(super::db32dec_into(txt, &mut bin), true);
         assert_eq!(&bin, b"binary foo");
+    }
+
+    #[test]
+    fn test_db32dec() {
+        let txt = b"FCNPVRELI7J9FUUI";
+        assert_eq!(&super::db32dec(txt).unwrap(), b"binary foo");
     }
 
     #[test]

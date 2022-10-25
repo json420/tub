@@ -81,27 +81,46 @@ fn _check_length(text: &str) -> Result<&str, &str> {
     
 }
 
-pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
-    if src.len() != 0 && src.len() % 5 == 0 && dst.len() == src.len() * 8 / 5 {
-        assert!(dst.len() % 8 == 0);
+macro_rules! bin_at {
+    ($bin:ident, $i:ident, $j:literal) => {
+        $bin[$i * 5 + $j]
+    }
+}
+
+macro_rules! txt_at {
+    ($txt:ident, $i:ident, $j:literal) => {
+        $txt[$i * 8 + $j]
+    }
+}
+
+macro_rules! rotate {
+    ($txt:ident, $i:ident, $j:literal) => {
+        REVERSE[(txt_at!($txt, $i, $j) - 42) as usize]
+    }
+}
+
+
+pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
+    if bin.len() != 0 && bin.len() % 5 == 0 && txt.len() == bin.len() * 8 / 5 {
+        assert!(txt.len() % 8 == 0);
         let mut taxi: u64 = 0;
-        for block in 0..src.len() / 5 {
+        for i in 0..bin.len() / 5 {
             /* Pack 40 bits into the taxi (8 bits at a time) */
-            taxi = src[5*block + 0] as u64;
-            taxi = src[5*block + 1] as u64 | (taxi << 8);
-            taxi = src[5*block + 2] as u64 | (taxi << 8);
-            taxi = src[5*block + 3] as u64 | (taxi << 8);
-            taxi = src[5*block + 4] as u64 | (taxi << 8);
+            taxi = bin_at!(bin, i, 0) as u64;
+            taxi = bin_at!(bin, i, 1) as u64 | (taxi << 8);
+            taxi = bin_at!(bin, i, 2) as u64 | (taxi << 8);
+            taxi = bin_at!(bin, i, 3) as u64 | (taxi << 8);
+            taxi = bin_at!(bin, i, 4) as u64 | (taxi << 8);
 
             /* Unpack 40 bits from the taxi (5 bits at a time) */
-            dst[8*block + 0] = FORWARD[((taxi >> 35) & 31) as usize];
-            dst[8*block + 1] = FORWARD[((taxi >> 30) & 31) as usize];
-            dst[8*block + 2] = FORWARD[((taxi >> 25) & 31) as usize];
-            dst[8*block + 3] = FORWARD[((taxi >> 20) & 31) as usize];
-            dst[8*block + 4] = FORWARD[((taxi >> 15) & 31) as usize];
-            dst[8*block + 5] = FORWARD[((taxi >> 10) & 31) as usize];
-            dst[8*block + 6] = FORWARD[((taxi >>  5) & 31) as usize];
-            dst[8*block + 7] = FORWARD[((taxi >>  0) & 31) as usize];
+            txt_at!(txt, i, 0) = FORWARD[((taxi >> 35) & 31) as usize];
+            txt_at!(txt, i, 1) = FORWARD[((taxi >> 30) & 31) as usize];
+            txt_at!(txt, i, 2) = FORWARD[((taxi >> 25) & 31) as usize];
+            txt_at!(txt, i, 3) = FORWARD[((taxi >> 20) & 31) as usize];
+            txt_at!(txt, i, 4) = FORWARD[((taxi >> 15) & 31) as usize];
+            txt_at!(txt, i, 5) = FORWARD[((taxi >> 10) & 31) as usize];
+            txt_at!(txt, i, 6) = FORWARD[((taxi >>  5) & 31) as usize];
+            txt_at!(txt, i, 7) = FORWARD[((taxi >>  0) & 31) as usize];
         }
     }
     else {
@@ -119,12 +138,6 @@ pub fn db32enc_str(bin_src: &[u8]) -> String {
     String::from_utf8(db32enc(bin_src)).unwrap()
 }
 
-
-macro_rules! rotate {
-    ($txt:ident, $i:ident, $j:literal) => {
-        REVERSE[($txt[8 * $i + $j] - 42) as usize]
-    }
-}
 
 pub fn isdb32(txt: &[u8]) -> bool {
     if txt.len() != 0 && txt.len() % 8 == 0 {
@@ -164,11 +177,11 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
             r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
 
             /* Unpack 40 bits from the taxi (8 bits at a time) */
-            bin[5 * i + 0] = (taxi >> 32) as u8 & 255;
-            bin[5 * i + 1] = (taxi >> 24) as u8 & 255;
-            bin[5 * i + 2] = (taxi >> 16) as u8 & 255;
-            bin[5 * i + 3] = (taxi >>  8) as u8 & 255;
-            bin[5 * i + 4] = (taxi >>  0) as u8 & 255;
+            bin_at!(bin, i, 0) = (taxi >> 32) as u8 & 255;
+            bin_at!(bin, i, 1) = (taxi >> 24) as u8 & 255;
+            bin_at!(bin, i, 2) = (taxi >> 16) as u8 & 255;
+            bin_at!(bin, i, 3) = (taxi >>  8) as u8 & 255;
+            bin_at!(bin, i, 4) = (taxi >>  0) as u8 & 255;
         }
         /*
             31: 00011111 <= bits set in REVERSE for valid characters
@@ -323,14 +336,14 @@ mod tests {
     fn test_db32dec_into() {
         let txt = b"FCNPVRELI7J9FUUI";
         let mut bin = [0_u8; 10];
-        assert_eq!(super::db32dec_into(txt, &mut bin), true);
+        assert_eq!(db32dec_into(txt, &mut bin), true);
         assert_eq!(&bin, b"binary foo");
     }
 
     #[test]
     fn test_db32dec() {
-        let txt = b"FCNPVRELI7J9FUUI";
-        assert_eq!(&super::db32dec(txt).unwrap(), b"binary foo");
+        assert_eq!(db32dec(b"FCNPVRELI7J9FUUI").unwrap(), b"binary foo");
+        assert_eq!(db32dec(b"fcnpvreli7j9fuui"), None); 
     }
 
     #[test]

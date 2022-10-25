@@ -95,7 +95,7 @@ macro_rules! txt_at {
 
 macro_rules! rotate {
     ($txt:ident, $i:ident, $j:literal) => {
-        REVERSE[(txt_at!($txt, $i, $j) - 42) as usize]
+        REVERSE[(txt_at!($txt, $i, $j).wrapping_sub(42)) as usize]
     }
 }
 
@@ -329,6 +329,26 @@ mod tests {
             let txt = super::db32enc(&bin);
             let bin2 = super::db32dec(&txt).unwrap();
             assert_eq!(&bin, &bin2[..]);
+        }
+    }
+
+    #[test]
+    fn test_bad_txt() {
+        let bin = random_object_id();
+        let txt = db32enc(&bin);
+        assert_eq!(isdb32(&txt), true);
+        for i in 0..bin.len() {
+            for v in 0..=255 {
+                let mut copy = txt.clone();
+                copy[i] = v;
+                if FORWARD.contains(&v) {
+                    assert_eq!(isdb32(&copy), true);
+                }
+                else {
+                    assert_eq!(isdb32(&copy), false);
+                    assert_eq!(db32dec(&copy), None);
+                }
+            }
         }
     }
 

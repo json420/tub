@@ -1,13 +1,12 @@
 use crate::util::getrandom;
 
-const DB32ALPHABET: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
+
 const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
 
-//const DB32_START: u32 = 51;
-//const DB32_END: u32 = 89;
-static Forward: &[u8; 32] = DB32ALPHABET;
-static DB32_REVERSE: &[u8; 256] = &[
+
+static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
+static REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,
         // [Original] -> [Rotated]
       0,  // '3' [51] -> [ 9]
@@ -62,7 +61,7 @@ static DB32_REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
 ];
 
-//const DB32_SET: &str = Forward; //encode()???
+//const DB32_SET: &str = FORWARD; //encode()???
 //static _ASCII: [u8; 128] = [0;128];
 
 fn _text_to_bytes(text: &str) -> std::str::Bytes {
@@ -95,14 +94,14 @@ pub fn db32enc_into(src: &[u8], dst: &mut [u8]) {
             taxi = src[5*block + 4] as u64 | (taxi << 8);
 
             /* Unpack 40 bits from the taxi (5 bits at a time) */
-            dst[8*block + 0] = Forward[((taxi >> 35) & 31) as usize];
-            dst[8*block + 1] = Forward[((taxi >> 30) & 31) as usize];
-            dst[8*block + 2] = Forward[((taxi >> 25) & 31) as usize];
-            dst[8*block + 3] = Forward[((taxi >> 20) & 31) as usize];
-            dst[8*block + 4] = Forward[((taxi >> 15) & 31) as usize];
-            dst[8*block + 5] = Forward[((taxi >> 10) & 31) as usize];
-            dst[8*block + 6] = Forward[((taxi >>  5) & 31) as usize];
-            dst[8*block + 7] = Forward[((taxi >>  0) & 31) as usize];
+            dst[8*block + 0] = FORWARD[((taxi >> 35) & 31) as usize];
+            dst[8*block + 1] = FORWARD[((taxi >> 30) & 31) as usize];
+            dst[8*block + 2] = FORWARD[((taxi >> 25) & 31) as usize];
+            dst[8*block + 3] = FORWARD[((taxi >> 20) & 31) as usize];
+            dst[8*block + 4] = FORWARD[((taxi >> 15) & 31) as usize];
+            dst[8*block + 5] = FORWARD[((taxi >> 10) & 31) as usize];
+            dst[8*block + 6] = FORWARD[((taxi >>  5) & 31) as usize];
+            dst[8*block + 7] = FORWARD[((taxi >>  0) & 31) as usize];
         }
     }
     else {
@@ -123,7 +122,7 @@ pub fn db32enc_str(bin_src: &[u8]) -> String {
 
 macro_rules! rotate {
     ($txt:ident, $i:ident, $j:literal) => {
-        DB32_REVERSE[($txt[8 * $i + $j] - 42) as usize]
+        REVERSE[($txt[8 * $i + $j] - 42) as usize]
     }
 }
 
@@ -150,9 +149,7 @@ pub fn isdb32(txt: &[u8]) -> bool {
 
 pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     if txt.len() != 0 && txt.len() % 8 == 0 && bin.len() == txt.len() * 5 / 8 {
-
         let mut taxi: u64 = 0;
-        let mut usize: u8 = 0;
         let mut r: u8 = 0;
         for i in 0..txt.len() / 8 {
 
@@ -173,11 +170,9 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
             bin[5 * i + 3] = (taxi >>  8) as u8 & 255;
             bin[5 * i + 4] = (taxi >>  0) as u8 & 255;
         }
-        
-        /* Return value is (r & 224):
-         *       31: 00011111 <= bits set in DB32_REVERSE for valid characters
-         *      224: 11100000 <= bits set in DB32_REVERSE for invalid characters
-         */
+        /*
+            31: 00011111 <= bits set in REVERSE for valid characters
+            224: 11100000 <= bits set in REVERSE for invalid characters */
         r & 224 == 0
     }
     else {

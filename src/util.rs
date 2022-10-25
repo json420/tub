@@ -37,6 +37,13 @@ pub fn random_u16(minval: u16) -> u16 {
     }
 }
 
+pub fn random_small_object() -> Vec<u8> {
+    let size = random_u16(16);
+    let mut buf = vec![0_u8; size as usize];
+    getrandom(&mut buf);
+    buf
+}
+
 
 pub fn random_u64() -> u64 {
     let mut buf = [0_u8; 8];

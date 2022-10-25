@@ -122,7 +122,7 @@ impl Store {
         (id, true)
     }
 
-    pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Entry> {
+    pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Vec<u8>> {
         if let Some(entry) = self.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             assert_eq!(buf.len(), entry.size as usize);
@@ -132,12 +132,12 @@ impl Store {
             if verify && id != &hash(s) {
                 /*  FIXME: When hash doesn't match, we should remove from index
                     and then either (1) in the small object case append a
-                    deletion tombstone to the pack file or (2) in the large file
-                    case remove the object from the file system.
+                    deletion tombstone to the pack file or (2) in the large
+                    object case remove the object file from the file system.
                 */
                 panic!("no good, {:?}", id);
             }
-            return Some(entry);
+            return Some(buf);
         }
         None
     }
@@ -157,10 +157,34 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let mut store = Store::new(pb);
 
-        let id = random_object_id();
-        assert_eq!(store.get_object(&id, true), None);
+        let mut store = Store::new(pb);
+        assert_eq!(store.len(), 0);
+        let empty: Vec<ObjectID> = vec![];
+        assert_eq!(store.keys(), empty);
+
+        let rid = random_object_id();
+        assert_eq!(store.get_object(&rid, false), None);
+        assert_eq!(store.get_object(&rid, true), None);
+        assert_eq!(store.len(), 0);
+        assert_eq!(store.keys(), empty);
+
+        let data = random_small_object();
+        let (id, new) = store.add_object(&data);
+        assert!(new);
+        assert_eq!(store.len(), 1);
+        assert_eq!(store.keys(), vec![id]);
+        assert_eq!(store.get_object(&id, false).unwrap(), data);
+        assert_eq!(store.get_object(&id, true).unwrap(), data);
+
+        // Re-add object:
+        let (id2, new) = store.add_object(&data);
+        assert_eq!(id2, id);
+        assert!(!new);
+        assert_eq!(store.len(), 1);
+        assert_eq!(store.keys(), vec![id]);
+        assert_eq!(store.get_object(&id, false).unwrap(), data);
+        assert_eq!(store.get_object(&id, true).unwrap(), data);
     }
 
     #[test]

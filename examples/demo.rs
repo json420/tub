@@ -2,7 +2,8 @@ use std::time;
 use bathtub_db::store::Store;
 use bathtub_db::dbase32::db32enc_str;
 
-const GET_LOOPS: usize = 5;
+const GET_LOOPS: usize = 10;
+//const VERIFY: bool = true;
 const VERIFY: bool = false;
 
 fn main() {

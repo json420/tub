@@ -62,12 +62,10 @@ impl Store {
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
-        let mut reader = &self.file;
-        //let mut reader = BufReader::with_capacity(8 * 1024, &self.file);
-        reader.seek(SeekFrom::Start(0)).unwrap();
+        self.file.seek(SeekFrom::Start(0)).unwrap();
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
-            if let Err(_) = reader.read_exact(&mut header) {
+            if let Err(_) = self.file.read_exact(&mut header) {
                 break;
             }
             let id: ObjectID = header[0..30].try_into().expect("oops");
@@ -86,13 +84,13 @@ impl Store {
                 if check {
                     buf.resize(size as usize, 0);
                     let s = &mut buf[0..(size as usize)];
-                    reader.read_exact(s).expect("oops");
+                    self.file.read_exact(s).expect("oops");
                     if id != hash(s) {
                         panic!("hash does not equal expected");
                     }
                 }
                 else {
-                    reader.seek(SeekFrom::Current(size as i64)).expect("oops");
+                    self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
                 }
             }
             else {
@@ -140,7 +138,9 @@ impl Store {
             assert_eq!(buf.len(), entry.size as usize);
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
-            self.file.read_exact_at(s, offset).expect("oops");
+            self.file.seek(SeekFrom::Start(offset)).unwrap();
+            self.file.read_exact(s).expect("oops");
+            //self.file.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s) {
                 /*  FIXME: When hash doesn't match, we should remove from index
                     and then either (1) in the small object case append a

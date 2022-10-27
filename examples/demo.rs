@@ -20,7 +20,7 @@ fn main() {
 
     for id in keys[0..1000].iter() {
         //println!("{}", db32enc_str(id));
-        store.delete_object(id);
+        //store.delete_object(id);
     }
 
 }

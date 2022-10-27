@@ -11,6 +11,7 @@ pub type LeafHashList = Vec<LeafHash>;
 
 pub type ObjectSize = u64;
 pub type OffsetSize = u64;
+pub type LeafIndex = u64;
 
 pub const HEADER_LEN: usize = OBJECT_ID_LEN + size_of::<ObjectSize>();
 pub type HeaderBuf = [u8; HEADER_LEN];

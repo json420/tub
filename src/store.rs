@@ -139,7 +139,7 @@ impl Store {
     }
 
     pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Vec<u8>> {
-        if let Some(entry) = self.get(id) {
+        if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
@@ -187,11 +187,8 @@ mod tests {
 
     #[test]
     fn test_store() {
-        let tmp = TempDir::new().unwrap();
-        let mut pb = tmp.path().to_path_buf();
-        pb.push("example.btdb");
+        let (tmp, mut store) = Store::new_tmp();
 
-        let mut store = Store::new(pb);
         assert_eq!(store.len(), 0);
         let empty: Vec<ObjectID> = vec![];
         assert_eq!(store.keys(), empty);
@@ -238,10 +235,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let tmp = TempDir::new().unwrap();
-        let mut pb = tmp.path().to_path_buf();
-        pb.push("example.btdb");
-        let mut store = Store::new(pb);
+        let (tmp, mut store) = Store::new_tmp();
         let id = random_object_id();
         assert_eq!(store.get(&id), None);
         let entry = Entry {size: 3, offset: 5};

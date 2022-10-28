@@ -3,7 +3,6 @@ use std::path::Path;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::io::IoSlice;
 use std::io::SeekFrom;
 
@@ -19,7 +18,7 @@ pub struct Entry {
     size: ObjectSize,
 }
 
-type Index = Arc<Mutex<HashMap<ObjectID, Entry>>>;
+type Index = HashMap<ObjectID, Entry>;
 
 
 #[derive(Debug)]
@@ -28,9 +27,10 @@ pub struct Store {
     pub index: Index,
 }
 
+// FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
-        let index: Index = Arc::new(Mutex::new(HashMap::new()));
+        let index: Index = HashMap::new();
         let file = File::options()
             .append(true)
             .read(true)
@@ -43,11 +43,11 @@ impl Store {
     }
 
     pub fn len(&mut self) -> usize {
-        self.index.lock().unwrap().len()
+        self.index.len()
     }
 
     pub fn keys(&mut self) -> Vec<ObjectID> {
-        Vec::from_iter(self.index.lock().unwrap().keys().cloned())
+        Vec::from_iter(self.index.keys().cloned())
     }
 
     pub fn reindex(&mut self, check: bool) {
@@ -56,8 +56,7 @@ impl Store {
         // is read there is still additional data, but not enough to make a
         // valid object entry... then a prior object append operation was
         // interrupted, and so we should discard the invalid partial object.
-        let mut index = self.index.lock().unwrap();
-        index.clear();
+        self.index.clear();
 
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
@@ -77,7 +76,7 @@ impl Store {
                     offset: offset,
                     size: size,
                 };
-                index.insert(id, entry);
+                self.index.insert(id, entry);
 
                 offset += HEADER_LEN as ObjectSize + size;
 
@@ -95,7 +94,7 @@ impl Store {
             }
             else {
                 //println!("Tombstone {}", db32enc_str(&id));
-                if index.remove(&id) == None {
+                if self.index.remove(&id) == None {
                     panic!("{} not in index but tombstone found", db32enc_str(&id));
                 }
             }
@@ -103,8 +102,7 @@ impl Store {
     }
 
     fn get(&self, id: &ObjectID) -> Option<Entry> {
-        let index = self.index.lock().unwrap();
-        if let Some(val) = index.get(id) {
+        if let Some(val) = self.index.get(id) {
             Some(val.clone())
         }
         else {
@@ -114,8 +112,7 @@ impl Store {
 
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
         let id = hash(data);
-        let mut index = self.index.lock().unwrap();
-        if let Some(entry) = index.get(&id) {
+        if let Some(entry) = self.index.get(&id) {
             return (id, false);  // Already in object store
         }
         let entry = Entry {
@@ -128,7 +125,7 @@ impl Store {
             IoSlice::new(data),
         ]).expect("object append failed");
         self.file.flush().expect("nope");
-        index.insert(id, entry);
+        self.index.insert(id, entry);
         (id, true)
     }
 
@@ -148,19 +145,25 @@ impl Store {
     }
 
     pub fn delete_object(&mut self, id: &ObjectID) -> bool {
-        // FIXME: In large object case, also delete object file
-        let mut index = self.index.lock().unwrap();
-        if let Some(entry) = index.get(id) {
+        /*  Remove an object from the Store.
+
+        This writes a tombstone to the pack file and then, in the large object
+        case, remove the corresponding o/AA/AAA... file.  When the next repack
+        occurs, the object entry in the pack file and the tombstone will be
+        removed (not copied into the new pack file).
+        */
+        if let Some(entry) = self.index.get(id) {
             eprintln!("Deleting {}", db32enc_str(id));
             self.file.write_all_vectored(&mut [
                 IoSlice::new(id),
                 IoSlice::new(&(0_u64).to_le_bytes()),
             ]).expect("failed to write tombstone");
-            index.remove(id);
+            self.index.remove(id);
+            //FIXME: In large object case, also delete object file
             true
         }
         else {
-            false
+            false  // id not in this store
         }
     }
 }
@@ -231,14 +234,11 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("example.btdb");
-        let store = Store::new(pb);
+        let mut store = Store::new(pb);
         let id = random_object_id();
         assert_eq!(store.get(&id), None);
-        let mut guard = store.index.lock().unwrap();
         let entry = Entry {size: 3, offset: 5};
-        assert_eq!(guard.insert(id.clone(), entry.clone()), None);
-        // Release mutex lock otherwise following will deadlock:
-        Mutex::unlock(guard);
+        assert_eq!(store.index.insert(id.clone(), entry.clone()), None);
         assert_eq!(store.get(&id), Some(entry));
     }
 

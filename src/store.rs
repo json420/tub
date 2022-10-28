@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::io::IoSlice;
 use std::io::SeekFrom;
 
+use tempfile::TempDir;
+
 use crate::base::*;
 use crate::protocol::hash;
 use crate::dbase32::{db32enc, db32enc_str};
@@ -40,6 +42,13 @@ impl Store {
             file: file,
             index: index,
         }
+    }
+
+    pub fn new_tmp() -> (TempDir, Self) {
+        let tmp = TempDir::new().unwrap();
+        let mut pb = tmp.path().to_path_buf();
+        pb.push("temp.btdb");
+        (tmp, Store::new(pb))
     }
 
     pub fn len(&mut self) -> usize {
@@ -172,9 +181,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
     use std::fs::File;
-    use std::io::SeekFrom;
     use crate::dbase32::db32enc_str;
     use crate::util::*;
 

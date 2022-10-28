@@ -4,7 +4,7 @@ use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::io::{IoSlice, BufReader};
+use std::io::IoSlice;
 use std::io::SeekFrom;
 
 use crate::base::*;
@@ -135,19 +135,12 @@ impl Store {
     pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Vec<u8>> {
         if let Some(entry) = self.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
-            assert_eq!(buf.len(), entry.size as usize);
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
-            self.file.seek(SeekFrom::Start(offset)).unwrap();
-            self.file.read_exact(s).expect("oops");
-            //self.file.read_exact_at(s, offset).expect("oops");
+            self.file.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s) {
-                /*  FIXME: When hash doesn't match, we should remove from index
-                    and then either (1) in the small object case append a
-                    deletion tombstone to the pack file or (2) in the large
-                    object case remove the object file from the file system.
-                */
-                panic!("no good, {:?}", id);
+                eprintln!("{} is corrupt", db32enc_str(id));
+                self.delete_object(id);
             }
             return Some(buf);
         }
@@ -155,9 +148,10 @@ impl Store {
     }
 
     pub fn delete_object(&mut self, id: &ObjectID) -> bool {
+        // FIXME: In large object case, also delete object file
         let mut index = self.index.lock().unwrap();
         if let Some(entry) = index.get(id) {
-            println!("Deleting {}", db32enc_str(id));
+            eprintln!("Deleting {}", db32enc_str(id));
             self.file.write_all_vectored(&mut [
                 IoSlice::new(id),
                 IoSlice::new(&(0_u64).to_le_bytes()),
@@ -218,6 +212,11 @@ mod tests {
 
         assert_eq!(store.get_object(&rid, false), None);
         assert_eq!(store.get_object(&rid, true), None);
+
+        // Delete object:
+        assert_eq!(store.delete_object(&id), true);
+        assert_eq!(store.len(), 0);
+        assert_eq!(store.delete_object(&id), false);
 
         // Known test vector or something like that
         let (id3, new) = store.add_object(b"Federation44");

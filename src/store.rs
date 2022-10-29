@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, create_dir};
 use std::path::Path;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
@@ -7,6 +7,7 @@ use std::io::IoSlice;
 use std::io::SeekFrom;
 
 use tempfile::TempDir;
+use openat;
 
 use crate::base::*;
 use crate::protocol::hash;
@@ -22,16 +23,18 @@ pub struct Entry {
 
 type Index = HashMap<ObjectID, Entry>;
 
+type OptDir = Option<openat::Dir>;
 
 #[derive(Debug)]
 pub struct Store {
     pub file: File,
+    pub o_dir: OptDir,
     pub index: Index,
 }
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P, o_dir: OptDir) -> Self {
         let index: Index = HashMap::new();
         let file = File::options()
             .append(true)
@@ -40,6 +43,7 @@ impl Store {
             .open(path).expect("could not open pack file");
         Store {
             file: file,
+            o_dir: o_dir,
             index: index,
         }
     }
@@ -48,7 +52,13 @@ impl Store {
         let tmp = TempDir::new().unwrap();
         let mut pb = tmp.path().to_path_buf();
         pb.push("temp.btdb");
-        (tmp, Store::new(pb))
+
+        let mut o = tmp.path().to_path_buf();
+        o.push("o");
+        create_dir(&o);
+        let o_dir: OptDir = Some(openat::Dir::open(&o).unwrap());
+
+        (tmp, Store::new(pb, o_dir))
     }
 
     pub fn len(&mut self) -> usize {

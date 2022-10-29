@@ -7,7 +7,7 @@ static NAME: &str  = "test.btdb";
 const VERIFY: bool = false;
 
 fn main() {
-    let mut store = Store::new("test.btdb");
+    let mut store = Store::new("test.btdb", None);
     println!("Reindexing objects (VERIFY={})", VERIFY);
 
     let start = time::Instant::now();

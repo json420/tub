@@ -4,6 +4,7 @@ use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
 use std::io::IoSlice;
+use std::io;
 use std::io::SeekFrom;
 
 use tempfile::TempDir;
@@ -23,42 +24,39 @@ pub struct Entry {
 
 type Index = HashMap<ObjectID, Entry>;
 
-type OptDir = Option<openat::Dir>;
 
 #[derive(Debug)]
 pub struct Store {
-    pub file: File,
-    pub o_dir: OptDir,
+    pub dir: openat::Dir,
+    pub afile: File,
+    pub rfile: File,
     pub index: Index,
 }
 
+static PACKNAME: &str = "main.pack";
+
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
-    pub fn new<P: AsRef<Path>>(path: P, o_dir: OptDir) -> Self {
-        let index: Index = HashMap::new();
-        let file = File::options()
-            .append(true)
-            .read(true)
-            .create(true)
-            .open(path).expect("could not open pack file");
+    pub fn new(dir: openat::Dir) -> Self {
+        let afile = dir.append_file(PACKNAME, 0o660).unwrap();
+        let rfile = dir.open_file(PACKNAME).unwrap();
         Store {
-            file: file,
-            o_dir: o_dir,
-            index: index,
+            dir: dir,
+            afile: afile,
+            rfile: rfile,
+            index: HashMap::new(),
         }
     }
 
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
-        let mut pb = tmp.path().to_path_buf();
-        pb.push("temp.btdb");
+        let dir = openat::Dir::open(tmp.path()).unwrap();
+        (tmp, Store::new(dir))
+    }
 
-        let mut o = tmp.path().to_path_buf();
-        o.push("o");
-        create_dir(&o);
-        let o_dir: OptDir = Some(openat::Dir::open(&o).unwrap());
-
-        (tmp, Store::new(pb, o_dir))
+    pub fn new_cwd() -> Self {
+        let dir = openat::Dir::open(".").unwrap();
+        Store::new(dir)
     }
 
     pub fn len(&mut self) -> usize {
@@ -80,10 +78,10 @@ impl Store {
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
-        self.file.seek(SeekFrom::Start(0)).unwrap();
+        self.rfile.seek(SeekFrom::Start(0)).unwrap();
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
-            if let Err(_) = self.file.read_exact(&mut header) {
+            if let Err(_) = self.rfile.read_exact(&mut header) {
                 break;
             }
             let id: ObjectID = header[0..30].try_into().expect("oops");
@@ -102,13 +100,13 @@ impl Store {
                 if check {
                     buf.resize(size as usize, 0);
                     let s = &mut buf[0..(size as usize)];
-                    self.file.read_exact(s).expect("oops");
+                    self.rfile.read_exact(s).expect("oops");
                     if id != hash(s) {
                         panic!("hash does not equal expected");
                     }
                 }
                 else {
-                    self.file.seek(SeekFrom::Current(size as i64)).expect("oops");
+                    self.rfile.seek(SeekFrom::Current(size as i64)).expect("oops");
                 }
             }
             else {
@@ -135,15 +133,15 @@ impl Store {
             return (id, false);  // Already in object store
         }
         let entry = Entry {
-            offset: self.file.stream_position().unwrap(),
+            offset: self.afile.stream_position().unwrap(),
             size: data.len() as ObjectSize,
         };
-        self.file.write_all_vectored(&mut [
+        self.afile.write_all_vectored(&mut [
             IoSlice::new(&id),
             IoSlice::new(&entry.size.to_le_bytes()),
             IoSlice::new(data),
         ]).expect("object append failed");
-        self.file.flush().expect("nope");
+        self.afile.flush().expect("nope");
         self.index.insert(id, entry);
         (id, true)
     }
@@ -153,7 +151,7 @@ impl Store {
             let mut buf = vec![0_u8; entry.size as usize];
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
-            self.file.read_exact_at(s, offset).expect("oops");
+            self.rfile.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s) {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id);
@@ -173,7 +171,7 @@ impl Store {
         */
         if let Some(entry) = self.index.get(id) {
             eprintln!("Deleting {}", db32enc_str(id));
-            self.file.write_all_vectored(&mut [
+            self.afile.write_all_vectored(&mut [
                 IoSlice::new(id),
                 IoSlice::new(&(0_u64).to_le_bytes()),
             ]).expect("failed to write tombstone");

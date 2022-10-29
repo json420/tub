@@ -7,7 +7,7 @@ const GET_LOOPS: usize = 10;
 const VERIFY: bool = false;
 
 fn main() {
-    let mut store = Store::new("test.btdb", None);
+    let mut store = Store::new_cwd();
     println!("Reindexing objects (VERIFY={})", VERIFY);
 
     let start = time::Instant::now();

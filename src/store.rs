@@ -27,10 +27,10 @@ type Index = HashMap<ObjectID, Entry>;
 
 #[derive(Debug)]
 pub struct Store {
-    pub dir: openat::Dir,
-    pub afile: File,
-    pub rfile: File,
-    pub index: Index,
+    dir: openat::Dir,
+    afile: File,
+    rfile: File,
+    index: Index,
 }
 
 static PACKNAME: &str = "main.pack";

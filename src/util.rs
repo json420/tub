@@ -1,4 +1,6 @@
 use libc;
+use std::fs::File;
+use std::os::unix::io::AsRawFd;
 use crate::base::*;
 
 
@@ -9,6 +11,20 @@ pub fn getrandom(buf: &mut [u8]) {
         libc::getrandom(p, size1, 0)
     } as usize;
     if size1 != size2 {panic!("something went wrong")}
+}
+
+pub fn fadvise_random(file: &File) {
+    let fd = file.as_raw_fd();
+    let result = unsafe {
+        libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_RANDOM)
+    };
+}
+
+pub fn fadvise_sequential(file: &File) {
+    let fd = file.as_raw_fd();
+    let result = unsafe {
+        libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_SEQUENTIAL)
+    };
 }
 
 

@@ -13,7 +13,7 @@ use openat;
 use crate::base::*;
 use crate::protocol::hash;
 use crate::dbase32::{db32enc, db32enc_str};
-
+use crate::util::{fadvise_random, fadvise_sequential};
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -74,7 +74,7 @@ impl Store {
         // valid object entry... then a prior object append operation was
         // interrupted, and so we should discard the invalid partial object.
         self.index.clear();
-
+        fadvise_sequential(&self.rfile);
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
@@ -116,6 +116,7 @@ impl Store {
                 }
             }
         }
+        fadvise_random(&self.rfile);
     }
 
     fn get(&self, id: &ObjectID) -> Option<Entry> {

@@ -68,14 +68,6 @@ pub fn bulk_random_small_objects(count: usize) -> Vec<Vec<u8>> {
     ret
 }
 
-pub fn random_bulk_group(count: usize, bulk: usize) -> Vec<Vec<Vec<u8>>> {
-    let mut group: Vec<Vec<Vec<u8>>> = Vec::with_capacity(count);
-    for _ in 0..count {
-        group.push(bulk_random_small_objects(bulk));
-    }
-    group
-}
-
 
 pub fn random_u64() -> u64 {
     let mut buf = [0_u8; 8];

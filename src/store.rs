@@ -128,7 +128,8 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
+
+    fn add_one_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
         let id = hash(data);
         if let Some(entry) = self.index.get(&id) {
             return (id, false);  // Already in object store
@@ -142,9 +143,23 @@ impl Store {
             IoSlice::new(&entry.size.to_le_bytes()),
             IoSlice::new(data),
         ]).expect("object append failed");
-        self.afile.flush().expect("nope");
         self.index.insert(id, entry);
         (id, true)
+    }
+
+    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
+        let (id, new) = self.add_one_object(data);
+        self.afile.flush().expect("nope");
+        (id, new)
+    }
+
+    pub fn bulk_add(&mut self, buffers: &Vec<&[u8]>) -> Vec<(ObjectID, bool)> {
+        let mut ret: Vec<(ObjectID, bool)> = Vec::new();
+        for data in buffers.iter() {
+            ret.push(self.add_one_object(&data[..]));
+        }
+        self.afile.flush().expect("nope");
+        ret
     }
 
     pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Vec<u8>> {

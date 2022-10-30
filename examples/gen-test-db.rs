@@ -3,8 +3,10 @@ use bathtub_db::store::Store;
 use bathtub_db::util::{getrandom, random_u16};
 
 const COUNT: usize = 100_000;
+const BULK_COUNT: usize = 10;
 static NAME: &str  = "test.btdb";
 const VERIFY: bool = false;
+
 
 fn main() {
     let mut store = Store::new_cwd();

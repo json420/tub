@@ -28,6 +28,7 @@ type Index = HashMap<ObjectID, Entry>;
 #[derive(Debug)]
 pub struct Store {
     dir: openat::Dir,
+    odir: openat::Dir,
     afile: File,
     rfile: File,
     index: Index,
@@ -38,14 +39,21 @@ static PACKNAME: &str = "main.pack";
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
     pub fn new(dir: openat::Dir) -> Self {
+        dir.create_dir("o", 0o770);
+        let odir = dir.sub_dir("o").unwrap();
         let afile = dir.append_file(PACKNAME, 0o660).unwrap();
         let rfile = dir.open_file(PACKNAME).unwrap();
         Store {
             dir: dir,
+            odir: odir,
             afile: afile,
             rfile: rfile,
             index: HashMap::new(),
         }
+    }
+
+    pub fn open_large(&self, id: &ObjectID) -> io::Result<File> {
+        self.odir.open_file(db32enc_str(id))
     }
 
     pub fn new_tmp() -> (TempDir, Self) {

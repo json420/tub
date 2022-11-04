@@ -68,6 +68,17 @@ impl Store {
         }
     }
 
+    pub fn new_tmp() -> (TempDir, Self) {
+        let tmp = TempDir::new().unwrap();
+        let dir = openat::Dir::open(tmp.path()).unwrap();
+        (tmp, Store::new(dir))
+    }
+
+    pub fn new_cwd() -> Self {
+        let dir = openat::Dir::open(".").unwrap();
+        Store::new(dir)
+    }
+
     fn open_large(&self, id: &ObjectID) -> io::Result<File> {
         self.odir.open_file(db32enc_str(id))
     }
@@ -78,17 +89,6 @@ impl Store {
 
     pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
         Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
-    }
-
-    pub fn new_tmp() -> (TempDir, Self) {
-        let tmp = TempDir::new().unwrap();
-        let dir = openat::Dir::open(tmp.path()).unwrap();
-        (tmp, Store::new(dir))
-    }
-
-    pub fn new_cwd() -> Self {
-        let dir = openat::Dir::open(".").unwrap();
-        Store::new(dir)
     }
 
     pub fn len(&mut self) -> usize {

@@ -32,6 +32,9 @@ impl Object {
 
 
 
+
+
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
     offset: OffsetSize,
@@ -50,7 +53,7 @@ pub struct Store {
     index: Index,
 }
 
-static PACKNAME: &str = "main.pack";
+static PACKNAME: &str = "bathtub.db";
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
@@ -85,6 +88,14 @@ impl Store {
 
     fn remove_large(&self, id: &ObjectID) -> io::Result<()> {
         self.odir.remove_file(db32enc_str(id))
+    }
+
+    fn new_unnamed_file(&self) -> io::Result<File> {
+        self.odir.new_unnamed_file(0o0400)
+    }
+
+    fn link_file_at(&self, file: &File, id: &ObjectID) -> io::Result<()> {
+        self.odir.link_file_at(file, db32enc_str(id))
     }
 
     pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
@@ -281,10 +292,16 @@ mod tests {
     #[test]
     fn test_store_large() {
         let (tmp, mut store) = Store::new_tmp();
-        let rid = random_object_id();
-        assert!(store.open_large(&rid).is_err());
-        assert!(store.remove_large(&rid).is_err());
-        assert!(store.open(&rid).is_err());
+        let id = random_object_id();
+        assert!(store.open_large(&id).is_err());
+        assert!(store.remove_large(&id).is_err());
+        assert!(store.open(&id).is_err());
+
+        let mut wfile = store.new_unnamed_file().unwrap();
+        wfile.write(b"hello, world");
+        assert!(store.link_file_at(&mut wfile, &id).is_ok());
+        assert!(store.remove_large(&id).is_ok());
+        assert!(store.open_large(&id).is_err());
     }
 
     #[test]

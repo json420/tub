@@ -16,6 +16,22 @@ use crate::dbase32::{db32enc, db32enc_str};
 use crate::util::{fadvise_random, fadvise_sequential};
 
 
+
+/// Represents an object open for reading (both large and small objects)
+#[derive(Debug)]
+pub struct Object {
+    offset: OffsetSize,
+    size: ObjectSize,
+    id: ObjectID,
+    rfile: File,
+}
+
+impl Object {
+
+}
+
+
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
     offset: OffsetSize,
@@ -52,8 +68,16 @@ impl Store {
         }
     }
 
-    pub fn open_large(&self, id: &ObjectID) -> io::Result<File> {
+    fn open_large(&self, id: &ObjectID) -> io::Result<File> {
         self.odir.open_file(db32enc_str(id))
+    }
+
+    fn remove_large(&self, id: &ObjectID) -> io::Result<()> {
+        self.odir.remove_file(db32enc_str(id))
+    }
+
+    pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
+        Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
     }
 
     pub fn new_tmp() -> (TempDir, Self) {
@@ -252,6 +276,15 @@ mod tests {
             "OK5UTJXH6H3Q9DU7EHY9LEAN8P6TPY553SIGLQH5KAXEG6EN"
         );
         assert!(new);
+    }
+
+    #[test]
+    fn test_store_large() {
+        let (tmp, mut store) = Store::new_tmp();
+        let rid = random_object_id();
+        assert!(store.open_large(&rid).is_err());
+        assert!(store.remove_large(&rid).is_err());
+        assert!(store.open(&rid).is_err());
     }
 
     #[test]

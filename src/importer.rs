@@ -62,10 +62,11 @@ impl Scanner {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+    use crate::helpers;
     use std::fs::{create_dir_all, File};
     use std::io::prelude::*;
 
-    fn mk_tmp_path(tmp: &TempDir, names: &Vec<&str>) -> PathBuf {
+    fn mk_tmp_path(tmp: &TempDir, names: &[&str]) -> PathBuf {
         let mut path = tmp.path().to_path_buf();
         for n in names {
             path.push(n);
@@ -73,16 +74,16 @@ mod tests {
         path
     }
 
-    fn mk_dir(tmp: &TempDir, names: &Vec<&str>) {
+    fn mk_dir(tmp: &TempDir, names: &[&str]) {
         create_dir_all(mk_tmp_path(tmp, names)).unwrap();
     }
 
-    fn mk_file(tmp: &TempDir, names: &Vec<&str>) -> File {
+    fn mk_file(tmp: &TempDir, names: &[&str]) -> File {
         File::create(mk_tmp_path(tmp, names)).unwrap()
     }
 
     fn create_test_dirs(tmp: &TempDir) {
-        mk_dir(tmp, &vec!["A", "B", "C"]);
+        mk_dir(tmp, &["A", "B", "C"]);
     }
 
     fn create_test_files(tmp: &TempDir) {
@@ -120,7 +121,8 @@ mod tests {
 
     #[test]
     fn test_scanresult() {
-        let tmp = TempDir::new().unwrap();
+        //let tmp = TempDir::new().unwrap();
+        let tmp = helpers::TestTempDir::new();
 
         // Empty directory
         let s = Scanner::scan_dir(tmp.path());
@@ -128,13 +130,16 @@ mod tests {
         assert_eq!(s.total(), 0);
 
         // Contains directories but no files
-        create_test_dirs(&tmp);
+        //create_test_dirs(&tmp);
+        tmp.makedirs(&["A", "B", "C"]);
         let s = Scanner::scan_dir(tmp.path());
         assert_eq!(s.count(), 0);
         assert_eq!(s.total(), 0);
 
         // Contains files
-        create_test_files(&tmp);
+        //create_test_files(&tmp);
+        tmp.write(&["Z"], &[0_u8; 7]);
+        tmp.write(&["A", "B", "C", "Y"], &[1_u8; 11]);
         let s = Scanner::scan_dir(tmp.path());
         assert_eq!(s.count(), 2);
         assert_eq!(s.total(), 18);

@@ -1,7 +1,7 @@
-use libc;
 use std::fs::File;
-use std::os::unix::io::AsRawFd;
 use crate::base::*;
+use std::os::unix::io::AsRawFd;
+use libc;
 
 
 pub fn getrandom(buf: &mut [u8]) {

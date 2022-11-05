@@ -7,4 +7,5 @@ pub mod store;
 pub mod tree;
 pub mod dbase32;
 pub mod importer;
+pub mod helpers;
 

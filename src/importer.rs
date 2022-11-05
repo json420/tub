@@ -65,8 +65,24 @@ mod tests {
     use std::fs::{create_dir_all, File};
     use std::io::prelude::*;
 
+    fn mk_tmp_path(tmp: &TempDir, names: &Vec<&str>) -> PathBuf {
+        let mut path = tmp.path().to_path_buf();
+        for n in names {
+            path.push(n);
+        }
+        path
+    }
+
+    fn mk_dir(tmp: &TempDir, names: &Vec<&str>) {
+        create_dir_all(mk_tmp_path(tmp, names)).unwrap();
+    }
+
+    fn mk_file(tmp: &TempDir, names: &Vec<&str>) -> File {
+        File::create(mk_tmp_path(tmp, names)).unwrap()
+    }
+
     fn create_test_dirs(tmp: &TempDir) {
-        create_dir_all(tmp.path().join("A").join("B").join("C"));
+        mk_dir(tmp, &vec!["A", "B", "C"]);
     }
 
     fn create_test_files(tmp: &TempDir) {

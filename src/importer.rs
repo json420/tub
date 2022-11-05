@@ -6,6 +6,7 @@ const MAX_DEPTH: usize = 32;
 
 pub struct SrcFile(pub PathBuf, pub u64);
 
+
 fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) -> u64 {
     if depth < MAX_DEPTH {
         let mut total: u64 = 0;
@@ -61,56 +62,34 @@ impl Scanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
-    use crate::helpers;
+    use crate::helpers::TestTempDir;
     use std::fs::{create_dir_all, File};
     use std::io::prelude::*;
 
-    fn mk_tmp_path(tmp: &TempDir, names: &[&str]) -> PathBuf {
-        let mut path = tmp.path().to_path_buf();
-        for n in names {
-            path.push(n);
-        }
-        path
+    fn mk_test_dirs(tmp: &TestTempDir) {
+        tmp.makedirs(&["A", "B", "C"]);
     }
 
-    fn mk_dir(tmp: &TempDir, names: &[&str]) {
-        create_dir_all(mk_tmp_path(tmp, names)).unwrap();
+    fn mk_test_files(tmp: &TestTempDir) {
+        tmp.write(&["Z"], &[0_u8; 7]);
+        tmp.write(&["A", "B", "C", "Y"], &[1_u8; 11]);
     }
-
-    fn mk_file(tmp: &TempDir, names: &[&str]) -> File {
-        File::create(mk_tmp_path(tmp, names)).unwrap()
-    }
-
-    fn create_test_dirs(tmp: &TempDir) {
-        mk_dir(tmp, &["A", "B", "C"]);
-    }
-
-    fn create_test_files(tmp: &TempDir) {
-        File::create(
-            tmp.path().join("Z")
-        ).unwrap().write_all(&[0_u8; 7]);
-        File::create(
-            tmp.path().join("A").join("Y")
-        ).unwrap().write_all(&[1_u8; 11]);
-    }
-
 
     #[test]
     fn test_scan_files() {
-        let tmp = TempDir::new().unwrap();
+        let tmp = TestTempDir::new();
 
         let mut accum: Vec<SrcFile> = Vec::new();
         scan_files(tmp.path(), &mut accum, MAX_DEPTH + 1);
         assert_eq!(accum.len(), 0);
 
         // Contains directories but no files
-        create_test_dirs(&tmp);
+        mk_test_dirs(&tmp);
         assert_eq!(scan_files(tmp.path(), &mut accum, 0), 0);
         assert_eq!(accum.len(), 0);
 
         // Contains files but called at MAX_DEPTH
-        create_test_files(&tmp);
+        mk_test_files(&tmp);
         assert_eq!(scan_files(tmp.path(), &mut accum, MAX_DEPTH), 0);
         assert_eq!(accum.len(), 0);
 
@@ -121,8 +100,7 @@ mod tests {
 
     #[test]
     fn test_scanresult() {
-        //let tmp = TempDir::new().unwrap();
-        let tmp = helpers::TestTempDir::new();
+        let tmp = TestTempDir::new();
 
         // Empty directory
         let s = Scanner::scan_dir(tmp.path());
@@ -130,16 +108,14 @@ mod tests {
         assert_eq!(s.total(), 0);
 
         // Contains directories but no files
-        //create_test_dirs(&tmp);
-        tmp.makedirs(&["A", "B", "C"]);
+        mk_test_dirs(&tmp);
+        
         let s = Scanner::scan_dir(tmp.path());
         assert_eq!(s.count(), 0);
         assert_eq!(s.total(), 0);
 
         // Contains files
-        //create_test_files(&tmp);
-        tmp.write(&["Z"], &[0_u8; 7]);
-        tmp.write(&["A", "B", "C", "Y"], &[1_u8; 11]);
+        mk_test_files(&tmp);
         let s = Scanner::scan_dir(tmp.path());
         assert_eq!(s.count(), 2);
         assert_eq!(s.total(), 18);

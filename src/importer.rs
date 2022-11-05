@@ -1,10 +1,17 @@
 use std::path::{Path, PathBuf};
 use std::fs::{read_dir, metadata, File};
+use std::io;
 
 
 const MAX_DEPTH: usize = 32;
 
 pub struct SrcFile(pub PathBuf, pub u64);
+
+impl SrcFile {
+    pub fn open(&self) -> io::Result<File> {
+        File::open(&self.0)
+    }
+}
 
 
 fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) -> u64 {

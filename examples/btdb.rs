@@ -3,7 +3,6 @@ use bathtub_db::util::*;
 use bathtub_db::store::Store;
 use bathtub_db::importer::Scanner;
 use std::time;
-use std::fs;
 use std::io::prelude::*;
 
 
@@ -26,19 +25,18 @@ fn main() {
     );
     */
 
-    let sr = Scanner::scan_dir("/usr/share");
+    let scan = Scanner::scan_dir("/usr/share");
     let mut buf: Vec<u8> = Vec::with_capacity(16 * 1024);
     let start = time::Instant::now();
-    for f in sr.iter() {
-        //let m = fs::metadata(p).unwrap();
-        if let Ok(mut file) = fs::File::open(&f.0) {
+    for src in scan.iter() {
+        if let Ok(mut file) = src.open() {
             buf.clear();
             let size = file.read_to_end(&mut buf).unwrap();
-            assert_eq!(size as u64, f.1);
+            assert_eq!(size as u64, src.1);
             store.add_object(&buf);
         }
         else {
-            println!("{:?} {}", f.0, f.1);
+            println!("{:?} {}", src.0, src.1);
         }
         
     }

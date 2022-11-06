@@ -97,10 +97,12 @@ impl Iterator for DirNameIter {
     fn next(&mut self) -> Option<Self::Item> {
         if self.i < 1024 {
             let mut s = String::from("ZZ");
+            let a = FORWARD[self.i >> 5];
+            let b = FORWARD[self.i & 31];
             unsafe {
                 let mut buf = s.as_bytes_mut();
-                buf[0] = FORWARD[self.i >> 5];
-                buf[1] = FORWARD[self.i & 31];
+                buf[0] = a;
+                buf[1] = b;
             }
             self.i += 1;
             Some(s)

@@ -81,6 +81,36 @@ fn _check_length(text: &str) -> Result<&str, &str> {
     
 }
 
+pub struct DirNameIter {
+    i: usize,
+}
+
+impl DirNameIter {
+    pub fn new() -> Self {
+        Self {i: 0}
+    }
+}
+
+impl Iterator for DirNameIter {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < 1024 {
+            let mut s = String::from("ZZ");
+            unsafe {
+                let mut buf = s.as_bytes_mut();
+                buf[0] = FORWARD[self.i >> 5];
+                buf[1] = FORWARD[self.i & 31];
+            }
+            self.i += 1;
+            Some(s)
+        }
+        else {
+            None
+        }
+    }
+}
+
 macro_rules! bin_at {
     ($bin:ident, $i:ident, $j:literal) => {
         $bin[$i * 5 + $j]

@@ -81,7 +81,7 @@ fn _check_length(text: &str) -> Result<&str, &str> {
     
 }
 
-/// Iterates over 2-character Dbase32 directory names.
+/// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
 pub struct Name2Iter {
     i: usize,
@@ -303,6 +303,8 @@ mod tests {
         assert_eq!(names.len(), 1024);
         assert_eq!(names[0], "33");
         assert_eq!(names[1], "34");
+        assert_eq!(names[2], "35");
+        assert_eq!(names[1021], "YW");
         assert_eq!(names[1022], "YX");
         assert_eq!(names[1023], "YY");
     }

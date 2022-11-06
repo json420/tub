@@ -1,5 +1,5 @@
 use std::fs::{File, create_dir};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::collections::HashMap;
@@ -12,9 +12,15 @@ use openat;
 
 use crate::base::*;
 use crate::protocol::hash;
-use crate::dbase32::{db32enc, db32enc_str};
+use crate::dbase32::{db32enc, db32enc_str, Name2Iter};
 use crate::util::{fadvise_random, fadvise_sequential};
 
+
+
+const PACKFILE: &str = "bathtub.db";
+const OBJECTDIR: &str = "objects";
+const DIRMODE: u32 = 0o770;
+const FILEMODE: u32 = 0o660;
 
 
 /// Represents an object open for reading (both large and small objects)
@@ -53,15 +59,27 @@ pub struct Store {
     index: Index,
 }
 
-static PACKNAME: &str = "bathtub.db";
+
+/// Initialize directories and files that Store uses
+pub fn init_store_layout(dir: &openat::Dir) -> io::Result<()> {
+    dir.create_dir(OBJECTDIR, DIRMODE)?;
+    for name in Name2Iter::new() {
+        let pb: PathBuf = [OBJECTDIR, &name].iter().collect();
+        println!("{:?}", pb);
+        dir.create_dir(&pb, DIRMODE)?;
+    }
+    dir.create_file(PACKFILE, FILEMODE)?;
+    Ok(())
+}
+
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
     pub fn new(dir: openat::Dir) -> Self {
-        dir.create_dir("o", 0o770);
-        let odir = dir.sub_dir("o").unwrap();
-        let afile = dir.append_file(PACKNAME, 0o660).unwrap();
-        let rfile = dir.open_file(PACKNAME).unwrap();
+        dir.create_dir(OBJECTDIR, DIRMODE);
+        let odir = dir.sub_dir(OBJECTDIR).unwrap();
+        let afile = dir.append_file(PACKFILE, FILEMODE).unwrap();
+        let rfile = dir.open_file(PACKFILE).unwrap();
         Store {
             dir: dir,
             odir: odir,

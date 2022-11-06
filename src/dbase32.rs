@@ -81,17 +81,19 @@ fn _check_length(text: &str) -> Result<&str, &str> {
     
 }
 
-pub struct DirNameIter {
+/// Iterates over 2-character Dbase32 directory names.
+/// Will yield "33", "34", ... "YX", "YY".
+pub struct Name2Iter {
     i: usize,
 }
 
-impl DirNameIter {
+impl Name2Iter {
     pub fn new() -> Self {
         Self {i: 0}
     }
 }
 
-impl Iterator for DirNameIter {
+impl Iterator for Name2Iter {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -294,6 +296,16 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
 mod tests {
     use crate::util::random_object_id;
     use super::*;
+
+    #[test]
+    fn test_name2iter() {
+        let names = Vec::from_iter(Name2Iter::new());
+        assert_eq!(names.len(), 1024);
+        assert_eq!(names[0], "33");
+        assert_eq!(names[1], "34");
+        assert_eq!(names[1022], "YX");
+        assert_eq!(names[1023], "YY");
+    }
 
     #[test]
     fn test_check_length() {

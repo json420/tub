@@ -1,3 +1,20 @@
+//! Low-level object store.
+
+/* FIXME:
+
+Ideally we should do filesystem IO relative to an open directory descriptor.
+However, this is not currently supported is the Rust standard library.
+
+There are crates like `openat` and `openat_ct`, but they aren't under very
+active development and like lack features we need.
+
+So to get to MVP as quickly as possible, we'll do normal absolute path IO, then
+switch later.
+
+But to be clear: doing IO relative to an open directory descriptor is definitely
+the most modern and correct way to do this sort of thing.  So let's do that!
+*/
+
 use std::path::{Path, PathBuf};
 use std::io::prelude::*;
 use std::io;

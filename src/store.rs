@@ -92,6 +92,14 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
     Ok(())
 }
 
+pub fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
+    pb.push(OBJECTDIR);
+    let sid = db32enc_str(id);
+    let (prefix, suffix) = sid.split_at(2);
+    pb.push(prefix);
+    pb.push(suffix);
+}
+
 
 #[derive(Debug)]
 pub struct Store {
@@ -128,6 +136,12 @@ impl Store {
         let tmp = TempDir::new().unwrap();
         let store = Store::new(tmp.path());
         (tmp, store)
+    }
+
+    pub fn object_path(&self, id: &ObjectID) -> PathBuf {
+        let mut pb = self.path.clone();
+        push_object_path(&mut pb, id);
+        pb
     }
 
     fn open_large(&self, id: &ObjectID) -> io::Result<fs::File> {
@@ -280,6 +294,16 @@ mod tests {
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_push_object_path() {
+        let id = [0_u8; OBJECT_ID_LEN];
+        let mut pb = PathBuf::new();
+        push_object_path(&mut pb, &id);
+        assert_eq!(pb.as_os_str(),
+            "objects/33/3333333333333333333333333333333333333333333333"
+        );
+    }
 
     #[test]
     fn test_init_store() {

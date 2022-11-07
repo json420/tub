@@ -129,8 +129,7 @@ pub struct Store {
     path: PathBuf,
     dir: openat::Dir,
     odir: openat::Dir,
-    afile: fs::File,
-    rfile: fs::File,
+    file: fs::File,
     index: Index,
 }
 
@@ -142,14 +141,18 @@ impl Store {
         let dir = openat::Dir::open(&pb).unwrap();
         dir.create_dir(OBJECTDIR, DIRMODE).unwrap();
         let odir = dir.sub_dir(OBJECTDIR).unwrap();
-        let afile = dir.append_file(PACKFILE, FILEMODE).unwrap();
-        let rfile = dir.open_file(PACKFILE).unwrap();
+
+        let mut pb2 = pb.clone();
+        pb2.push(PACKFILE);
+        let file = File::options()
+                        .read(true)
+                        .append(true)
+                        .create(true).open(pb2).unwrap();
         Store {
             path: pb,
             dir: dir,
             odir: odir,
-            afile: afile,
-            rfile: rfile,
+            file: file,
             index: HashMap::new(),
         }
     }
@@ -205,8 +208,8 @@ impl Store {
     }
 
     pub fn sync_data(&mut self) {
-        self.afile.flush().expect("nope");
-        self.afile.sync_data().expect("nope");
+        self.file.flush().expect("nope");
+        self.file.sync_data().expect("nope");
     }
 
     pub fn reindex(&mut self, check: bool) {
@@ -216,14 +219,14 @@ impl Store {
         // valid object entry... then a prior object append operation was
         // interrupted, and so we should discard the invalid partial object.
         self.index.clear();
-        fadvise_sequential(&self.rfile);
+        fadvise_sequential(&self.file);
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
-        self.rfile.seek(io::SeekFrom::Start(0)).unwrap();
+        self.file.seek(io::SeekFrom::Start(0)).unwrap();
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
-            if let Err(_) = self.rfile.read_exact(&mut header) {
+            if let Err(_) = self.file.read_exact(&mut header) {
                 break;
             }
             let id: ObjectID = header[0..30].try_into().expect("oops");
@@ -242,13 +245,13 @@ impl Store {
                 if check {
                     buf.resize(size as usize, 0);
                     let s = &mut buf[0..(size as usize)];
-                    self.rfile.read_exact(s).expect("oops");
+                    self.file.read_exact(s).expect("oops");
                     if id != hash(s) {
                         panic!("hash does not equal expected");
                     }
                 }
                 else {
-                    self.rfile.seek(io::SeekFrom::Current(size as i64)).expect("oops");
+                    self.file.seek(io::SeekFrom::Current(size as i64)).expect("oops");
                 }
             }
             else {
@@ -258,7 +261,7 @@ impl Store {
                 }
             }
         }
-        fadvise_random(&self.rfile);
+        fadvise_random(&self.file);
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
@@ -267,10 +270,10 @@ impl Store {
             return (id, false);  // Already in object store
         }
         let entry = Entry {
-            offset: self.afile.stream_position().unwrap(),
+            offset: self.file.stream_position().unwrap(),
             size: data.len() as ObjectSize,
         };
-        self.afile.write_all_vectored(&mut [
+        self.file.write_all_vectored(&mut [
             io::IoSlice::new(&id),
             io::IoSlice::new(&entry.size.to_le_bytes()),
             io::IoSlice::new(data),
@@ -284,7 +287,7 @@ impl Store {
             let mut buf = vec![0_u8; entry.size as usize];
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
-            self.rfile.read_exact_at(s, offset).expect("oops");
+            self.file.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s) {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id);
@@ -304,7 +307,7 @@ impl Store {
         */
         if let Some(entry) = self.index.get(id) {
             eprintln!("Deleting {}", db32enc_str(id));
-            self.afile.write_all_vectored(&mut [
+            self.file.write_all_vectored(&mut [
                 io::IoSlice::new(id),
                 io::IoSlice::new(&(0_u64).to_le_bytes()),
             ]).expect("failed to write tombstone");

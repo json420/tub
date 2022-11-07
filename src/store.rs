@@ -283,8 +283,26 @@ impl Store {
 mod tests {
     use super::*;
     use std::fs::File;
-    use crate::dbase32::db32enc_str;
+    use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
+    use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_init_store() {
+        let tmp = TestTempDir::new();
+        init_store(tmp.path());
+        let mut expected = vec![OBJECTDIR, README];
+        expected.sort();
+        assert_eq!(tmp.list_root(), expected);
+        let dirs = tmp.list_dir(&[OBJECTDIR]);
+        assert_eq!(dirs.len(), 1024);
+        let expected: Vec<String> = Name2Iter::new().collect();
+        assert_eq!(dirs, expected);
+        assert_eq!(dirs[0], "33");
+        assert_eq!(dirs[1], "34");
+        assert_eq!(dirs[1022], "YX");
+        assert_eq!(dirs[1023], "YY");
+    }
 
     #[test]
     fn test_store() {

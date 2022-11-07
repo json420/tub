@@ -83,6 +83,7 @@ fn _check_length(text: &str) -> Result<&str, &str> {
 
 /// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
+#[derive(Debug)]
 pub struct Name2Iter {
     i: usize,
 }

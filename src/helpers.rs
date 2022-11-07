@@ -33,9 +33,10 @@ impl TestTempDir {
         p
     }
 
-    pub fn names(&self) -> Vec<String> {
+    pub fn list_dir(&self, parts: &[&str]) -> Vec<String> {
+        let path = self.build(parts);
         let mut names: Vec<String> = Vec::new();
-        if let Ok(entries) = fs::read_dir(self.path()) {
+        if let Ok(entries) = fs::read_dir(path) {
             for result in entries {
                 if let Ok(entry) = result {
                     names.push(
@@ -47,9 +48,13 @@ impl TestTempDir {
         }
         names.sort();
         names
-    }   
+    }
 
-    pub fn read(self, names: &[&str]) -> Vec<u8> {
+    pub fn list_root(&self) -> Vec<String> {
+        self.list_dir(&[])
+    }
+
+    pub fn read(&self, names: &[&str]) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
         fs::File::open(self.build(names)).unwrap().read_to_end(&mut buf).unwrap();
         buf
@@ -85,9 +90,10 @@ mod tests {
         assert!(a.to_str().unwrap().starts_with(base.to_str().unwrap()));
         assert!(a.to_str().unwrap().ends_with("/a"));
 
-        assert_eq!(tmp.names().len(), 0);
+        assert_eq!(tmp.list_root().len(), 0);
         tmp.touch(&["a"]);
-        assert_eq!(tmp.names().len(), vec!["a"];);
+        assert_eq!(tmp.list_root(), vec!["a"]);
     
     }
 }
+

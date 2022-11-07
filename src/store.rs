@@ -6,7 +6,7 @@ Ideally we should do filesystem IO relative to an open directory descriptor.
 However, this is not currently supported is the Rust standard library.
 
 There are crates like `openat` and `openat_ct`, but they aren't under very
-active development and like lack features we need.
+active development and likely lack features we need.
 
 So to get to MVP as quickly as possible, we'll do normal absolute path IO, then
 switch later.
@@ -104,7 +104,10 @@ pub struct Store {
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
-    pub fn new(dir: openat::Dir) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self 
+        where PathBuf: From<P> {
+        let pb = PathBuf::from(path);
+        let dir = openat::Dir::open(&pb).unwrap();
         dir.create_dir(OBJECTDIR, DIRMODE).unwrap();
         let odir = dir.sub_dir(OBJECTDIR).unwrap();
         let afile = dir.append_file(PACKFILE, FILEMODE).unwrap();
@@ -120,13 +123,8 @@ impl Store {
 
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
-        let dir = openat::Dir::open(tmp.path()).unwrap();
-        (tmp, Store::new(dir))
-    }
-
-    pub fn new_cwd() -> Self {
-        let dir = openat::Dir::open(".").unwrap();
-        Store::new(dir)
+        let store = Store::new(tmp.path());
+        (tmp, store)
     }
 
     fn open_large(&self, id: &ObjectID) -> io::Result<fs::File> {

@@ -122,6 +122,8 @@ impl Iterator for Tree {
 mod tests {
     use super::*;
     use crate::store::*;
+    use crate::helpers::TestTempDir;
+
     #[test]
     fn it_works() {
         let mut tree = Tree::new();
@@ -173,12 +175,10 @@ mod tests {
         assert_eq!(ret, right);
     }
     
-    //#[test]
+    #[test]
     fn add_db() {
         let GET_LOOPS: usize = 5;
-        let dir = openat::Dir::open(".").unwrap();
-        //let mut store = Store::new("test.btdb");
-        let mut store = Store::new(dir);
+        let (tmp, mut store) = Store::new(tmp.path());
         store.reindex(false);
         
         let keys = store.keys();
@@ -189,7 +189,7 @@ mod tests {
             tree.add(id);
             count += 1;
         }
-        assert_eq!(count, 100000);
+        assert_eq!(count, 0);
         tree.sort();
         
         let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];

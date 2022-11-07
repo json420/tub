@@ -95,6 +95,7 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
 
 #[derive(Debug)]
 pub struct Store {
+    path: PathBuf,
     dir: openat::Dir,
     odir: openat::Dir,
     afile: fs::File,
@@ -113,6 +114,7 @@ impl Store {
         let afile = dir.append_file(PACKFILE, FILEMODE).unwrap();
         let rfile = dir.open_file(PACKFILE).unwrap();
         Store {
+            path: pb,
             dir: dir,
             odir: odir,
             afile: afile,
@@ -120,6 +122,7 @@ impl Store {
             index: HashMap::new(),
         }
     }
+
 
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();

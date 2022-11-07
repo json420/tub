@@ -24,7 +24,6 @@ use std::fs::File;
 use std::collections::HashMap;
 
 use tempfile::TempDir;
-use openat;
 
 use crate::base::*;
 use crate::protocol::hash;
@@ -127,8 +126,6 @@ fn push_partial_path(pb: &mut PathBuf, id: &ObjectID) {
 #[derive(Debug)]
 pub struct Store {
     path: PathBuf,
-    dir: openat::Dir,
-    odir: openat::Dir,
     file: fs::File,
     index: Index,
 }
@@ -138,20 +135,15 @@ impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> Self 
         where PathBuf: From<P> {
         let pb = PathBuf::from(path);
-        let dir = openat::Dir::open(&pb).unwrap();
-        dir.create_dir(OBJECTDIR, DIRMODE).unwrap();
-        let odir = dir.sub_dir(OBJECTDIR).unwrap();
 
-        let mut pb2 = pb.clone();
-        pb2.push(PACKFILE);
+        let mut pb_copy = pb.clone();
+        pb_copy.push(PACKFILE);
         let file = File::options()
                         .read(true)
                         .append(true)
-                        .create(true).open(pb2).unwrap();
+                        .create(true).open(pb_copy).unwrap();
         Store {
             path: pb,
-            dir: dir,
-            odir: odir,
             file: file,
             index: HashMap::new(),
         }
@@ -180,19 +172,11 @@ impl Store {
     }
 
     fn open_large(&self, id: &ObjectID) -> io::Result<fs::File> {
-        self.odir.open_file(db32enc_str(id))
+        File::open(self.object_path(id))
     }
 
     fn remove_large(&self, id: &ObjectID) -> io::Result<()> {
-        self.odir.remove_file(db32enc_str(id))
-    }
-
-    fn new_unnamed_file(&self) -> io::Result<File> {
-        self.odir.new_unnamed_file(0o0400)
-    }
-
-    fn link_file_at(&self, file: &File, id: &ObjectID) -> io::Result<()> {
-        self.odir.link_file_at(file, db32enc_str(id))
+        fs::remove_file(self.object_path(id))
     }
 
     pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
@@ -422,12 +406,6 @@ mod tests {
         assert!(store.open_large(&id).is_err());
         assert!(store.remove_large(&id).is_err());
         assert!(store.open(&id).is_err());
-
-        let mut wfile = store.new_unnamed_file().unwrap();
-        wfile.write(b"hello, world");
-        assert!(store.link_file_at(&mut wfile, &id).is_ok());
-        assert!(store.remove_large(&id).is_ok());
-        assert!(store.open_large(&id).is_err());
     }
 }
 

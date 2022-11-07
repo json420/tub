@@ -132,8 +132,9 @@ pub struct Store {
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self 
-        where PathBuf: From<P> {
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self>
+            where PathBuf: From<P> 
+        {
         let pb = PathBuf::from(path);
 
         let mut pb_copy = pb.clone();
@@ -141,17 +142,15 @@ impl Store {
         let file = File::options()
                         .read(true)
                         .append(true)
-                        .create(true).open(pb_copy).unwrap();
-        Store {
-            path: pb,
-            file: file,
-            index: HashMap::new(),
-        }
+                        .create(true).open(pb_copy)?;
+        Ok(
+            Store {path: pb, file: file, index: HashMap::new()}
+        )
     }
 
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
-        let store = Store::new(tmp.path());
+        let store = Store::new(tmp.path()).unwrap();
         (tmp, store)
     }
 

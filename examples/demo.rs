@@ -8,6 +8,8 @@ fn main() {
     }
     let (tmp, store) = Store::new_tmp();
     for _i in 0..10 {
-        println!("{}", store.object_path(&random_object_id()).display());
+        let rid = random_object_id();
+        println!("{}", store.object_path(&rid).display());
+        println!("{}", store.partial_path(&rid).display());
     }
 }

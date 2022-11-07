@@ -36,6 +36,7 @@ use crate::util::{fadvise_random, fadvise_sequential};
 const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
 const PARTIALDIR: &str = "partial";
+const TMPDIR: &str = "tmp";
 const DIRMODE: u32 = 0o770;
 const FILEMODE: u32 = 0o660;
 static README: &str = "README.txt";
@@ -79,6 +80,8 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
     where PathBuf: From<P>
     {
     let mut pb = PathBuf::from(dir);
+
+    // objects directory and sub-directories
     pb.push(OBJECTDIR);
     fs::create_dir(&pb)?;
     for name in Name2Iter::new() {
@@ -87,9 +90,23 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
         pb.pop();
     }
     pb.pop();
+
+    // partial directory:
+    pb.push(PARTIALDIR);
+    fs::create_dir(&pb);
+    pb.pop();
+
+    // tmp directory:
+    pb.push(TMPDIR);
+    fs::create_dir(&pb);
+    pb.pop();
+
+    // REAMDE file  :-)
     pb.push(README);
     let mut f = fs::File::create(&pb)?;
     f.write_all(README_CONTENTS)?;
+    pb.pop();
+
     Ok(())
 }
 
@@ -179,11 +196,11 @@ impl Store {
         Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
     }
 
-    pub fn len(&mut self) -> usize {
+    pub fn len(&self) -> usize {
         self.index.len()
     }
 
-    pub fn keys(&mut self) -> Vec<ObjectID> {
+    pub fn keys(&self) -> Vec<ObjectID> {
         Vec::from_iter(self.index.keys().cloned())
     }
 
@@ -334,7 +351,7 @@ mod tests {
     fn test_init_store() {
         let tmp = TestTempDir::new();
         init_store(tmp.path());
-        let mut expected = vec![OBJECTDIR, README];
+        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
         expected.sort();
         assert_eq!(tmp.list_root(), expected);
         let dirs = tmp.list_dir(&[OBJECTDIR]);

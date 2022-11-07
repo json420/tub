@@ -1,3 +1,5 @@
+//! Import from the file system.
+
 use std::path::{Path, PathBuf};
 use std::fs::{read_dir, metadata, File};
 use std::io;

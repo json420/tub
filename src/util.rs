@@ -1,3 +1,5 @@
+//! Misc utilities, libc wrappers.
+
 use std::fs::File;
 use crate::base::*;
 use std::os::unix::io::AsRawFd;

@@ -1,4 +1,6 @@
-//! Testing helpers (FIXME: should eventually be put somewhere else).
+//! Test fixtures.
+
+// (FIXME: should eventually be put somewhere else).
 
 use std::io::prelude::*;
 use std::path::PathBuf;

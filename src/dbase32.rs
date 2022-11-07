@@ -1,3 +1,5 @@
+//! Custom base32 encoding used to encode IDs.
+
 use crate::util::getrandom;
 
 

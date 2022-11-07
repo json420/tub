@@ -134,7 +134,7 @@ pub struct Store {
 impl Store {
     pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self>
             where PathBuf: From<P> 
-        {
+    {
         let pb = PathBuf::from(path);
 
         let mut pb_copy = pb.clone();
@@ -148,6 +148,8 @@ impl Store {
         )
     }
 
+    // FIXME: This is mostly for testing and play, but perhaps should be
+    // removed after MVP.
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
         let store = Store::new(tmp.path()).unwrap();

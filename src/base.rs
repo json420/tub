@@ -1,3 +1,5 @@
+//! Constants and types.
+
 use std::mem::size_of;
 
 pub const ABSTRACT_ID_LEN: usize = 15;

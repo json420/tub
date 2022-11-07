@@ -1,3 +1,6 @@
+//! Object hashing protocol.
+
+
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */

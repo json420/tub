@@ -1,12 +1,10 @@
-use std::fs::{File, create_dir};
 use std::path::{Path, PathBuf};
-use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
-use std::collections::HashMap;
-use std::io::IoSlice;
 use std::io;
-use std::io::SeekFrom;
+use std::os::unix::fs::FileExt;
 use std::fs;
+use std::fs::File;
+use std::collections::HashMap;
 
 use tempfile::TempDir;
 use openat;
@@ -36,7 +34,7 @@ pub struct Object {
     offset: OffsetSize,
     size: ObjectSize,
     id: ObjectID,
-    rfile: File,
+    rfile: fs::File,
 }
 
 impl Object {
@@ -55,16 +53,6 @@ pub struct Entry {
 }
 
 type Index = HashMap<ObjectID, Entry>;
-
-
-#[derive(Debug)]
-pub struct Store {
-    dir: openat::Dir,
-    odir: openat::Dir,
-    afile: File,
-    rfile: File,
-    index: Index,
-}
 
 
 /// Initialize directories and files that Store uses
@@ -86,24 +74,33 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
     {
     let mut pb = PathBuf::from(dir);
     pb.push(OBJECTDIR);
-    create_dir(&pb)?;
+    fs::create_dir(&pb)?;
     for name in Name2Iter::new() {
         pb.push(name);
-        create_dir(&pb)?;
+        fs::create_dir(&pb)?;
         pb.pop();
     }
     pb.pop();
     pb.push(README);
     let mut f = fs::File::create(&pb)?;
-    f.write_all(README_CONTENTS);
+    f.write_all(README_CONTENTS)?;
     Ok(())
 }
 
 
+#[derive(Debug)]
+pub struct Store {
+    dir: openat::Dir,
+    odir: openat::Dir,
+    afile: fs::File,
+    rfile: fs::File,
+    index: Index,
+}
+
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
     pub fn new(dir: openat::Dir) -> Self {
-        dir.create_dir(OBJECTDIR, DIRMODE);
+        dir.create_dir(OBJECTDIR, DIRMODE).unwrap();
         let odir = dir.sub_dir(OBJECTDIR).unwrap();
         let afile = dir.append_file(PACKFILE, FILEMODE).unwrap();
         let rfile = dir.open_file(PACKFILE).unwrap();
@@ -127,7 +124,7 @@ impl Store {
         Store::new(dir)
     }
 
-    fn open_large(&self, id: &ObjectID) -> io::Result<File> {
+    fn open_large(&self, id: &ObjectID) -> io::Result<fs::File> {
         self.odir.open_file(db32enc_str(id))
     }
 
@@ -171,7 +168,7 @@ impl Store {
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
-        self.rfile.seek(SeekFrom::Start(0)).unwrap();
+        self.rfile.seek(io::SeekFrom::Start(0)).unwrap();
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.rfile.read_exact(&mut header) {
@@ -199,7 +196,7 @@ impl Store {
                     }
                 }
                 else {
-                    self.rfile.seek(SeekFrom::Current(size as i64)).expect("oops");
+                    self.rfile.seek(io::SeekFrom::Current(size as i64)).expect("oops");
                 }
             }
             else {
@@ -212,15 +209,6 @@ impl Store {
         fadvise_random(&self.rfile);
     }
 
-    fn get(&self, id: &ObjectID) -> Option<Entry> {
-        if let Some(val) = self.index.get(id) {
-            Some(val.clone())
-        }
-        else {
-            None
-        }
-    }
-
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
         let id = hash(data);
         if let Some(entry) = self.index.get(&id) {
@@ -231,9 +219,9 @@ impl Store {
             size: data.len() as ObjectSize,
         };
         self.afile.write_all_vectored(&mut [
-            IoSlice::new(&id),
-            IoSlice::new(&entry.size.to_le_bytes()),
-            IoSlice::new(data),
+            io::IoSlice::new(&id),
+            io::IoSlice::new(&entry.size.to_le_bytes()),
+            io::IoSlice::new(data),
         ]).expect("object append failed");
         self.index.insert(id, entry);
         (id, true)
@@ -265,8 +253,8 @@ impl Store {
         if let Some(entry) = self.index.get(id) {
             eprintln!("Deleting {}", db32enc_str(id));
             self.afile.write_all_vectored(&mut [
-                IoSlice::new(id),
-                IoSlice::new(&(0_u64).to_le_bytes()),
+                io::IoSlice::new(id),
+                io::IoSlice::new(&(0_u64).to_le_bytes()),
             ]).expect("failed to write tombstone");
             self.index.remove(id);
             //FIXME: In large object case, also delete object file
@@ -366,16 +354,5 @@ mod tests {
         assert!(store.remove_large(&id).is_ok());
         assert!(store.open_large(&id).is_err());
     }
-
-    #[test]
-    fn test_get() {
-        let (tmp, mut store) = Store::new_tmp();
-        let id = random_object_id();
-        assert_eq!(store.get(&id), None);
-        let entry = Entry {size: 3, offset: 5};
-        assert_eq!(store.index.insert(id.clone(), entry.clone()), None);
-        assert_eq!(store.get(&id), Some(entry));
-    }
-
 }
 

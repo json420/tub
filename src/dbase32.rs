@@ -1,9 +1,10 @@
 use crate::util::getrandom;
 
 
+/* FIXME: Do we want to use this still?
 const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
-
+*/
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
@@ -67,18 +68,6 @@ static REVERSE: &[u8; 256] = &[
 fn _text_to_bytes(text: &str) -> std::str::Bytes {
     let b: std::str::Bytes = text.bytes();
     return b;
-}
-
-fn _check_length(text: &str) -> Result<&str, &str> {
-    if text.len() < 8 || text.len() > MAX_TXT_LEN {
-        return Err(text)
-    }
-    if text.len() % 8 != 0 {
-        return Err(text)
-    }
-    
-    Ok(text)
-    
 }
 
 /// Iterates over the 1024 2-character Dbase32 directory names.
@@ -308,28 +297,6 @@ mod tests {
         assert_eq!(names[1021], "YW");
         assert_eq!(names[1022], "YX");
         assert_eq!(names[1023], "YY");
-    }
-
-    #[test]
-    fn test_check_length() {
-        let short = super::_check_length("SHORT");
-        assert_eq!(short, Err("SHORT"));
-        
-        
-        let long = super::_check_length(
-            "LONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONG"
-        );
-        assert_eq!(
-            long, 
-            Err("LONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONG")
-        );
-        
-        let noteight = super::_check_length("NOTQUITEEIGHT");
-        assert_eq!(noteight, Err("NOTQUITEEIGHT"));
-        
-        let noteight = super::_check_length("IAMEIGHT");
-        assert_eq!(noteight, Ok("IAMEIGHT"));
-        
     }
 
     #[test]

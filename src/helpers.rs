@@ -1,3 +1,5 @@
+//! Testing helpers (FIXME: should eventually be put somewhere else).
+
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::fs;
@@ -30,6 +32,22 @@ impl TestTempDir {
         }
         p
     }
+
+    pub fn names(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        if let Ok(entries) = fs::read_dir(self.path()) {
+            for result in entries {
+                if let Ok(entry) = result {
+                    names.push(
+                        entry.file_name().into_string().unwrap()
+                    );
+                    println!("{:?}", entry.file_name());
+                }
+            }
+        }
+        names.sort();
+        names
+    }   
 
     pub fn read(self, names: &[&str]) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
@@ -67,10 +85,9 @@ mod tests {
         assert!(a.to_str().unwrap().starts_with(base.to_str().unwrap()));
         assert!(a.to_str().unwrap().ends_with("/a"));
 
+        assert_eq!(tmp.names().len(), 0);
         tmp.touch(&["a"]);
-
-
-        
-        
+        assert_eq!(tmp.names().len(), vec!["a"];);
+    
     }
 }

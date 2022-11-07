@@ -35,9 +35,10 @@ use crate::util::{fadvise_random, fadvise_sequential};
 
 const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
+const PARTIALDIR: &str = "partial";
 const DIRMODE: u32 = 0o770;
 const FILEMODE: u32 = 0o660;
-const README: &str = "README.txt";
+static README: &str = "README.txt";
 
 static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
 
@@ -92,12 +93,17 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
     Ok(())
 }
 
-pub fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
+fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
     pb.push(OBJECTDIR);
     let sid = db32enc_str(id);
     let (prefix, suffix) = sid.split_at(2);
     pb.push(prefix);
     pb.push(suffix);
+}
+
+fn push_partial_path(pb: &mut PathBuf, id: &ObjectID) {
+    pb.push(PARTIALDIR);
+    pb.push(db32enc_str(id));
 }
 
 
@@ -131,16 +137,25 @@ impl Store {
         }
     }
 
-
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
         let store = Store::new(tmp.path());
         (tmp, store)
     }
 
+    pub fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
     pub fn object_path(&self, id: &ObjectID) -> PathBuf {
-        let mut pb = self.path.clone();
+        let mut pb = self.path();
         push_object_path(&mut pb, id);
+        pb
+    }
+
+    pub fn partial_path(&self, id: &ObjectID) -> PathBuf {
+        let mut pb = self.path();
+        push_partial_path(&mut pb, id);
         pb
     }
 
@@ -302,6 +317,16 @@ mod tests {
         push_object_path(&mut pb, &id);
         assert_eq!(pb.as_os_str(),
             "objects/33/3333333333333333333333333333333333333333333333"
+        );
+    }
+
+    #[test]
+    fn test_push_partial_path() {
+        let id = [0_u8; OBJECT_ID_LEN];
+        let mut pb = PathBuf::new();
+        push_partial_path(&mut pb, &id);
+        assert_eq!(pb.as_os_str(),
+            "partial/333333333333333333333333333333333333333333333333"
         );
     }
 

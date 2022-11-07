@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::io::IoSlice;
 use std::io;
 use std::io::SeekFrom;
+use std::fs;
 
 use tempfile::TempDir;
 use openat;
@@ -21,6 +22,12 @@ const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
 const DIRMODE: u32 = 0o770;
 const FILEMODE: u32 = 0o660;
+const README: &str = "README.txt";
+
+static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
+
+What's even more relaxing than a Couch?  A Bathtub!
+";
 
 
 /// Represents an object open for reading (both large and small objects)
@@ -69,6 +76,26 @@ pub fn init_store_layout(dir: &openat::Dir) -> io::Result<()> {
         dir.create_dir(&pb, DIRMODE)?;
     }
     dir.create_file(PACKFILE, FILEMODE)?;
+    Ok(())
+}
+
+
+/// Initialize a store layout in an empty directory.
+pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()> 
+    where PathBuf: From<P>
+    {
+    let mut pb = PathBuf::from(dir);
+    pb.push(OBJECTDIR);
+    create_dir(&pb)?;
+    for name in Name2Iter::new() {
+        pb.push(name);
+        create_dir(&pb)?;
+        pb.pop();
+    }
+    pb.pop();
+    pb.push(README);
+    let mut f = fs::File::create(&pb)?;
+    f.write_all(README_CONTENTS);
     Ok(())
 }
 

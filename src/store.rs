@@ -55,18 +55,6 @@ pub struct Entry {
 type Index = HashMap<ObjectID, Entry>;
 
 
-/// Initialize directories and files that Store uses
-pub fn init_store_layout(dir: &openat::Dir) -> io::Result<()> {
-    dir.create_dir(OBJECTDIR, DIRMODE)?;
-    for name in Name2Iter::new() {
-        let pb: PathBuf = [OBJECTDIR, &name].iter().collect();
-        println!("{:?}", pb);
-        dir.create_dir(&pb, DIRMODE)?;
-    }
-    dir.create_file(PACKFILE, FILEMODE)?;
-    Ok(())
-}
-
 
 /// Initialize a store layout in an empty directory.
 pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()> 

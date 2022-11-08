@@ -31,13 +31,11 @@ use crate::dbase32::{db32enc, db32enc_str, Name2Iter};
 use crate::util::{fadvise_random, fadvise_sequential};
 
 
-
+const DOTDIR: &str = ".bathtub_db";
 const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
 const PARTIALDIR: &str = "partial";
 const TMPDIR: &str = "tmp";
-const DIRMODE: u32 = 0o770;
-const FILEMODE: u32 = 0o660;
 static README: &str = "README.txt";
 
 static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
@@ -73,31 +71,27 @@ pub struct Entry {
 type Index = HashMap<ObjectID, Entry>;
 
 
-
 /// Initialize a store layout in an empty directory.
-pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()> 
-    where PathBuf: From<P>
-    {
-    let mut pb = PathBuf::from(dir);
-
+pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
+{
     // objects directory and sub-directories
     pb.push(OBJECTDIR);
-    fs::create_dir(&pb)?;
+    fs::create_dir(pb.as_path())?;
     for name in Name2Iter::new() {
         pb.push(name);
-        fs::create_dir(&pb)?;
+        fs::create_dir(pb.as_path())?;
         pb.pop();
     }
     pb.pop();
 
     // partial directory:
     pb.push(PARTIALDIR);
-    fs::create_dir(&pb);
+    fs::create_dir(pb.as_path());
     pb.pop();
 
     // tmp directory:
     pb.push(TMPDIR);
-    fs::create_dir(&pb);
+    fs::create_dir(pb.as_path());
     pb.pop();
 
     // REAMDE file  :-)
@@ -108,6 +102,17 @@ pub fn init_store<P: AsRef<Path>>(dir: P) -> io::Result<()>
 
     Ok(())
 }
+
+
+/// Creates the `".bathtub_db"` directory, calls `init_store()`.
+pub fn init_tree(pb: &mut PathBuf) -> io::Result<()>
+{
+    pb.push(DOTDIR);
+    fs::create_dir(pb.as_path())?;
+    init_store(pb)?;
+    Ok(())
+}
+
 
 fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
     pb.push(OBJECTDIR);
@@ -336,9 +341,31 @@ mod tests {
     }
 
     #[test]
+    fn test_init_tree() {
+        let tmp = TestTempDir::new();
+        let mut pb = PathBuf::from(tmp.path());
+        init_tree(&mut pb);
+        assert_eq!(tmp.list_root(), vec![DOTDIR]);
+
+        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
+        expected.sort();
+        assert_eq!(tmp.list_dir(&[DOTDIR]), expected);
+
+        let dirs = tmp.list_dir(&[DOTDIR, OBJECTDIR]);
+        assert_eq!(dirs.len(), 1024);
+        let expected: Vec<String> = Name2Iter::new().collect();
+        assert_eq!(dirs, expected);
+        assert_eq!(dirs[0], "33");
+        assert_eq!(dirs[1], "34");
+        assert_eq!(dirs[1022], "YX");
+        assert_eq!(dirs[1023], "YY");
+    }
+
+    #[test]
     fn test_init_store() {
         let tmp = TestTempDir::new();
-        init_store(tmp.path());
+        let mut pb = PathBuf::from(tmp.path());
+        init_store(&mut pb);
         let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
         expected.sort();
         assert_eq!(tmp.list_root(), expected);

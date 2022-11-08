@@ -36,7 +36,7 @@ const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
 const PARTIALDIR: &str = "partial";
 const TMPDIR: &str = "tmp";
-static README: &str = "README.txt";
+static README: &str = "README.txt";  // The REAMDE file
 
 static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
 
@@ -58,15 +58,13 @@ impl Object {
 }
 
 
-
-
-
-
+/// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
     offset: OffsetSize,
     size: ObjectSize,
 }
+
 
 type Index = HashMap<ObjectID, Entry>;
 
@@ -96,7 +94,7 @@ pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
 
     // REAMDE file  :-)
     pb.push(README);
-    let mut f = fs::File::create(&pb)?;
+    let mut f = fs::File::create(pb.as_path())?;
     f.write_all(README_CONTENTS)?;
     pb.pop();
 
@@ -125,6 +123,11 @@ fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
 fn push_partial_path(pb: &mut PathBuf, id: &ObjectID) {
     pb.push(PARTIALDIR);
     pb.push(db32enc_str(id));
+}
+
+fn push_tmp_path(pb: &mut PathBuf, key: &AbstractID) {
+    pb.push(TMPDIR);
+    pb.push(db32enc_str(key));
 }
 
 
@@ -344,6 +347,16 @@ mod tests {
         push_partial_path(&mut pb, &id);
         assert_eq!(pb.as_os_str(),
             "partial/333333333333333333333333333333333333333333333333"
+        );
+    }
+
+    #[test]
+    fn test_push_tmp_path() {
+        let key = [0_u8; ABSTRACT_ID_LEN];
+        let mut pb = PathBuf::new();
+        push_tmp_path(&mut pb, &key);
+        assert_eq!(pb.as_os_str(),
+            "tmp/333333333333333333333333"
         );
     }
 

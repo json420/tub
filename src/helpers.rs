@@ -28,11 +28,11 @@ impl TestTempDir {
 
     // Construct an absolute path starting with self.path()
     pub fn build(&self, names: &[&str]) -> PathBuf {
-        let mut p = self.path();
+        let mut pb = self.path();
         for n in names {
-            p.push(n);
+            pb.push(n);
         }
-        p
+        pb
     }
 
     pub fn list_dir(&self, parts: &[&str]) -> Vec<String> {

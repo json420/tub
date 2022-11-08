@@ -1,4 +1,4 @@
-use bathtub_db::dbase32::Name2Iter;
+use bathtub_db::dbase32::{Name2Iter, random_id};
 use bathtub_db::util::random_object_id;
 use bathtub_db::store::Store;
 
@@ -12,4 +12,5 @@ fn main() {
         println!("{}", store.object_path(&rid).display());
         println!("{}", store.partial_path(&rid).display());
     }
+    println!("{}", random_id());
 }

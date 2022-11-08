@@ -28,13 +28,13 @@ impl Ord for AOPair {
     }
 }
 
-struct Tree {
+pub struct Tree {
     ids: Vec<AOPair>,
     cur: usize,
 }
 
 impl Tree {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             ids: vec![],
             cur: 0,
@@ -50,10 +50,19 @@ impl Tree {
             Ok(_) => {},
             Err(pos) => self.ids.insert(pos, AOPair{id: id, obj_id: *obj_id}),
         }
-        
+    }
+    
+    //this is used for testing
+    pub fn add_with_abs_id(&mut self, abs_id: &[u8; 15], obj_id: &[u8; 30]) {
+        let id = abs_id.clone();
+        match self.ids.binary_search(&AOPair{id: id, obj_id: *obj_id}) {
+            Ok(_) => {},
+            Err(pos) => {self.ids.insert(pos, AOPair{id: id, obj_id: *obj_id})},
+        }
     }
     
     // replace this with self-sorting mechanism...add is broken
+    // may not be needed any more, leaving for now in case tests break
     fn sort(&mut self) {
         self.ids.sort();
     }
@@ -64,20 +73,27 @@ impl Tree {
         r
     }
     
-    fn get_object_id(&mut self, abstract_id: AbstractID) -> ObjectID {
-        let max: u64 = 0xFFFFFFFFFFFFFFFF;
+    pub fn get_object_id(&mut self, abstract_id: AbstractID) -> ObjectID {
+        let max: f64 = 0xFFFFFFFFFFFFFFu64 as f64;
         let len: f64 = self.ids.len() as f64;
-        let absid: f64 = f64::from_le_bytes(<[u8; 8]>::try_from(&abstract_id[0..8]).expect("L"));
-        let fraction: f64 = (absid / max as f64) * len;
+        let tmpa = &abstract_id as *const u8;
+        
+        let tmp: u64 = tmpa as u64;
+        //let tmp: u64 = &abstract_id[0..4] as u64;
+        //let absid: f64 = f32::from_le_bytes(<[u8; 4]>::try_from(&abstract_id[0..4]).expect("L")) as f64;
+        let absid: f64 = tmp as f64;
+        let fraction: f64 = (absid / max as f64)*256.0 * len;
         
         let mut i = fraction.floor() as usize;
+        //print!("\n {:?} {:?} {:?}\n", absid, fraction, i);
         
         while abstract_id != self.ids[i].id {
+            //print!("\n find: {:?} ... {:?} <= {:?}", abstract_id, self.ids[i].id, i);
             if abstract_id < self.ids[i].id {
-                i += 1;
+                i -= 1;
             }
             else if abstract_id > self.ids[i].id {
-                i -= 1;
+                i += 1;
             }
         }
         self.ids[i].obj_id
@@ -173,13 +189,17 @@ mod tests {
         assert_eq!(ret, right);
     }
     
-    //#[test]
+    #[test]
     fn add_db() {
         let GET_LOOPS: usize = 5;
         let dir = openat::Dir::open(".").unwrap();
         //let mut store = Store::new("test.btdb");
         let mut store = Store::new(dir);
         store.reindex(false);
+        
+        for id in 0..100000 {
+            store.add_object(&random_object_id());
+        }
         
         let keys = store.keys();
         
@@ -190,7 +210,7 @@ mod tests {
             count += 1;
         }
         assert_eq!(count, 100000);
-        tree.sort();
+        //tree.sort();
         
         let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];
         count = 0;

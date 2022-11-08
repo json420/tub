@@ -11,4 +11,5 @@ pub mod tree;
 pub mod dbase32;
 pub mod importer;
 pub mod helpers;
+pub mod commands;
 

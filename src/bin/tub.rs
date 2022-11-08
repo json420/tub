@@ -1,9 +1,7 @@
-use std::env;
+use bathtub_db::commands::{get_args, run};
 
-fn main()
-{
-    println!("{:?}", env::current_dir());
-    for a in env::args() {
-        println!("{}", a);
-    }
+
+fn main()   
+{   
+    run(&mut get_args());
 }

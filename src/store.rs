@@ -128,6 +128,7 @@ fn push_partial_path(pb: &mut PathBuf, id: &ObjectID) {
 }
 
 
+/// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
 pub struct Store {
     path: PathBuf,
@@ -161,16 +162,22 @@ impl Store {
         (tmp, store)
     }
 
+    /// Returns clone of self.path
     pub fn path(&self) -> PathBuf {
         self.path.clone()
     }
 
+    /// Builds canonical large file path.
     pub fn object_path(&self, id: &ObjectID) -> PathBuf {
         let mut pb = self.path();
         push_object_path(&mut pb, id);
         pb
     }
 
+    /// Builds canonical partial large file path.
+    ///
+    /// A "partial" object is an object whose hash/ID is known, but not all the
+    /// leaves are present in this store next.
     pub fn partial_path(&self, id: &ObjectID) -> PathBuf {
         let mut pb = self.path();
         push_partial_path(&mut pb, id);

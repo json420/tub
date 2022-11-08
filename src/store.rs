@@ -69,6 +69,22 @@ pub struct Entry {
 type Index = HashMap<ObjectID, Entry>;
 
 
+/// Find the control directory by walking up the path.
+pub fn find_dotdir(pb: &mut PathBuf) -> bool
+{
+    loop {
+        pb.push(DOTDIR);
+        if pb.is_dir() {
+            return true;
+        }
+        pb.pop();
+        if !pb.pop() {
+            return false;
+        }
+    }
+}
+
+
 /// Initialize a store layout in an empty directory.
 pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
 {
@@ -180,7 +196,7 @@ impl Store {
     /// Builds canonical partial large file path.
     ///
     /// A "partial" object is an object whose hash/ID is known, but not all the
-    /// leaves are present in this store next.
+    /// its leaves are present in this store.
     pub fn partial_path(&self, id: &ObjectID) -> PathBuf {
         let mut pb = self.path();
         push_partial_path(&mut pb, id);
@@ -329,6 +345,22 @@ mod tests {
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_find_dotdir() {
+        let mut pb = PathBuf::new();
+        assert!(! find_dotdir(&mut pb));
+        assert_eq!(pb.as_os_str(), "");
+
+        let tmp = TestTempDir::new();
+        tmp.makedirs(&["foo", "bar"]);
+        tmp.mkdir(&["foo", DOTDIR]);
+        let mut pb = PathBuf::from(tmp.path());
+        pb.push("foo");
+        pb.push("bar");
+        assert!(find_dotdir(&mut pb));
+        assert!(pb.as_path().ends_with("foo/.bathtub_db"));
+    }
 
     #[test]
     fn test_push_object_path() {

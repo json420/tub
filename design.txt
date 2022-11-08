@@ -1,0 +1,53 @@
+Brain Dump on Bathtub DB.
+
+Object Storage
+==============
+
+At it's core, BTDB is content addressable object store.  There are two somewhat
+conflicting goals for this layer of BTDB:
+
+    1.  We want to aggressively delta compress sequences of changes to small
+        objects (source control, document updates, etc).  Small objects are
+        appended to the bathtub.db file and then will be periodically repacked
+
+    2.  We want to store very large objects, including large objects that
+        generally don't change and can't be delta compressed (video files)
+
+Performance goals:
+
+    *   Small object reads need to be very fast
+
+    *   Reading the latest state needs to be fast (ie, delta compressed
+        documents, source code)
+
+    *   Hash algorithm needs to be as fast as possible while still being
+        cryptographically robust
+
+
+Object Versioning
+=================
+
+Versioning is a mapping of Abstract IDs (random) to Concrete IDs (derived from
+content):
+
+    abstract_id => concrete_id
+
+A given Abstract ID can only point to a single Concrete IDs at a time, but
+the same Concrete ID can be pointed to by multiple Abstract IDs.
+
+
+Branches
+========
+
+A branch is a history of changes to the state.  Branches are stored as a signed
+block chain.  Signed use used for access control (you can write to a branch if
+you have the private key).  The hash chain is used for long term preservation
+of history.
+
+Branches are identified by an Abstract ID.  It's tempting to use the content
+hash of the public key to identify a branch (since each branch has a unique
+one).  But this breaks re-keying.
+
+However, the hash chain this allows of to validate the history chain as long
+as we know the current history entry.
+

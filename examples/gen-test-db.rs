@@ -9,7 +9,7 @@ const VERIFY: bool = false;
 
 
 fn main() {
-    let mut store = Store::new_cwd();
+    let (tmp, mut store) = Store::new_tmp();
     println!("Reindexing objects (VERIFY={})", VERIFY);
 
     let start = time::Instant::now();

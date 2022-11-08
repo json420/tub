@@ -1,9 +1,12 @@
+//! Custom base32 encoding used to encode IDs.
+
 use crate::util::getrandom;
 
 
+/* FIXME: Do we want to use this still?
 const MAX_BIN_LEN: usize = 60; //480 bits
 const MAX_TXT_LEN: usize = 96;
-
+*/
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
@@ -69,16 +72,39 @@ fn _text_to_bytes(text: &str) -> std::str::Bytes {
     return b;
 }
 
-fn _check_length(text: &str) -> Result<&str, &str> {
-    if text.len() < 8 || text.len() > MAX_TXT_LEN {
-        return Err(text)
+/// Iterates over the 1024 2-character Dbase32 directory names.
+/// Will yield "33", "34", ... "YX", "YY".
+#[derive(Debug)]
+pub struct Name2Iter {
+    i: usize,
+}
+
+impl Name2Iter {
+    pub fn new() -> Self {
+        Self {i: 0}
     }
-    if text.len() % 8 != 0 {
-        return Err(text)
+}
+
+impl Iterator for Name2Iter {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.i < 1024 {
+            let mut s = String::from("ZZ");
+            let a = FORWARD[self.i >> 5];
+            let b = FORWARD[self.i & 31];
+            unsafe {
+                let mut buf = s.as_bytes_mut();
+                buf[0] = a;
+                buf[1] = b;
+            }
+            self.i += 1;
+            Some(s)
+        }
+        else {
+            None
+        }
     }
-    
-    Ok(text)
-    
 }
 
 macro_rules! bin_at {
@@ -264,25 +290,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_check_length() {
-        let short = super::_check_length("SHORT");
-        assert_eq!(short, Err("SHORT"));
-        
-        
-        let long = super::_check_length(
-            "LONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONG"
-        );
-        assert_eq!(
-            long, 
-            Err("LONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONGLONG")
-        );
-        
-        let noteight = super::_check_length("NOTQUITEEIGHT");
-        assert_eq!(noteight, Err("NOTQUITEEIGHT"));
-        
-        let noteight = super::_check_length("IAMEIGHT");
-        assert_eq!(noteight, Ok("IAMEIGHT"));
-        
+    fn test_name2iter() {
+        let names = Vec::from_iter(Name2Iter::new());
+        assert_eq!(names.len(), 1024);
+        assert_eq!(names[0], "33");
+        assert_eq!(names[1], "34");
+        assert_eq!(names[2], "35");
+        assert_eq!(names[1021], "YW");
+        assert_eq!(names[1022], "YX");
+        assert_eq!(names[1023], "YY");
     }
 
     #[test]

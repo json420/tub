@@ -138,6 +138,8 @@ impl Iterator for Tree {
 mod tests {
     use super::*;
     use crate::store::*;
+    use crate::helpers::TestTempDir;
+
     #[test]
     fn it_works() {
         let mut tree = Tree::new();
@@ -192,9 +194,7 @@ mod tests {
     #[test]
     fn add_db() {
         let GET_LOOPS: usize = 5;
-        let dir = openat::Dir::open(".").unwrap();
-        //let mut store = Store::new("test.btdb");
-        let mut store = Store::new(dir);
+        let (tmp, mut store) = Store::new_tmp();
         store.reindex(false);
         
         for id in 0..100000 {

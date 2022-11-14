@@ -196,8 +196,10 @@ mod tests {
         let GET_LOOPS: usize = 5;
         let (tmp, mut store) = Store::new_tmp();
         store.reindex(false);
-        
-        for id in 0..100000 {
+
+        const ROUNDS: u64 = 10_000;
+
+        for id in 0..ROUNDS {
             store.add_object(&random_object_id());
         }
         
@@ -209,12 +211,12 @@ mod tests {
             tree.add(id);
             count += 1;
         }
-        assert_eq!(count, 100000);
+        assert_eq!(count, ROUNDS);
         //tree.sort();
         
         let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];
         count = 0;
-        for id in 0..100000 {
+        for id in 0..ROUNDS {
             let abs = tree.read_next_id();
             if abs > prevabs {
                 assert_eq!(abs, abs);

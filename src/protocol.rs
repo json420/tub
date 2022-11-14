@@ -1,6 +1,9 @@
 //! Object hashing protocol.
 
 
+
+// https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
+
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */
@@ -91,7 +94,7 @@ impl Hasher {
         }
     }
 
-    fn content_hash(&mut self) -> ObjectID {
+    fn content_hash(&mut self) -> ObjectInfo {
         self.closed = true;
         let mut h = HashFunc::new();
         h.update(&self.size.to_le_bytes());
@@ -100,7 +103,7 @@ impl Hasher {
         }
         let mut id: ObjectID = [0_u8; OBJECT_ID_LEN];
         h.finalize_xof().fill(&mut id);
-        id
+        ObjectInfo::new(id, self.size, self.leaf_hashes.clone())
     }
 }
 

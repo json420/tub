@@ -24,6 +24,24 @@ pub const LEAF_SIZE: ObjectSize = 8388608;  // 8 MiB leaf size
 pub type LeafBuf = Box<[u8; LEAF_SIZE as usize]>;
 
 
+pub struct ObjectInfo {
+    id: ObjectID,
+    size: ObjectSize,
+    leaf_hashes: LeafHashList,
+}
+
+impl ObjectInfo
+{
+    pub fn new(id: ObjectID, size: ObjectSize, leaf_hashes: LeafHashList) -> Self
+    {
+        Self {
+            id: id,
+            size: size,
+            leaf_hashes: leaf_hashes,
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

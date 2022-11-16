@@ -8,6 +8,7 @@ pub mod protocol;
 pub mod util;
 pub mod store;
 pub mod tree;
+pub mod commit;
 pub mod dbase32;
 pub mod importer;
 pub mod helpers;

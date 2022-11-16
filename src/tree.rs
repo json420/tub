@@ -30,7 +30,7 @@ impl Ord for AOPair {
 
 pub struct Tree {
     ids: Vec<AOPair>,
-    cur: usize,
+    cur: usize, // iterate
 }
 
 impl Tree {
@@ -41,7 +41,7 @@ impl Tree {
         }
     }
     
-    fn add(&mut self, obj_id: &[u8; 30]) {
+    pub fn add(&mut self, obj_id: &[u8; 30]) {
         //self.ids.push(AOPair{id: random_id(), obj_id: *obj_id});
         //absid: getrandom
         //util.randomid
@@ -61,12 +61,6 @@ impl Tree {
         }
     }
     
-    // replace this with self-sorting mechanism...add is broken
-    // may not be needed any more, leaving for now in case tests break
-    fn sort(&mut self) {
-        self.ids.sort();
-    }
-    
     fn read_next_id(&mut self) -> AbstractID {
         let r = self.ids[self.cur].id;
         self.cur += 1;
@@ -74,21 +68,11 @@ impl Tree {
     }
     
     pub fn get_object_id(&mut self, abstract_id: AbstractID) -> ObjectID {
-        let max: f64 = 0xFFFFFFFFFFFFFFu64 as f64;
         let len: f64 = self.ids.len() as f64;
-        let tmpa = &abstract_id as *const u8;
-        
-        let tmp: u64 = tmpa as u64;
-        //let tmp: u64 = &abstract_id[0..4] as u64;
-        //let absid: f64 = f32::from_le_bytes(<[u8; 4]>::try_from(&abstract_id[0..4]).expect("L")) as f64;
-        let absid: f64 = tmp as f64;
-        let fraction: f64 = (absid / max as f64)*256.0 * len;
-        
+        let fraction: f64 = (abstract_id[0] as f64 * len / 256.0);
         let mut i = fraction.floor() as usize;
-        //print!("\n {:?} {:?} {:?}\n", absid, fraction, i);
         
         while abstract_id != self.ids[i].id {
-            //print!("\n find: {:?} ... {:?} <= {:?}", abstract_id, self.ids[i].id, i);
             if abstract_id < self.ids[i].id {
                 i -= 1;
             }
@@ -97,11 +81,9 @@ impl Tree {
             }
         }
         self.ids[i].obj_id
-        
-        
     }
     
-    fn get_tree_object(&mut self) -> Vec<u8> {
+    pub fn get_tree_object(&mut self) -> Vec<u8> {
         let mut obj: Vec<u8> = Vec::with_capacity(self.ids.len()*(ABSTRACT_ID_LEN+OBJECT_ID_LEN));
         obj.push(0u8);
         for el in 0..self.ids.len() {
@@ -110,6 +92,7 @@ impl Tree {
         }
         obj
     }
+    
 }
 
 
@@ -212,7 +195,6 @@ mod tests {
             count += 1;
         }
         assert_eq!(count, ROUNDS);
-        //tree.sort();
         
         let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];
         count = 0;

@@ -1,13 +1,9 @@
-//! Command line argument parsing and dispatching.
 
+use std::collections::{BTreeMap, VecDeque};
 use std::env;
-use std::collections::{HashMap, VecDeque};
 
 
 pub type CmdArgs = VecDeque<String>;
-pub type CmdFn = fn(args: &CmdArgs) -> bool;
-pub type CmdMap = HashMap<String, CmdFn>;
-
 
 /// Collect `env::args()` into a `VecDeque`.
 pub fn get_args() -> CmdArgs
@@ -18,44 +14,88 @@ pub fn get_args() -> CmdArgs
 }
 
 
-pub struct Dispatcher {
-    map: CmdMap,
+trait Command {
+    fn name(&self) -> String;
+    fn run(&self, args: &CmdArgs);
+}
+
+pub type CmdType = Box<dyn Command>;
+
+
+struct InitCmd {
+
+}
+impl Command for InitCmd {
+    fn name(&self) -> String {
+        "init".to_string()
+    }
+
+    fn run(&self, args: &CmdArgs) {
+        println!("runnig init");
+    }
+}
+
+struct ImportCmd {
+
+}
+impl Command for ImportCmd {
+    fn name(&self) -> String {
+        "import".to_string()
+    }
+
+    fn run(&self, args: &CmdArgs) {
+        println!("runnig import");
+    }
+}
+
+
+struct Dispatcher {
+    map: BTreeMap<String, CmdType>,
 }
 
 impl Dispatcher {
     fn new() -> Self {
-        Self {map: HashMap::new()}
+        Self {
+            map: BTreeMap::new(),
+        }
     }
 
-    fn add(&mut self, name: &str, cmd: CmdFn) {
-        self.map.insert(name.to_string(), cmd);
+    fn add(&mut self, cmd: CmdType) {
+        self.map.insert(cmd.name(), cmd);
     }
 
     fn run(&self, args: &mut CmdArgs) {
         if let Some(name) = args.pop_front() {
             if let Some(cmd) = self.map.get(&name) {
-                cmd(args);
+                cmd.run(args);
+            }
+            else {
+                eprintln!("Unknown command: {:?}", name);
             }
         }
-
+        else {
+            eprintln!("Available commands:");
+            for cmd in self.map.values() {
+                eprintln!("  {}", cmd.name());
+            }
+        }
     }
+
 }
 
-pub fn build_dispatcher() -> Dispatcher {
-    let mut dis = Dispatcher::new();
-    dis.add("init", cmd_init);
-    dis   
+fn build_dispatcher() -> Dispatcher {
+    let mut d = Dispatcher::new();
+    d.add(Box::new( ImportCmd {} ));
+    d.add(Box::new( InitCmd {} ));
+    //d.add(Box::new( ImportCmd {} ));
+    d
 }
+
+
 
 pub fn run(args: &mut CmdArgs) {
     let dispatcher = build_dispatcher();
     dispatcher.run(args);
-}
-
-
-fn cmd_init(args: &CmdArgs) -> bool {
-    println!("yo from init");
-    true
 }
 
 
@@ -71,7 +111,6 @@ mod tests {
     #[test]
     fn test_dispatcher() {
         let mut d = Dispatcher::new();
-        d.add("init", cmd_init);
     }
 }
 

@@ -2,8 +2,11 @@ use crate::base::*;
 use crate::util::*;
 use crate::tree::*;
 
-struct Commit {
+
+//Points to a root tree node
+pub struct Commit {
     root: Tree,
+    //author: TODO: Define how to represent authorship
     msg: String,
 }
 

@@ -389,15 +389,36 @@ mod tests {
     #[test]
     fn test_find_store() {
         let tmp = TestTempDir::new();
-        let r = find_store(tmp.path());
-        assert!(r.is_err());
-        let pb = tmp.makedirs(&["foo", "bar"]);
-        let r = find_store(&pb);
-        assert!(r.is_err());
-        tmp.mkdir(&[DOTDIR]);
-        let r = find_store(&pb);
-        assert!(r.is_ok());
-        let store = r.unwrap();
+
+        // We're gonna use these over and over:
+        let tree = tmp.pathbuf();
+        let dotdir = tmp.build(&[DOTDIR]);
+        let foo = tmp.build(&["foo"]);
+        let bar = tmp.build(&["foo", "bar"]);
+        let empty: Vec<String> = vec![];
+
+        // tmp.path() is an empty directory still:
+        assert!(find_store(&tree).is_err());
+        assert!(find_store(&dotdir).is_err());
+        assert!(find_store(&foo).is_err());
+        assert!(find_store(&bar).is_err());
+
+        // Nothing should have been created
+        assert_eq!(tmp.list_root(), empty);
+
+        // create foo/bar, but still no DOTDIR
+        assert_eq!(tmp.makedirs(&["foo", "bar"]), bar);
+
+        assert!(find_store(&tree).is_err());
+        assert!(find_store(&dotdir).is_err());
+        assert!(find_store(&foo).is_err());
+        assert!(find_store(&bar).is_err());
+
+        // Still nothing should have been created by find_store():
+        assert_eq!(tmp.list_root(), ["foo"]);
+        assert_eq!(tmp.list_dir(&["foo"]), ["bar"]);
+        assert_eq!(tmp.list_dir(&["foo", "bar"]), empty);
+
     }
 
     #[test]

@@ -379,11 +379,18 @@ mod tests {
         let tmp = TestTempDir::new();
         tmp.makedirs(&["foo", "bar"]);
         tmp.mkdir(&["foo", DOTDIR]);
-        let mut pb = PathBuf::from(tmp.path());
+        let mut pb = PathBuf::from(tmp.pathbuf());
         pb.push("foo");
         pb.push("bar");
         assert!(find_dotdir(&mut pb));
         assert!(pb.as_path().ends_with("foo/.bathtub_db"));
+    }
+
+    #[test]
+    fn test_find_store() {
+        let tmp = TestTempDir::new();
+        let r = find_store(&tmp.pathbuf());
+        assert!(r.is_err());
     }
 
     #[test]
@@ -419,7 +426,7 @@ mod tests {
     #[test]
     fn test_init_tree() {
         let tmp = TestTempDir::new();
-        let mut pb = PathBuf::from(tmp.path());
+        let mut pb = PathBuf::from(tmp.pathbuf());
         init_tree(&mut pb);
         assert_eq!(tmp.list_root(), vec![DOTDIR]);
 
@@ -440,7 +447,7 @@ mod tests {
     #[test]
     fn test_init_store() {
         let tmp = TestTempDir::new();
-        let mut pb = PathBuf::from(tmp.path());
+        let mut pb = PathBuf::from(tmp.pathbuf());
         init_store(&mut pb);
         let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
         expected.sort();

@@ -3,7 +3,7 @@
 // (FIXME: should eventually be put somewhere else).
 
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::fs;
 use tempfile;
 
@@ -22,13 +22,17 @@ impl TestTempDir {
         }
     }
 
-    pub fn path(&self) -> PathBuf {
+    pub fn path(&self) -> &Path {
+        self.tmp.path()
+    }
+
+    pub fn pathbuf(&self) -> PathBuf {
         self.tmp.path().to_path_buf()
     }
 
     // Construct an absolute path starting with self.path()
     pub fn build(&self, names: &[&str]) -> PathBuf {
-        let mut pb = self.path();
+        let mut pb = self.pathbuf();
         for n in names {
             pb.push(n);
         }

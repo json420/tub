@@ -94,8 +94,10 @@ pub fn find_store(path: &Path) -> io::Result<Store>
 
 
 /// Initialize a store layout in an empty directory.
-pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
+pub fn init_store(path: &Path) -> io::Result<(Store)>
 {
+    let mut pb = path.canonicalize()?;
+
     // objects directory and sub-directories
     pb.push(OBJECTDIR);
     fs::create_dir(pb.as_path())?;
@@ -122,17 +124,17 @@ pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
     f.write_all(README_CONTENTS)?;
     pb.pop();
 
-    Ok(())
+    Store::new(path)
 }
 
 
 /// Creates the `".bathtub_db"` directory, calls `init_store()`.
-pub fn init_tree(pb: &mut PathBuf) -> io::Result<Store>
+pub fn init_tree(path: &Path) -> io::Result<Store>
 {
+    let mut pb = PathBuf::from(path);
     pb.push(DOTDIR);
-    fs::create_dir(pb.as_path())?;
-    init_store(pb)?;
-    Store::new(pb.as_path())
+    fs::create_dir(&pb)?;
+    init_store(&pb)
 }
 
 
@@ -423,7 +425,8 @@ mod tests {
     fn test_init_tree() {
         let tmp = TestTempDir::new();
         let mut pb = PathBuf::from(tmp.pathbuf());
-        init_tree(&mut pb);
+
+        let store = init_tree(tmp.path());
         assert_eq!(tmp.list_root(), vec![DOTDIR]);
 
         let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
@@ -445,7 +448,7 @@ mod tests {
         let tmp = TestTempDir::new();
         let mut pb = PathBuf::from(tmp.pathbuf());
         init_store(&mut pb);
-        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
+        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
         expected.sort();
         assert_eq!(tmp.list_root(), expected);
         let dirs = tmp.list_dir(&[OBJECTDIR]);

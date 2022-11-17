@@ -30,7 +30,7 @@ fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> io::Result<
                 eprintln!("Skipping symlink: {:?}", path);
             }
             else if ft.is_file() {
-                let size = metadata(&path).unwrap().len();
+                let size = metadata(&path)?.len();
                 if size > 0 {
                     accum.push(SrcFile(path, size));
                     total += size;

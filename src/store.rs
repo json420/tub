@@ -224,7 +224,8 @@ impl Store {
         self.file.sync_data().expect("nope");
     }
 
-    pub fn reindex(&mut self, check: bool) {
+    pub fn reindex(&mut self, check: bool) -> io::Result<()>
+    {
         // FIXME: We should truncate off the end of the file any partially
         // written object we find.  Basically if after the last valid object
         // is read there is still additional data, but not enough to make a
@@ -235,7 +236,7 @@ impl Store {
         let mut offset: OffsetSize = 0;
         let mut buf = vec![0_u8; 4096];
 
-        self.file.seek(io::SeekFrom::Start(0)).unwrap();
+        self.file.seek(io::SeekFrom::Start(0))?;
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.file.read_exact(&mut header) {
@@ -257,13 +258,13 @@ impl Store {
                 if check {
                     buf.resize(size as usize, 0);
                     let s = &mut buf[0..(size as usize)];
-                    self.file.read_exact(s).expect("oops");
+                    self.file.read_exact(s)?;
                     if id != hash(s) {
                         panic!("hash does not equal expected");
                     }
                 }
                 else {
-                    self.file.seek(io::SeekFrom::Current(size as i64)).expect("oops");
+                    self.file.seek(io::SeekFrom::Current(size as i64))?;
                 }
             }
             else {
@@ -274,6 +275,7 @@ impl Store {
             }
         }
         fadvise_random(&self.file);
+        Ok(())
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {

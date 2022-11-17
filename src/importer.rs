@@ -26,8 +26,13 @@ fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) ->
                 let path = e.path();
                 if ft.is_file() {
                     let size = metadata(&path).unwrap().len();
-                    accum.push(SrcFile(path, size));
-                    total += size;
+                    if size > 0 {
+                        accum.push(SrcFile(path, size));
+                        total += size;
+                    }
+                    else {
+                        eprintln!("Skipping empty file: {:?}", path);
+                    }
                 }
                 else if ft.is_dir() {
                     total += scan_files(path, accum, depth + 1);

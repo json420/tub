@@ -76,22 +76,6 @@ pub struct Entry {
 type Index = HashMap<ObjectID, Entry>;
 
 
-/// Find the control directory by walking up the path.
-pub fn find_dotdir(pb: &mut PathBuf) -> bool
-{
-    loop {
-        pb.push(DOTDIR);
-        if pb.is_dir() {
-            return true;
-        }
-        pb.pop();
-        if !pb.pop() {
-            return false;
-        }
-    }
-}
-
-
 pub fn find_store(path: &Path) -> io::Result<Store>
 {
     let mut pb = path.canonicalize()?;
@@ -369,22 +353,6 @@ mod tests {
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
-
-    #[test]
-    fn test_find_dotdir() {
-        let mut pb = PathBuf::new();
-        assert!(! find_dotdir(&mut pb));
-        assert_eq!(pb.as_os_str(), "");
-
-        let tmp = TestTempDir::new();
-        tmp.makedirs(&["foo", "bar"]);
-        tmp.mkdir(&["foo", DOTDIR]);
-        let mut pb = PathBuf::from(tmp.pathbuf());
-        pb.push("foo");
-        pb.push("bar");
-        assert!(find_dotdir(&mut pb));
-        assert!(pb.as_path().ends_with("foo/.bathtub_db"));
-    }
 
     #[test]
     fn test_find_store() {

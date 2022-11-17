@@ -17,6 +17,10 @@ use crate::store::{find_store, init_tree};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
+    #[arg(short, long, action=ArgAction::SetTrue)]
+    #[arg(help="Write buttloads of debuging stuffs to stderr")]
+    verbose: bool,
 }
 
 
@@ -27,10 +31,6 @@ enum Commands {
     Init {
         #[arg(help = "Target directory (defaults to current working directory)")]
         target: Option<PathBuf>,
-
-        #[arg(short, long, action=ArgAction::SetTrue)]
-        #[arg(help="Write buttloads of debuging stuffs to stderr")]
-        verbose: bool,
     },
 
     #[command(about = "Recursively import files from directory")]
@@ -67,19 +67,21 @@ fn cmd_init(target: Option<PathBuf>) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_import(source: Option<PathBuf>) -> io::Result<()>
+{
+    let source = dir_or_cwd(source)?;
+    Ok(())
+}
+
 
 pub fn run() -> io::Result<()> {
     let args = Cli::parse();
     match args.command {
-        Commands::Init {target,  verbose} => {
-            //println!("init {:?} {:?}", target, verbose);
-            //init_tree(&mut pb)?;
-            cmd_init(target)?;
+        Commands::Init {target} => {
+            cmd_init(target)
         }
         Commands::Import {source} => {
-            let pb = dir_or_cwd(source)?;
-            eprintln!("import {:?}", pb);
+            cmd_import(source)
         }
     }
-    Ok(())
 }

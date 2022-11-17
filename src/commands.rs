@@ -62,7 +62,7 @@ pub fn run() -> io::Result<()> {
             //println!("init {:?} {:?}", target, verbose);
             let mut pb = dir_or_cwd(target)?;
             eprintln!("init {:?}", pb);
-            init_tree(&mut pb)?;
+            //init_tree(&mut pb)?;
         }
         Commands::Import {source} => {
             let pb = dir_or_cwd(source)?;

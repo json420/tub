@@ -44,6 +44,13 @@ What's even more relaxing than a Couch?  A Bathtub!
 ";
 
 
+macro_rules! other_err {
+    ($msg:literal) => {
+        Err(io::Error::new(io::ErrorKind::Other, $msg));
+    }
+}
+
+
 /// Represents an object open for reading (both large and small objects)
 #[derive(Debug)]
 pub struct Object {
@@ -83,6 +90,23 @@ pub fn find_dotdir(pb: &mut PathBuf) -> bool
         }
     }
 }
+
+
+pub fn find_store(path: &Path) -> io::Result<Store>
+{
+    let mut pb = path.canonicalize()?;
+    loop {
+        pb.push(DOTDIR);
+        if pb.is_dir() {
+            return Store::new(pb);
+        }
+        pb.pop();
+        if !pb.pop() {
+            return other_err!("cannot find control directroy");
+        }
+    }
+}
+
 
 
 /// Initialize a store layout in an empty directory.
@@ -212,7 +236,7 @@ impl Store {
     }
 
     pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
-        Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
+        other_err!("oh no!")
     }
 
     pub fn len(&self) -> usize {

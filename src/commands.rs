@@ -46,24 +46,28 @@ fn dir_or_cwd(target: Option<PathBuf>) -> io::Result<PathBuf>
     let mut pb = match target {
         Some(dir) => dir,
         None => env::current_dir()?,
-    }.canonicalize()?;
+    };
     if ! pb.is_dir() {
         eprintln!("Not a directory: {:?}", pb);
         exit(42);
     }
-    Ok(pb)
+    Ok(pb.canonicalize()?)
 }
 
 
-pub fn run() {
+pub fn run() -> io::Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Init {target,  verbose} => {
-            println!("init {:?} {:?}", target, verbose);
-            println!("{:?}", dir_or_cwd(target));
+            //println!("init {:?} {:?}", target, verbose);
+            let mut pb = dir_or_cwd(target)?;
+            eprintln!("init {:?}", pb);
+            init_tree(&mut pb)?;
         }
         Commands::Import {source} => {
-            println!("import {:?}", dir_or_cwd(source));
+            let pb = dir_or_cwd(source)?;
+            eprintln!("import {:?}", pb);
         }
     }
+    Ok(())
 }

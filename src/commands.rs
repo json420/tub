@@ -112,7 +112,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
         let mut fp = src.open()?;
         fp.read_to_end(&mut buf)?;
         let (id, new) = tub.add_object(&buf);
-        println!("{} {:?} {:?}", &db32enc_str(&id), new, src.0);
+        //println!("{} {:?} {:?}", &db32enc_str(&id), new, src.0);
         buf.clear();
     }
     Ok(())

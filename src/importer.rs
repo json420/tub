@@ -24,7 +24,13 @@ fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) ->
                 let e = entry.unwrap();
                 let ft = e.file_type().unwrap();
                 let path = e.path();
-                if ft.is_file() {
+                if path.file_name().unwrap().to_str().unwrap().starts_with(".") {
+                    eprintln!("Skipping hiddin: {:?}", path);
+                }
+                else if ft.is_symlink() {
+                    eprintln!("Skipping symlink: {:?}", path);
+                }
+                else if ft.is_file() {
                     let size = metadata(&path).unwrap().len();
                     if size > 0 {
                         accum.push(SrcFile(path, size));

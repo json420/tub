@@ -16,40 +16,35 @@ impl SrcFile {
 }
 
 
-fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> u64 {
+fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> io::Result<u64> {
+    let mut total: u64 = 0;
     if depth < MAX_DEPTH {
-        let mut total: u64 = 0;
-        if let Ok(entries) = read_dir(dir) {
-            for entry in entries {
-                let e = entry.unwrap();
-                let ft = e.file_type().unwrap();
-                let path = e.path();
-                if path.file_name().unwrap().to_str().unwrap().starts_with(".") {
-                    eprintln!("Skipping hiddin: {:?}", path);
+        for entry in read_dir(dir)? {
+            let entry = entry?;
+            let ft = entry.file_type()?;
+            let path = entry.path();
+            if path.file_name().unwrap().to_str().unwrap().starts_with(".") {
+                eprintln!("Skipping hiddin: {:?}", path);
+            }
+            else if ft.is_symlink() {
+                eprintln!("Skipping symlink: {:?}", path);
+            }
+            else if ft.is_file() {
+                let size = metadata(&path).unwrap().len();
+                if size > 0 {
+                    accum.push(SrcFile(path, size));
+                    total += size;
                 }
-                else if ft.is_symlink() {
-                    eprintln!("Skipping symlink: {:?}", path);
-                }
-                else if ft.is_file() {
-                    let size = metadata(&path).unwrap().len();
-                    if size > 0 {
-                        accum.push(SrcFile(path, size));
-                        total += size;
-                    }
-                    else {
-                        eprintln!("Skipping empty file: {:?}", path);
-                    }
-                }
-                else if ft.is_dir() {
-                    total += scan_files(&path, accum, depth + 1);
+                else {
+                    eprintln!("Skipping empty file: {:?}", path);
                 }
             }
+            else if ft.is_dir() {
+                total += scan_files(&path, accum, depth + 1)?;
+            }
         }
-        total
     }
-    else {
-        0
-    }
+    Ok(total)
 }
 
 
@@ -59,10 +54,10 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn scan_dir(dir: &Path) -> Self {
+    pub fn scan_dir(dir: &Path) -> io::Result<Scanner> {
         let mut accum: Vec<SrcFile> = Vec::new();
-        let total = scan_files(dir, &mut accum, 0);
-        Scanner {accum: accum, total: total}
+        let total = scan_files(dir, &mut accum, 0)?;
+        Ok(Scanner {accum: accum, total: total})
     }
 
     pub fn iter(&self) -> std::slice::Iter<SrcFile> {
@@ -100,21 +95,21 @@ mod tests {
         let tmp = TestTempDir::new();
 
         let mut accum: Vec<SrcFile> = Vec::new();
-        scan_files(tmp.path(), &mut accum, MAX_DEPTH + 1);
+        assert_eq!(scan_files(tmp.path(), &mut accum, MAX_DEPTH + 1).unwrap(), 0);
         assert_eq!(accum.len(), 0);
 
         // Contains directories but no files
         mk_test_dirs(&tmp);
-        assert_eq!(scan_files(tmp.path(), &mut accum, 0), 0);
+        assert_eq!(scan_files(tmp.path(), &mut accum, 0).unwrap(), 0);
         assert_eq!(accum.len(), 0);
 
         // Contains files but called at MAX_DEPTH
         mk_test_files(&tmp);
-        assert_eq!(scan_files(tmp.path(), &mut accum, MAX_DEPTH), 0);
+        assert_eq!(scan_files(tmp.path(), &mut accum, MAX_DEPTH).unwrap(), 0);
         assert_eq!(accum.len(), 0);
 
         // All good, should find test files
-        assert_eq!(scan_files(tmp.path(), &mut accum, 0), 18);
+        assert_eq!(scan_files(tmp.path(), &mut accum, 0).unwrap(), 18);
         assert_eq!(accum.len(), 2);
     }
 
@@ -123,20 +118,20 @@ mod tests {
         let tmp = TestTempDir::new();
 
         // Empty directory
-        let s = Scanner::scan_dir(tmp.path());
+        let s = Scanner::scan_dir(tmp.path()).unwrap();
         assert_eq!(s.count(), 0);
         assert_eq!(s.total(), 0);
 
         // Contains directories but no files
         mk_test_dirs(&tmp);
         
-        let s = Scanner::scan_dir(tmp.path());
+        let s = Scanner::scan_dir(tmp.path()).unwrap();
         assert_eq!(s.count(), 0);
         assert_eq!(s.total(), 0);
 
         // Contains files
         mk_test_files(&tmp);
-        let s = Scanner::scan_dir(tmp.path());
+        let s = Scanner::scan_dir(tmp.path()).unwrap();
         assert_eq!(s.count(), 2);
         assert_eq!(s.total(), 18);
     }

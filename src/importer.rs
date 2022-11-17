@@ -16,7 +16,7 @@ impl SrcFile {
 }
 
 
-fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) -> u64 {
+fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> u64 {
     if depth < MAX_DEPTH {
         let mut total: u64 = 0;
         if let Ok(entries) = read_dir(dir) {
@@ -41,7 +41,7 @@ fn scan_files<P: AsRef<Path>>(dir: P, accum: &mut Vec<SrcFile>, depth: usize) ->
                     }
                 }
                 else if ft.is_dir() {
-                    total += scan_files(path, accum, depth + 1);
+                    total += scan_files(&path, accum, depth + 1);
                 }
             }
         }
@@ -59,7 +59,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn scan_dir<P: AsRef<Path>>(dir: P) -> Self {
+    pub fn scan_dir(dir: &Path) -> Self {
         let mut accum: Vec<SrcFile> = Vec::new();
         let total = scan_files(dir, &mut accum, 0);
         Scanner {accum: accum, total: total}

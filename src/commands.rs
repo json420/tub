@@ -8,7 +8,7 @@ use std::process::exit;
 
 use clap::{Args, ArgAction, Parser, Subcommand, ValueEnum};
 
-use crate::store::init_tree;
+use crate::store::{find_store, init_tree};
 
 
 #[derive(Debug, Parser)]
@@ -54,15 +54,27 @@ fn dir_or_cwd(target: Option<PathBuf>) -> io::Result<PathBuf>
     Ok(pb.canonicalize()?)
 }
 
+fn cmd_init(target: Option<PathBuf>) -> io::Result<()>
+{
+    let target = dir_or_cwd(target)?;
+    if let Ok(store) = find_store(&target) {
+        eprintln!("Store alread exists at {:?}", target);
+        exit(42);
+    }
+    else if let Ok(store) = init_tree(&target) {
+        eprintln!("created store at {:?}", store.path());
+    }
+    Ok(())
+}
+
 
 pub fn run() -> io::Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Init {target,  verbose} => {
             //println!("init {:?} {:?}", target, verbose);
-            let mut pb = dir_or_cwd(target)?;
-            eprintln!("init {:?}", pb);
             //init_tree(&mut pb)?;
+            cmd_init(target)?;
         }
         Commands::Import {source} => {
             let pb = dir_or_cwd(source)?;

@@ -86,7 +86,7 @@ pub fn find_store(path: &Path) -> io::Result<Store>
         }
         pb.pop();
         if !pb.pop() {
-            return other_err!("cannot find control directroy");
+            return other_err!("cannot find control directory");
         }
     }
 }

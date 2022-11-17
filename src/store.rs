@@ -69,7 +69,7 @@ pub fn find_store(path: &Path) -> io::Result<Store>
     loop {
         pb.push(DOTDIR);
         if pb.is_dir() {
-            return Store::new(pb);
+            return Store::new(&pb);
         }
         pb.pop();
         if !pb.pop() {
@@ -154,10 +154,9 @@ pub struct Store {
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
 impl Store {
-    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self>
-            where PathBuf: From<P> 
+    pub fn new(path: &Path) -> io::Result<Self>
     {
-        let pb = PathBuf::from(path);
+        let pb = path.canonicalize()?;
 
         let mut pb_copy = pb.clone();
         pb_copy.push(PACKFILE);

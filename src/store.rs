@@ -36,7 +36,7 @@ const PACKFILE: &str = "bathtub.db";
 const OBJECTDIR: &str = "objects";
 const PARTIALDIR: &str = "partial";
 const TMPDIR: &str = "tmp";
-static README: &str = "README.txt";  // The REAMDE file
+const README: &str = "README.txt";  // The REAMDE file
 
 static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
 
@@ -399,7 +399,7 @@ mod tests {
         init_tree(&mut pb);
         assert_eq!(tmp.list_root(), vec![DOTDIR]);
 
-        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];
+        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
         expected.sort();
         assert_eq!(tmp.list_dir(&[DOTDIR]), expected);
 

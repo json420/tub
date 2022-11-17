@@ -31,19 +31,6 @@ use crate::dbase32::{db32enc, db32enc_str, Name2Iter};
 use crate::util::{fadvise_random, fadvise_sequential};
 
 
-const DOTDIR: &str = ".bathtub_db";
-const PACKFILE: &str = "bathtub.db";
-const OBJECTDIR: &str = "objects";
-const PARTIALDIR: &str = "partial";
-const TMPDIR: &str = "tmp";
-const README: &str = "README.txt";  // The REAMDE file
-
-static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
-
-What's even more relaxing than a Couch?  A Bathtub!
-";
-
-
 macro_rules! other_err {
     ($msg:literal) => {
         Err(io::Error::new(io::ErrorKind::Other, $msg));

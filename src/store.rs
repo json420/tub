@@ -224,7 +224,8 @@ impl Store {
         self.file.sync_data().expect("nope");
     }
 
-    pub fn reindex(&mut self, check: bool) -> io::Result<()>
+    // FIXME: drop _check arg, just kept to not break Davids code for now
+    pub fn reindex(&mut self, _check: bool) -> io::Result<()>
     {
         // FIXME: We should truncate off the end of the file any partially
         // written object we find.  Basically if after the last valid object
@@ -232,11 +233,9 @@ impl Store {
         // valid object entry... then a prior object append operation was
         // interrupted, and so we should discard the invalid partial object.
         self.index.clear();
-        fadvise_sequential(&self.file);
-        let mut offset: OffsetSize = 0;
-        let mut buf = vec![0_u8; 4096];
-
         self.file.seek(io::SeekFrom::Start(0))?;
+
+        let mut offset: OffsetSize = 0;
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.file.read_exact(&mut header) {
@@ -252,20 +251,8 @@ impl Store {
                     size: size,
                 };
                 self.index.insert(id, entry);
-
                 offset += HEADER_LEN as ObjectSize + size;
-
-                if check {
-                    buf.resize(size as usize, 0);
-                    let s = &mut buf[0..(size as usize)];
-                    self.file.read_exact(s)?;
-                    if id != hash(s) {
-                        panic!("hash does not equal expected");
-                    }
-                }
-                else {
-                    self.file.seek(io::SeekFrom::Current(size as i64))?;
-                }
+                self.file.seek(io::SeekFrom::Current(size as i64))?;
             }
             else {
                 //println!("Tombstone {}", db32enc_str(&id));
@@ -274,7 +261,6 @@ impl Store {
                 }
             }
         }
-        fadvise_random(&self.file);
         Ok(())
     }
 

@@ -17,7 +17,7 @@ impl PartialEq for AOPair {
 impl Eq for AOPair { }
 
 impl PartialOrd for AOPair {
-    fn partial_cmp (&self, other: &Self) -> Option<(Ordering)> {
+    fn partial_cmp (&self, other: &Self) -> Option<Ordering> {
         Some(self.id.cmp(&(other.id)))
     }
 }
@@ -69,7 +69,7 @@ impl Tree {
     
     pub fn get_object_id(&mut self, abstract_id: AbstractID) -> ObjectID {
         let len: f64 = self.ids.len() as f64;
-        let fraction: f64 = (abstract_id[0] as f64 * len / 256.0);
+        let fraction: f64 = abstract_id[0] as f64 * len / 256.0;
         let mut i = fraction.floor() as usize;
         
         while abstract_id != self.ids[i].id {

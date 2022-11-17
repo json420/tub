@@ -119,12 +119,12 @@ pub fn init_store(pb: &mut PathBuf) -> io::Result<()>
 
 
 /// Creates the `".bathtub_db"` directory, calls `init_store()`.
-pub fn init_tree(pb: &mut PathBuf) -> io::Result<()>
+pub fn init_tree(pb: &mut PathBuf) -> io::Result<Store>
 {
     pb.push(DOTDIR);
     fs::create_dir(pb.as_path())?;
     init_store(pb)?;
-    Ok(())
+    Store::new(pb.as_path())
 }
 
 

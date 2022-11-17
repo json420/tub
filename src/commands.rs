@@ -8,7 +8,8 @@ use std::process::exit;
 
 use clap::{Args, ArgAction, Parser, Subcommand, ValueEnum};
 
-use crate::store::{find_store, init_tree};
+use crate::store::{find_store, init_tree, Store};
+use crate::importer::Scanner;
 
 
 #[derive(Debug, Parser)]
@@ -21,7 +22,22 @@ struct Cli {
     #[arg(short, long, action=ArgAction::SetTrue)]
     #[arg(help="Write buttloads of debuging stuffs to stderr")]
     verbose: bool,
+
+    #[arg(short, long)]
+    #[arg(help="Path to control directory (defaults to CWD)")]
+    tub: Option<PathBuf>,
 }
+
+
+/*
+impl Cli {
+    pub fn get_tub(&self) -> io::Result<Store>
+    {
+        let target = dir_or_cwd(self.tub)?;
+        find_store(&target)
+    }
+}
+*/
 
 
 #[derive(Debug, Subcommand)]
@@ -29,7 +45,7 @@ enum Commands {
 
     #[command(about = "Initalize a Bathtub DB repository")]
     Init {
-        #[arg(help = "Target directory (defaults to current working directory)")]
+        #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
     },
 
@@ -70,6 +86,10 @@ fn cmd_init(target: Option<PathBuf>) -> io::Result<()>
 fn cmd_import(source: Option<PathBuf>) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
+    let files = Scanner::scan_dir(&source);
+    for src in files.iter() {
+        println!("{:?}", src.0);
+    }
     Ok(())
 }
 

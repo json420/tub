@@ -3,7 +3,7 @@
 /* FIXME:
 
 Ideally we should do filesystem IO relative to an open directory descriptor.
-However, this is not currently supported is the Rust standard library.
+However, this is not currently supported in the Rust standard library.
 
 There are crates like `openat` and `openat_ct`, but they aren't under very
 active development and likely lack features we need.

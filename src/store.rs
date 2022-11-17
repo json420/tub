@@ -389,8 +389,15 @@ mod tests {
     #[test]
     fn test_find_store() {
         let tmp = TestTempDir::new();
-        let r = find_store(&tmp.pathbuf());
+        let r = find_store(tmp.path());
         assert!(r.is_err());
+        let pb = tmp.makedirs(&["foo", "bar"]);
+        let r = find_store(&pb);
+        assert!(r.is_err());
+        tmp.mkdir(&[DOTDIR]);
+        let r = find_store(&pb);
+        assert!(r.is_ok());
+        let store = r.unwrap();
     }
 
     #[test]

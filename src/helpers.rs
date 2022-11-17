@@ -74,12 +74,16 @@ impl TestTempDir {
         fs::File::create(self.build(names)).unwrap();
     }
 
-    pub fn mkdir(&self, names: &[&str]) {
-        fs::create_dir(self.build(names)).unwrap();
+    pub fn mkdir(&self, names: &[&str]) -> PathBuf {
+        let pb = self.build(names);
+        fs::create_dir(&pb).unwrap();
+        pb
     }
 
-    pub fn makedirs(&self, names: &[&str]) {
-        fs::create_dir_all(self.build(names)).unwrap();
+    pub fn makedirs(&self, names: &[&str]) -> PathBuf {
+        let pb = self.build(names);
+        fs::create_dir_all(&pb).unwrap();
+        pb
     }
 }
 

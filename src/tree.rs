@@ -61,7 +61,7 @@ impl Tree {
         }
     }
     
-    fn read_next_id(&mut self) -> AbstractID {
+    pub fn read_next_id(&mut self) -> AbstractID {
         let r = self.ids[self.cur].id;
         self.cur += 1;
         r
@@ -121,22 +121,21 @@ impl Iterator for Tree {
 mod tests {
     use super::*;
     use crate::store::*;
-    use crate::helpers::TestTempDir;
 
     #[test]
     fn it_works() {
         let mut tree = Tree::new();
         tree.add(&[0u8; 30]);
-        let ret = tree.read_next_id();
+        let _ret = tree.read_next_id();
         //assert_eq!(ret, [0u8; 15]);
     }
     
     #[test]
     fn iterable() {
         let mut tree = Tree::new();
-        let mut oid1 = random_object_id();
+        let oid1 = random_object_id();
         tree.add(&oid1);
-        let mut aid1 = tree.read_next_id();
+        let aid1 = tree.read_next_id();
         tree.cur = 0;
         
         for id in tree.into_iter() {
@@ -154,8 +153,8 @@ mod tests {
         
         tree.add(&oid2);
         
-        let mut aid1 = tree.read_next_id();
-        let mut aid2 = tree.read_next_id();
+        let aid1 = tree.read_next_id();
+        let aid2 = tree.read_next_id();
         
         let ret = tree.get_tree_object();
         if ret[18] == 1 {
@@ -176,13 +175,12 @@ mod tests {
     
     #[test]
     fn add_db() {
-        let GET_LOOPS: usize = 5;
-        let (tmp, mut store) = Store::new_tmp();
-        store.reindex(false);
+        let (_tmp, mut store) = Store::new_tmp();
+        store.reindex(false).unwrap();
 
         const ROUNDS: u64 = 10_000;
 
-        for id in 0..ROUNDS {
+        for _id in 0..ROUNDS {
             store.add_object(&random_object_id());
         }
         
@@ -198,7 +196,7 @@ mod tests {
         
         let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];
         count = 0;
-        for id in 0..ROUNDS {
+        for _id in 0..ROUNDS {
             let abs = tree.read_next_id();
             if abs > prevabs {
                 assert_eq!(abs, abs);

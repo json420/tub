@@ -65,26 +65,49 @@ impl Iterator for LeafInfoIter {
 }
 
 
-pub struct LeafReader {
+pub struct LeafReader2 {
     file: File,
     iterator: LeafInfoIter,
 }
 
-impl LeafReader {
+impl LeafReader2 {
     pub fn new(file: File, size: u64, offset: u64) -> Self
     {
-        LeafReader {file: file, iterator: LeafInfoIter::new(size, offset)}
+        Self {file: file, iterator: LeafInfoIter::new(size, offset)}
     }
 
-    pub fn read_next_leaf(&mut self, buf: &mut [u8]) -> io::Result<bool>
+    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<bool>
     {
         if let Some(info) = self.iterator.next() {
-            self.file.read_exact_at(&mut buf[0..info.size as usize], info.offset)?;
+            buf.resize(info.size as usize, 0);
+            self.file.read_exact_at(buf, info.offset)?;
             Ok(true)
         }
         else {
             Ok(false)
         }
+    }
+}
+
+
+pub struct LeafReader {
+    file: File,
+    
+}
+
+impl LeafReader {
+    pub fn new(file: File) -> Self
+    {
+        Self {file: file}
+    }
+
+    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<bool>
+    {
+        buf.resize(LEAF_SIZE as usize, 0);
+        let amount = self.file.read(buf)?;
+        assert!(amount as u64 <= LEAF_SIZE);
+        buf.resize(amount, 0);
+        Ok(amount != 0)
     }
 }
 

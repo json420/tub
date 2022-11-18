@@ -27,9 +27,9 @@ pub const PACKFILE: &str = "bathtub.db";
 pub const OBJECTDIR: &str = "objects";
 pub const PARTIALDIR: &str = "partial";
 pub const TMPDIR: &str = "tmp";
-pub const README: &str = "README.txt";  // The REAMDE file
+pub const README: &str = "REAMDE.txt";  // The REAMDE file
 
-pub static README_CONTENTS: &[u8] = b"Hello from Bathtub  DB!
+pub static README_CONTENTS: &[u8] = b"Hello from Bathtub DB!
 
 What's even more relaxing than a Couch?  A Bathtub!
 ";

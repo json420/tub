@@ -320,6 +320,41 @@ impl Store {
 }
 
 
+struct LeafReader {
+    file: File,
+    offset: OffsetSize,
+    size: ObjectSize,
+    leaf_index: u64,
+}
+
+impl LeafReader {
+    pub fn new(file: File, offset: OffsetSize, size: ObjectSize) -> Self
+    {
+        LeafReader {
+            file: file,
+            offset: offset,
+            size: size,
+            leaf_index: 0,
+        }
+    }
+
+    pub fn read_next_leaf(&mut self, buf: &mut [u8]) -> io::Result<()>
+    {
+        if buf.len() < LEAF_SIZE as usize {
+            other_err!("buffer too small!")
+        }
+        else {
+            let consumed = self.leaf_index * LEAF_SIZE;
+            let offset = self.offset + consumed;
+            let remaining = self.size - consumed; 
+            let size = (remaining % LEAF_SIZE) as usize;
+            self.leaf_index += 1;
+            self.file.read_exact_at(&mut buf[0..size], offset)
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

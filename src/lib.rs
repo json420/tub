@@ -13,4 +13,5 @@ pub mod dbase32;
 pub mod importer;
 pub mod helpers;
 pub mod commands;
+pub mod leaf_io;
 

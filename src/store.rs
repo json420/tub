@@ -321,16 +321,20 @@ impl Store {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct LeafInfo {
     pub index: u64,
+    pub size: u64,
+    pub offset: u64,
 }
 
 impl LeafInfo {
-    pub fn new(index: u64) -> Self
+    pub fn new(index: u64, size: u64, offset: u64) -> Self
     {
         Self {
             index: index,
+            size: size,
+            offset: offset,
         }
     }
 }
@@ -338,14 +342,16 @@ impl LeafInfo {
 #[derive(Debug)]
 pub struct LeafInfoIter {
     pub size: u64,
+    pub offset: u64,
     index: u64,
 }
 
 impl LeafInfoIter {
-    pub fn new(size: u64) -> Self
+    pub fn new(size: u64, offset: u64) -> Self
     {
         Self {
             size: size,
+            offset: offset,
             index: 0,
         }
     }
@@ -357,7 +363,10 @@ impl Iterator for LeafInfoIter {
     fn next(&mut self) -> Option<Self::Item> {
         let consumed = self.index * LEAF_SIZE;
         if consumed < self.size {
-            let info = LeafInfo::new(self.index);
+            let offset = self.offset + consumed;
+            let remaining = self.size - consumed;
+            let size = cmp::min(remaining, LEAF_SIZE);
+            let info = LeafInfo::new(self.index, size, offset);
             self.index += 1;
             Some(info)
         }
@@ -393,7 +402,7 @@ impl LeafReader {
         let consumed = self.leaf_index * LEAF_SIZE;
         if consumed < self.size {
             let offset = self.offset + consumed;
-            let remaining = self.size - consumed; 
+            let remaining = self.size - consumed;
             let size = cmp::min(remaining, LEAF_SIZE) as usize;
             self.leaf_index += 1;
             self.file.read_exact_at(&mut buf[0..size], offset)?;
@@ -414,11 +423,51 @@ mod tests {
 
     #[test]
     fn test_leaf_info_iter() {
-        let size = LEAF_SIZE * 10;
-
-        let r = Vec::from_iter(LeafInfoIter::new(1));
-        assert_eq!(r.len(), 1);
-        assert_eq!(r[0].index, 0);
+        // 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(1, 0)), vec![
+            LeafInfo{index:0, size:1, offset:0},
+        ]);
+        // LEAF_SIZE - 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE - 1, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE - 1, offset:0},
+        ]);
+        // LEAF_SIZE
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+        ]);
+        // LEAF_SIZE + 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE + 1, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:1, offset:LEAF_SIZE},
+        ]);
+        // 2 * LEAF_SIZE - 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE - 1, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:LEAF_SIZE - 1, offset:LEAF_SIZE},
+        ]);
+        // 2 * LEAF_SIZE
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:LEAF_SIZE, offset:LEAF_SIZE},
+        ]);
+        // 2 * LEAF_SIZE + 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE + 1, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:LEAF_SIZE, offset:LEAF_SIZE},
+            LeafInfo{index:2, size:1, offset:2 * LEAF_SIZE},
+        ]);
+        // 3 * LEAF_SIZE - 1
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(3 * LEAF_SIZE - 1, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:LEAF_SIZE, offset:LEAF_SIZE},
+            LeafInfo{index:2, size:LEAF_SIZE - 1, offset:2 * LEAF_SIZE},
+        ]);
+        // 3 * LEAF_SIZE
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(3 * LEAF_SIZE, 0)),  vec![
+            LeafInfo{index:0, size:LEAF_SIZE, offset:0},
+            LeafInfo{index:1, size:LEAF_SIZE, offset:LEAF_SIZE},
+            LeafInfo{index:2, size:LEAF_SIZE, offset:2 * LEAF_SIZE},
+        ]);
     }
 
     #[test]

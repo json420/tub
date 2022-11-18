@@ -449,6 +449,56 @@ mod tests {
             LeafInfo{index:1, size:LEAF_SIZE, offset:LEAF_SIZE},
             LeafInfo{index:2, size:LEAF_SIZE, offset:2 * LEAF_SIZE},
         ]);
+
+        for ofst in [0_u64, 1, 2, LEAF_SIZE - 1, LEAF_SIZE, LEAF_SIZE + 1] {
+            // 0
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(0, ofst)), vec![]);
+            // 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(1, ofst)), vec![
+                LeafInfo{index:0, size:1, offset:ofst},
+            ]);
+            // LEAF_SIZE - 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE - 1, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE - 1, offset:ofst},
+            ]);
+            // LEAF_SIZE
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+            ]);
+            // LEAF_SIZE + 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(LEAF_SIZE + 1, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:1, offset:ofst + LEAF_SIZE},
+            ]);
+            // 2 * LEAF_SIZE - 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE - 1, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:LEAF_SIZE - 1, offset:ofst + LEAF_SIZE},
+            ]);
+            // 2 * LEAF_SIZE
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:LEAF_SIZE, offset:ofst + LEAF_SIZE},
+            ]);
+            // 2 * LEAF_SIZE + 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(2 * LEAF_SIZE + 1, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:LEAF_SIZE, offset:ofst + LEAF_SIZE},
+                LeafInfo{index:2, size:1, offset:ofst + 2 * LEAF_SIZE},
+            ]);
+            // 3 * LEAF_SIZE - 1
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(3 * LEAF_SIZE - 1, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:LEAF_SIZE, offset:ofst + LEAF_SIZE},
+                LeafInfo{index:2, size:LEAF_SIZE - 1, offset:ofst + 2 * LEAF_SIZE},
+            ]);
+            // 3 * LEAF_SIZE
+            assert_eq!(Vec::from_iter(LeafInfoIter::new(3 * LEAF_SIZE, ofst)),  vec![
+                LeafInfo{index:0, size:LEAF_SIZE, offset:ofst},
+                LeafInfo{index:1, size:LEAF_SIZE, offset:ofst + LEAF_SIZE},
+                LeafInfo{index:2, size:LEAF_SIZE, offset:ofst + 2 * LEAF_SIZE},
+            ]);
+        }
     }
 
     #[test]

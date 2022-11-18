@@ -13,7 +13,7 @@ fn main() {
     println!("Reindexing objects (VERIFY={})", VERIFY);
 
     let start = time::Instant::now();
-    store.reindex(VERIFY);
+    store.reindex();
     let elapsed = start.elapsed().as_secs_f64();
     println!("  Indexed {} existing objects", store.len());
     println!("  Took {} seconds", elapsed);

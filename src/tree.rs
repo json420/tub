@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn add_db() {
         let (_tmp, mut store) = Store::new_tmp();
-        store.reindex(false).unwrap();
+        store.reindex().unwrap();
 
         const ROUNDS: u64 = 10_000;
 

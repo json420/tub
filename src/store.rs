@@ -224,8 +224,7 @@ impl Store {
         self.file.sync_data().expect("nope");
     }
 
-    // FIXME: drop _check arg, just kept to not break Davids code for now
-    pub fn reindex(&mut self, _check: bool) -> io::Result<()>
+    pub fn reindex(&mut self) -> io::Result<()>
     {
         // FIXME: We should truncate off the end of the file any partially
         // written object we find.  Basically if after the last valid object

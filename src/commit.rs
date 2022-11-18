@@ -29,7 +29,7 @@ mod tests {
     fn new_store() -> Store {
         let GET_LOOPS: usize = 5;
         let (tmp, mut store) = Store::new_tmp();
-        store.reindex(false);
+        store.reindex();
 
         const ROUNDS: u64 = 10_000;
 

@@ -321,6 +321,55 @@ impl Store {
 }
 
 
+#[derive(Debug)]
+pub struct LeafInfo {
+    pub index: u64,
+}
+
+impl LeafInfo {
+    pub fn new(index: u64) -> Self
+    {
+        Self {
+            index: index,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct LeafInfoIter {
+    pub size: u64,
+    index: u64,
+}
+
+impl LeafInfoIter {
+    pub fn new(size: u64) -> Self
+    {
+        Self {
+            size: size,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for LeafInfoIter {
+    type Item = LeafInfo;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let consumed = self.index * LEAF_SIZE;
+        if consumed < self.size {
+            let info = LeafInfo::new(self.index);
+            self.index += 1;
+            Some(info)
+        }
+        else {
+            None
+        }
+    }
+}
+
+
+
+
 pub struct LeafReader {
     file: File,
     offset: OffsetSize,
@@ -362,6 +411,15 @@ mod tests {
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_leaf_info_iter() {
+        let size = LEAF_SIZE * 10;
+
+        let r = Vec::from_iter(LeafInfoIter::new(1));
+        assert_eq!(r.len(), 1);
+        assert_eq!(r[0].index, 0);
+    }
 
     #[test]
     fn test_find_store() {

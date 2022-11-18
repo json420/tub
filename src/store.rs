@@ -22,6 +22,7 @@ use std::os::unix::fs::FileExt;
 use std::fs;
 use std::fs::File;
 use std::collections::HashMap;
+use std::cmp;
 
 use tempfile::TempDir;
 
@@ -320,7 +321,7 @@ impl Store {
 }
 
 
-struct LeafReader {
+pub struct LeafReader {
     file: File,
     offset: OffsetSize,
     size: ObjectSize,
@@ -338,18 +339,18 @@ impl LeafReader {
         }
     }
 
-    pub fn read_next_leaf(&mut self, buf: &mut [u8]) -> io::Result<()>
+    pub fn read_next_leaf(&mut self, buf: &mut [u8]) -> io::Result<bool>
     {
-        if buf.len() < LEAF_SIZE as usize {
-            other_err!("buffer too small!")
-        }
-        else {
-            let consumed = self.leaf_index * LEAF_SIZE;
+        let consumed = self.leaf_index * LEAF_SIZE;
+        if consumed < self.size {
             let offset = self.offset + consumed;
             let remaining = self.size - consumed; 
-            let size = (remaining % LEAF_SIZE) as usize;
+            let size = cmp::min(remaining, LEAF_SIZE) as usize;
             self.leaf_index += 1;
-            self.file.read_exact_at(&mut buf[0..size], offset)
+            self.file.read_exact_at(&mut buf[0..size], offset)?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 }

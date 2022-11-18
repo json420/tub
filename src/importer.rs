@@ -78,7 +78,6 @@ impl Scanner {
 mod tests {
     use super::*;
     use crate::helpers::TestTempDir;
-    use std::fs::{create_dir_all, File};
     use std::io::prelude::*;
 
     fn mk_test_dirs(tmp: &TestTempDir) {

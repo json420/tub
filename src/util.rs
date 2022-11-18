@@ -17,14 +17,14 @@ pub fn getrandom(buf: &mut [u8]) {
 
 pub fn fadvise_random(file: &File) {
     let fd = file.as_raw_fd();
-    let result = unsafe {
+    let _result = unsafe {
         libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_RANDOM)
     };
 }
 
 pub fn fadvise_sequential(file: &File) {
     let fd = file.as_raw_fd();
-    let result = unsafe {
+    let _result = unsafe {
         libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_SEQUENTIAL)
     };
 }

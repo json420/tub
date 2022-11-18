@@ -27,13 +27,12 @@ use tempfile::TempDir;
 
 use crate::base::*;
 use crate::protocol::hash;
-use crate::dbase32::{db32enc, db32enc_str, Name2Iter};
-use crate::util::{fadvise_random, fadvise_sequential};
+use crate::dbase32::{db32enc_str, Name2Iter};
 
 
 macro_rules! other_err {
     ($msg:literal) => {
-        Err(io::Error::new(io::ErrorKind::Other, $msg));
+        Err(io::Error::new(io::ErrorKind::Other, $msg))
     }
 }
 
@@ -81,7 +80,7 @@ pub fn find_store(path: &Path) -> io::Result<Store>
 
 
 /// Initialize a store layout in an empty directory.
-pub fn init_store(path: &Path) -> io::Result<(Store)>
+pub fn init_store(path: &Path) -> io::Result<Store>
 {
     let mut pb = path.canonicalize()?;
 
@@ -97,12 +96,12 @@ pub fn init_store(path: &Path) -> io::Result<(Store)>
 
     // partial directory:
     pb.push(PARTIALDIR);
-    fs::create_dir(pb.as_path());
+    fs::create_dir(pb.as_path())?;
     pb.pop();
 
     // tmp directory:
     pb.push(TMPDIR);
-    fs::create_dir(pb.as_path());
+    fs::create_dir(pb.as_path())?;
     pb.pop();
 
     // REAMDE file  :-)
@@ -207,7 +206,7 @@ impl Store {
         fs::remove_file(self.object_path(id))
     }
 
-    pub fn open(&self, id: &ObjectID) -> io::Result<Object> {
+    pub fn open(&self, _id: &ObjectID) -> io::Result<Object> {
         other_err!("oh no!")
     }
 
@@ -265,7 +264,7 @@ impl Store {
 
     pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
         let id = hash(data);
-        if let Some(entry) = self.index.get(&id) {
+        if let Some(_entry) = self.index.get(&id) {
             return (id, false);  // Already in object store
         }
         let entry = Entry {
@@ -304,7 +303,7 @@ impl Store {
         occurs, the object entry in the pack file and the tombstone will be
         removed (not copied into the new pack file).
         */
-        if let Some(entry) = self.index.get(id) {
+        if let Some(_entry) = self.index.get(id) {
             eprintln!("Deleting {}", db32enc_str(id));
             self.file.write_all_vectored(&mut [
                 io::IoSlice::new(id),
@@ -324,7 +323,6 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
@@ -397,9 +395,8 @@ mod tests {
     #[test]
     fn test_init_tree() {
         let tmp = TestTempDir::new();
-        let mut pb = PathBuf::from(tmp.pathbuf());
 
-        let store = init_tree(tmp.path());
+        let _store = init_tree(tmp.path()).unwrap();
         assert_eq!(tmp.list_root(), vec![DOTDIR]);
 
         let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
@@ -420,7 +417,7 @@ mod tests {
     fn test_init_store() {
         let tmp = TestTempDir::new();
         let mut pb = PathBuf::from(tmp.pathbuf());
-        init_store(&mut pb);
+        init_store(&mut pb).unwrap();
         let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
         expected.sort();
         assert_eq!(tmp.list_root(), expected);
@@ -436,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_store() {
-        let (tmp, mut store) = Store::new_tmp();
+        let (_tmp, mut store) = Store::new_tmp();
 
         assert_eq!(store.len(), 0);
         let empty: Vec<ObjectID> = vec![];
@@ -484,7 +481,7 @@ mod tests {
 
     #[test]
     fn test_store_large() {
-        let (tmp, mut store) = Store::new_tmp();
+        let (_tmp, store) = Store::new_tmp();
         let id = random_object_id();
         assert!(store.open_large(&id).is_err());
         assert!(store.remove_large(&id).is_err());

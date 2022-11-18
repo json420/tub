@@ -1,13 +1,11 @@
-use std::ffi::{OsString, OsStr};
 use std::path::PathBuf;
 use std::env;
 use std::io::prelude::*;
 use std::io;
-use std::fs;
 use std::process::exit;
 
 
-use clap::{Args, ArgAction, Parser, Subcommand, ValueEnum};
+use clap::{ArgAction, Parser, Subcommand};
 
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
@@ -64,7 +62,7 @@ enum Commands {
 
 fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 {
-    let mut pb = match target {
+    let pb = match target {
         Some(dir) => dir,
         None => env::current_dir()?,
     };
@@ -79,7 +77,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(mut store) = find_store(&target) {
-        store.reindex();
+        store.reindex()?;
         Ok(store)
     }
     else {
@@ -92,7 +90,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
 fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
-    if let Ok(store) = find_store(&target) {
+    if let Ok(_store) = find_store(&target) {
         eprintln!("Store alread exists at {:?}", target);
         exit(42);
     }

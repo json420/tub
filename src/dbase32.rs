@@ -94,7 +94,7 @@ impl Iterator for Name2Iter {
             let a = FORWARD[self.i >> 5];
             let b = FORWARD[self.i & 31];
             unsafe {
-                let mut buf = s.as_bytes_mut();
+                let buf = s.as_bytes_mut();
                 buf[0] = a;
                 buf[1] = b;
             }

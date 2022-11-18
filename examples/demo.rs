@@ -6,7 +6,7 @@ fn main() {
     for name in Name2Iter::new() {
         println!("{}", name);
     }
-    let (tmp, store) = Store::new_tmp();
+    let (_tmp, store) = Store::new_tmp();
     for _i in 0..10 {
         let rid = random_object_id();
         println!("{}", store.object_path(&rid).display());

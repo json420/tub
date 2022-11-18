@@ -331,11 +331,7 @@ pub struct LeafInfo {
 impl LeafInfo {
     pub fn new(index: u64, size: u64, offset: u64) -> Self
     {
-        Self {
-            index: index,
-            size: size,
-            offset: offset,
-        }
+        Self {index: index, size: size, offset: offset}
     }
 }
 
@@ -349,11 +345,7 @@ pub struct LeafInfoIter {
 impl LeafInfoIter {
     pub fn new(size: u64, offset: u64) -> Self
     {
-        Self {
-            size: size,
-            offset: offset,
-            index: 0,
-        }
+        Self {size: size, offset: offset, index: 0}
     }
 }
 
@@ -375,8 +367,6 @@ impl Iterator for LeafInfoIter {
         }
     }
 }
-
-
 
 
 pub struct LeafReader {
@@ -423,6 +413,8 @@ mod tests {
 
     #[test]
     fn test_leaf_info_iter() {
+        // 0
+        assert_eq!(Vec::from_iter(LeafInfoIter::new(0, 0)), vec![]);
         // 1
         assert_eq!(Vec::from_iter(LeafInfoIter::new(1, 0)), vec![
             LeafInfo{index:0, size:1, offset:0},

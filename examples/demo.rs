@@ -1,4 +1,4 @@
-use bathtub_db::store::LeafInfoIter;
+use bathtub_db::leaf_io::LeafInfoIter;
 use bathtub_db::base::LEAF_SIZE;
 
 fn main() {

@@ -371,33 +371,22 @@ impl Iterator for LeafInfoIter {
 
 pub struct LeafReader {
     file: File,
-    offset: OffsetSize,
-    size: ObjectSize,
-    leaf_index: u64,
+    iterator: LeafInfoIter,
 }
 
 impl LeafReader {
-    pub fn new(file: File, offset: OffsetSize, size: ObjectSize) -> Self
+    pub fn new(file: File, size: u64, offset: u64) -> Self
     {
-        LeafReader {
-            file: file,
-            offset: offset,
-            size: size,
-            leaf_index: 0,
-        }
+        LeafReader {file: file, iterator: LeafInfoIter::new(size, offset)}
     }
 
     pub fn read_next_leaf(&mut self, buf: &mut [u8]) -> io::Result<bool>
     {
-        let consumed = self.leaf_index * LEAF_SIZE;
-        if consumed < self.size {
-            let offset = self.offset + consumed;
-            let remaining = self.size - consumed;
-            let size = cmp::min(remaining, LEAF_SIZE) as usize;
-            self.leaf_index += 1;
-            self.file.read_exact_at(&mut buf[0..size], offset)?;
+        if let Some(info) = self.iterator.next() {
+            self.file.read_exact_at(&mut buf[0..info.size as usize], info.offset)?;
             Ok(true)
-        } else {
+        }
+        else {
             Ok(false)
         }
     }

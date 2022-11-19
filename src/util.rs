@@ -37,8 +37,8 @@ pub fn random_id() -> AbstractID {
 }
 
 
-pub fn random_object_id() -> ObjectID {
-    let mut id = [0_u8; OBJECT_ID_LEN];
+pub fn random_object_id() -> TubHash {
+    let mut id = [0_u8; TUB_HASH_LEN];
     getrandom(&mut id);
     id
 }

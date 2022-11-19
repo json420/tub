@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 //#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct AOPair {
     id: [u8; ABSTRACT_ID_LEN],
-    obj_id: [u8; OBJECT_ID_LEN],
+    obj_id: [u8; TUB_HASH_LEN],
 }
 
 impl PartialEq for AOPair {
@@ -67,7 +67,7 @@ impl Tree {
         r
     }
     
-    pub fn get_object_id(&mut self, abstract_id: AbstractID) -> ObjectID {
+    pub fn get_object_id(&mut self, abstract_id: AbstractID) -> TubHash {
         let len: f64 = self.ids.len() as f64;
         let fraction: f64 = abstract_id[0] as f64 * len / 256.0;
         let mut i = fraction.floor() as usize;
@@ -84,7 +84,7 @@ impl Tree {
     }
     
     pub fn get_tree_object(&mut self) -> Vec<u8> {
-        let mut obj: Vec<u8> = Vec::with_capacity(self.ids.len()*(ABSTRACT_ID_LEN+OBJECT_ID_LEN));
+        let mut obj: Vec<u8> = Vec::with_capacity(self.ids.len()*(ABSTRACT_ID_LEN+TUB_HASH_LEN));
         obj.push(0u8);
         for el in 0..self.ids.len() {
             obj.extend_from_slice(&self.ids[el].id);

@@ -12,11 +12,11 @@ use crate::base::*;
 use crate::dbase32::db32enc_str;
 
 
-pub fn hash(buf: &[u8]) -> ObjectID {
+pub fn hash(buf: &[u8]) -> TubHash {
     let mut h = blake3::Hasher::new();
     h.update(buf);
     let mut out = h.finalize_xof();
-    let mut id: ObjectID = [0_u8; OBJECT_ID_LEN];
+    let mut id: TubHash = [0_u8; TUB_HASH_LEN];
     out.fill(&mut id);
     id
 }
@@ -63,7 +63,7 @@ pub fn hash_root(size: u64, leaf_hashes: LeafHashList) -> RootInfo {
     for leaf_hash in leaf_hashes.iter() {
         h.update(leaf_hash);
     }
-    let mut id: ObjectID = [0_u8; OBJECT_ID_LEN];
+    let mut id: TubHash = [0_u8; TUB_HASH_LEN];
     h.finalize_xof().fill(&mut id);
     RootInfo {size: size, hash: id, leaf_hashes: leaf_hashes}
 }

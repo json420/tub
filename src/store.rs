@@ -42,7 +42,7 @@ macro_rules! other_err {
 pub struct Object {
     offset: OffsetSize,
     size: ObjectSize,
-    id: ObjectID,
+    id: TubHash,
     rfile: fs::File,
 }
 
@@ -59,7 +59,7 @@ pub struct Entry {
 }
 
 
-type Index = HashMap<ObjectID, Entry>;
+type Index = HashMap<TubHash, Entry>;
 
 
 pub fn find_store(path: &Path) -> io::Result<Store>
@@ -124,7 +124,7 @@ pub fn init_tree(path: &Path) -> io::Result<Store>
 }
 
 
-fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
+fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(OBJECTDIR);
     let sid = db32enc_str(id);
     let (prefix, suffix) = sid.split_at(2);
@@ -132,7 +132,7 @@ fn push_object_path(pb: &mut PathBuf, id: &ObjectID) {
     pb.push(suffix);
 }
 
-fn push_partial_path(pb: &mut PathBuf, id: &ObjectID) {
+fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(PARTIALDIR);
     pb.push(db32enc_str(id));
 }
@@ -182,7 +182,7 @@ impl Store {
     }
 
     /// Builds canonical large file path.
-    pub fn object_path(&self, id: &ObjectID) -> PathBuf {
+    pub fn object_path(&self, id: &TubHash) -> PathBuf {
         let mut pb = self.path();
         push_object_path(&mut pb, id);
         pb
@@ -192,21 +192,21 @@ impl Store {
     ///
     /// A "partial" object is an object whose hash/ID is known, but not all the
     /// its leaves are present in this store.
-    pub fn partial_path(&self, id: &ObjectID) -> PathBuf {
+    pub fn partial_path(&self, id: &TubHash) -> PathBuf {
         let mut pb = self.path();
         push_partial_path(&mut pb, id);
         pb
     }
 
-    fn open_large(&self, id: &ObjectID) -> io::Result<fs::File> {
+    fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {
         File::open(self.object_path(id))
     }
 
-    fn remove_large(&self, id: &ObjectID) -> io::Result<()> {
+    fn remove_large(&self, id: &TubHash) -> io::Result<()> {
         fs::remove_file(self.object_path(id))
     }
 
-    pub fn open(&self, _id: &ObjectID) -> io::Result<Object> {
+    pub fn open(&self, _id: &TubHash) -> io::Result<Object> {
         other_err!("oh no!")
     }
 
@@ -214,7 +214,7 @@ impl Store {
         self.index.len()
     }
 
-    pub fn keys(&self) -> Vec<ObjectID> {
+    pub fn keys(&self) -> Vec<TubHash> {
         Vec::from_iter(self.index.keys().cloned())
     }
 
@@ -239,7 +239,7 @@ impl Store {
             if let Err(_) = self.file.read_exact(&mut header) {
                 break;
             }
-            let id: ObjectID = header[0..30].try_into().expect("oops");
+            let id: TubHash = header[0..30].try_into().expect("oops");
             let size = u64::from_le_bytes(
                 header[30..38].try_into().expect("oops")
             );
@@ -262,7 +262,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> (ObjectID, bool) {
+    pub fn add_object(&mut self, data: &[u8]) -> (TubHash, bool) {
         let id = hash(data);
         if let Some(_entry) = self.index.get(&id) {
             return (id, false);  // Already in object store
@@ -280,7 +280,7 @@ impl Store {
         (id, true)
     }
 
-    pub fn get_object(&mut self, id: &ObjectID, verify: bool) -> Option<Vec<u8>> {
+    pub fn get_object(&mut self, id: &TubHash, verify: bool) -> Option<Vec<u8>> {
         if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             let s = &mut buf[0..entry.size as usize];
@@ -295,7 +295,7 @@ impl Store {
         None
     }
 
-    pub fn delete_object(&mut self, id: &ObjectID) -> bool {
+    pub fn delete_object(&mut self, id: &TubHash) -> bool {
         /*  Remove an object from the Store.
 
         This writes a tombstone to the pack file and then, in the large object
@@ -367,7 +367,7 @@ mod tests {
 
     #[test]
     fn test_push_object_path() {
-        let id = [0_u8; OBJECT_ID_LEN];
+        let id = [0_u8; TUB_HASH_LEN];
         let mut pb = PathBuf::new();
         push_object_path(&mut pb, &id);
         assert_eq!(pb.as_os_str(),
@@ -377,7 +377,7 @@ mod tests {
 
     #[test]
     fn test_push_partial_path() {
-        let id = [0_u8; OBJECT_ID_LEN];
+        let id = [0_u8; TUB_HASH_LEN];
         let mut pb = PathBuf::new();
         push_partial_path(&mut pb, &id);
         assert_eq!(pb.as_os_str(),
@@ -439,7 +439,7 @@ mod tests {
         let (_tmp, mut store) = Store::new_tmp();
 
         assert_eq!(store.len(), 0);
-        let empty: Vec<ObjectID> = vec![];
+        let empty: Vec<TubHash> = vec![];
         assert_eq!(store.keys(), empty);
 
         let rid = random_object_id();

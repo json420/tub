@@ -18,12 +18,9 @@ fn main() -> io::Result<()> {
     let (tmpdir, mut store) = Store::new_tmp();
     let tmp = store.allocate_tmp()?;
     println!("{:?}", tmp.path);
-    let mut reader = LeafReader::new(File::open(&path)?);
-    let mut buf = new_leaf_buf();
-    while let Some(info) = reader.read_next_leaf(&mut buf)? {
-        println!("{}", info.index);
-    }
-    let root = reader.hash_root();
+
+    let mut file = File::open(&path)?;
+    let root = store.import_file(file)?;
     println!("{}", root.as_db32());
     store.finalize_tmp(tmp, &root.hash)?;
     Ok(())

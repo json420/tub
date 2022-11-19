@@ -26,9 +26,10 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::protocol::hash;
+use crate::protocol::{hash, RootInfo};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
+use crate::leaf_io::{LeafReader, new_leaf_buf};
 
 
 macro_rules! other_err {
@@ -258,6 +259,21 @@ impl Store {
         fs::create_dir_all(&to_parent)?;
         eprintln!("{:?} -> {:?}", from, to);
         fs::rename(&from, &to)
+    }
+
+    pub fn import_file(&mut self, file: File) -> io::Result<RootInfo>
+    {
+        let mut reader = LeafReader::new(file);
+        let mut tmp = self.allocate_tmp()?;
+        let mut buf = new_leaf_buf();
+        while let Some(info) = reader.read_next_leaf(&mut buf)? {
+            println!("{}", info.index);
+            tmp.write_leaf(&buf)?;
+        }
+        let root = reader.hash_root();
+        println!("{}", root.as_db32());
+        self.finalize_tmp(tmp, &root.hash)?;
+        Ok(root)
     }
 
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {

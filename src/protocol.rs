@@ -72,7 +72,7 @@ pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::{random_small_object, random_object_id};
+    use crate::util::{random_small_object, random_hash};
     use crate::dbase32::db32enc_str;
 
     #[test]
@@ -95,8 +95,8 @@ mod tests {
 
     #[test]
     fn test_hash_root() {
-        let lh0 = random_object_id();
-        let lh1 = random_object_id();
+        let lh0 = random_hash();
+        let lh1 = random_hash();
         let a = hash_root(1, vec![lh0]);
         let b = hash_root(LEAF_SIZE, vec![lh0]);
         let c = hash_root(LEAF_SIZE + 1, vec![lh0, lh1]);

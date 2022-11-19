@@ -37,7 +37,7 @@ pub fn random_id() -> TubID {
 }
 
 
-pub fn random_object_id() -> TubHash {
+pub fn random_hash() -> TubHash {
     let mut id = [0_u8; TUB_HASH_LEN];
     getrandom(&mut id);
     id
@@ -106,9 +106,9 @@ mod tests {
     }
 
     #[test]
-    fn test_random_object_id() {
-        let a = random_object_id();
-        let b = random_object_id();
+    fn test_random_hash() {
+        let a = random_hash();
+        let b = random_hash();
         assert_ne!(a, b);        
     }
 }

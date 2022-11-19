@@ -286,7 +286,7 @@ pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::random_object_id;
+    use crate::util::random_hash;
     use super::*;
 
     #[test]
@@ -341,7 +341,7 @@ mod tests {
     #[test]
     fn test_roundtrip() {
         for _ in 0..50_000 {
-            let bin = random_object_id();
+            let bin = random_hash();
             let txt = super::db32enc(&bin);
             let bin2 = super::db32dec(&txt).unwrap();
             assert_eq!(&bin, &bin2[..]);
@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_bad_txt() {
-        let bin = random_object_id();
+        let bin = random_hash();
         let txt = db32enc(&bin);
         assert_eq!(isdb32(&txt), true);
         for i in 0..bin.len() {

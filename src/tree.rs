@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn iterable() {
         let mut tree = Tree::new();
-        let oid1 = random_object_id();
+        let oid1 = random_hash();
         tree.add(&oid1);
         let aid1 = tree.read_next_id();
         tree.cur = 0;
@@ -147,7 +147,7 @@ mod tests {
     #[test]
     fn get_tree_obj() {
         let mut tree = Tree::new();
-        let mut oid1 = [0u8; 30];  //use util.random_object_id()
+        let mut oid1 = [0u8; 30];  //use util.random_hash()
         let mut oid2 = [1u8; 30];
         tree.add(&oid1);
         
@@ -181,7 +181,7 @@ mod tests {
         const ROUNDS: u64 = 10_000;
 
         for _id in 0..ROUNDS {
-            store.add_object(&random_object_id());
+            store.add_object(&random_hash());
         }
         
         let keys = store.keys();

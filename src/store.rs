@@ -442,7 +442,7 @@ mod tests {
         let empty: Vec<TubHash> = vec![];
         assert_eq!(store.keys(), empty);
 
-        let rid = random_object_id();
+        let rid = random_hash();
         assert_eq!(store.get_object(&rid, false), None);
         assert_eq!(store.get_object(&rid, true), None);
         assert_eq!(store.delete_object(&rid), false);
@@ -485,7 +485,7 @@ mod tests {
     #[test]
     fn test_store_large() {
         let (_tmp, store) = Store::new_tmp();
-        let id = random_object_id();
+        let id = random_hash();
         assert!(store.open_large(&id).is_err());
         assert!(store.remove_large(&id).is_err());
         assert!(store.open(&id).is_err());

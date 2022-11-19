@@ -30,8 +30,8 @@ pub fn fadvise_sequential(file: &File) {
 }
 
 
-pub fn random_id() -> AbstractID {
-    let mut id = [0_u8; ABSTRACT_ID_LEN];
+pub fn random_id() -> TubID {
+    let mut id = [0_u8; TUB_ID_LEN];
     getrandom(&mut id);
     id
 }

@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 //#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct AOPair {
-    id: [u8; ABSTRACT_ID_LEN],
+    id: [u8; TUB_ID_LEN],
     obj_id: [u8; TUB_HASH_LEN],
 }
 
@@ -61,13 +61,13 @@ impl Tree {
         }
     }
     
-    pub fn read_next_id(&mut self) -> AbstractID {
+    pub fn read_next_id(&mut self) -> TubID {
         let r = self.ids[self.cur].id;
         self.cur += 1;
         r
     }
     
-    pub fn get_object_id(&mut self, abstract_id: AbstractID) -> TubHash {
+    pub fn get_object_id(&mut self, abstract_id: TubID) -> TubHash {
         let len: f64 = self.ids.len() as f64;
         let fraction: f64 = abstract_id[0] as f64 * len / 256.0;
         let mut i = fraction.floor() as usize;
@@ -84,7 +84,7 @@ impl Tree {
     }
     
     pub fn get_tree_object(&mut self) -> Vec<u8> {
-        let mut obj: Vec<u8> = Vec::with_capacity(self.ids.len()*(ABSTRACT_ID_LEN+TUB_HASH_LEN));
+        let mut obj: Vec<u8> = Vec::with_capacity(self.ids.len()*(TUB_ID_LEN+TUB_HASH_LEN));
         obj.push(0u8);
         for el in 0..self.ids.len() {
             obj.extend_from_slice(&self.ids[el].id);
@@ -98,19 +98,19 @@ impl Tree {
 
 //same encoding but only include the keys that have changed
 impl Iterator for Tree {
-    type Item = AbstractID;
+    type Item = TubID;
     
     fn next(&mut self) -> Option<Self::Item> {
         
         self.cur += 1;
         if self.cur <= self.ids.len() {
-            Some(self.ids[self.cur-1].id as AbstractID)
+            Some(self.ids[self.cur-1].id as TubID)
         }
         else { None }
     }
     
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        Some(self.ids[n].id as AbstractID)
+        Some(self.ids[n].id as TubID)
     }
 
 }
@@ -194,7 +194,7 @@ mod tests {
         }
         assert_eq!(count, ROUNDS);
         
-        let mut prevabs: [u8; ABSTRACT_ID_LEN] = [0u8; ABSTRACT_ID_LEN];
+        let mut prevabs: [u8; TUB_ID_LEN] = [0u8; TUB_ID_LEN];
         count = 0;
         for _id in 0..ROUNDS {
             let abs = tree.read_next_id();

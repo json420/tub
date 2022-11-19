@@ -137,7 +137,7 @@ fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(db32enc_str(id));
 }
 
-fn push_tmp_path(pb: &mut PathBuf, key: &AbstractID) {
+fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
     pb.push(TMPDIR);
     pb.push(db32enc_str(key));
 }
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn test_push_tmp_path() {
-        let key = [0_u8; ABSTRACT_ID_LEN];
+        let key = [0_u8; TUB_ID_LEN];
         let mut pb = PathBuf::new();
         push_tmp_path(&mut pb, &key);
         assert_eq!(pb.as_os_str(),

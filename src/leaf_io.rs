@@ -6,8 +6,10 @@ use std::io;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
 use std::fs::File;
-use crate::base::LEAF_SIZE;
 use std::cmp;
+
+use crate::base::LEAF_SIZE;
+use crate::protocol;
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -92,22 +94,30 @@ impl LeafReader2 {
 
 pub struct LeafReader {
     file: File,
+    index: u64,
     
 }
 
 impl LeafReader {
     pub fn new(file: File) -> Self
     {
-        Self {file: file}
+        Self {file: file, index: 0}
     }
 
-    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<bool>
+    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<protocol::LeafInfo>>
     {
         buf.resize(LEAF_SIZE as usize, 0);
         let amount = self.file.read(buf)?;
         assert!(amount as u64 <= LEAF_SIZE);
         buf.resize(amount, 0);
-        Ok(amount != 0)
+        if amount < 1 {
+            Ok(None)
+        }
+        else {
+            let info = protocol::hash_leaf(self.index, buf);
+            self.index += 1;
+            Ok(Some(info))
+        }
     }
 }
 

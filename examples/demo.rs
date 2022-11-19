@@ -4,6 +4,7 @@ use std::io;
 use std::env;
 use std::process::exit;
 use bathtub_db::leaf_io::*;
+use bathtub_db::dbase32::db32enc_str;
 
 
 fn main() -> io::Result<()> {
@@ -16,13 +17,9 @@ fn main() -> io::Result<()> {
     let file = File::open(&path)?;
     let mut buf = new_leaf_buf();
     let mut lr = LeafReader::new(file);
-    let mut i = 0;
-    loop {
-        if !lr.read_next_leaf(&mut buf)? {
-            break;
-        }
-        println!("{} {}", i, buf.len());
-        i += 1;
+
+    while let Some(info) = lr.read_next_leaf(&mut buf)? {
+        println!("{} {} {}", db32enc_str(&info.hash), info.index, buf.len());
     }
     println!("done");
     Ok(())

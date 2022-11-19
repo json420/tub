@@ -1,7 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::env;
 use std::io::prelude::*;
 use std::io;
+use std::fs;
 use std::process::exit;
 
 
@@ -10,6 +11,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
 use crate::dbase32::db32enc_str;
+use crate::leaf_io::hash_object;
 
 
 type OptPath = Option<PathBuf>;
@@ -56,6 +58,12 @@ enum Commands {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory")]
         tub: Option<PathBuf>,
+    },
+
+    #[command(about = "Calculate the Tub-Hash of a file")]
+    HashObject {
+        #[arg(help="Path of input file")]
+        path: PathBuf,
     },
 }
 
@@ -116,6 +124,15 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_hash(path: &Path) -> io::Result<()>
+{
+    let pb = path.canonicalize()?;
+    let file = fs::File::open(&pb)?;
+    let root = hash_object(file)?;
+    println!("{}", root.as_db32());
+    Ok(())
+}
+
 
 pub fn run() -> io::Result<()> {
     let args = Cli::parse();
@@ -125,6 +142,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::Import {source, tub} => {
             cmd_import(source, tub)
+        }
+        Commands::HashObject {path} => {
+            cmd_hash(&path)
         }
     }
 }

@@ -9,7 +9,7 @@ use std::fs::File;
 use std::cmp;
 
 use crate::base::LEAF_SIZE;
-use crate::protocol;
+use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -32,6 +32,7 @@ impl LeafOffset {
         Self {index: index, size: size, offset: offset}
     }
 }
+
 
 #[derive(Debug)]
 pub struct LeafOffsetIter {
@@ -67,21 +68,21 @@ impl Iterator for LeafOffsetIter {
 }
 
 
-
 pub struct LeafReader {
     file: File,
     index: u64,
-    
+    closed: bool,
 }
 
 impl LeafReader {
     pub fn new(file: File) -> Self
     {
-        Self {file: file, index: 0}
+        Self {file: file, index: 0, closed: false}
     }
 
-    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<protocol::LeafInfo>>
+    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafInfo>>
     {
+        
         buf.resize(LEAF_SIZE as usize, 0);
         let amount = self.file.read(buf)?;
         assert!(amount as u64 <= LEAF_SIZE);
@@ -90,7 +91,7 @@ impl LeafReader {
             Ok(None)
         }
         else {
-            let info = protocol::hash_leaf(self.index, buf);
+            let info = hash_leaf(self.index, buf);
             self.index += 1;
             Ok(Some(info))
         }
@@ -111,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn test_leaf_info_iter() {
+    fn test_leaf_offset_iter() {
         // 0
         assert_eq!(Vec::from_iter(LeafOffsetIter::new(0, 0)), vec![]);
         // 1

@@ -28,6 +28,7 @@ use tempfile::TempDir;
 use crate::base::*;
 use crate::protocol::hash;
 use crate::dbase32::{db32enc_str, Name2Iter};
+use crate::util::random_id;
 
 
 macro_rules! other_err {
@@ -140,6 +141,32 @@ fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
 fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
     pb.push(TMPDIR);
     pb.push(db32enc_str(key));
+}
+
+#[derive(Debug)]
+pub struct TmpObject {
+    pub id: TubID,
+    pub path: PathBuf,
+    file: File,
+}
+
+impl TmpObject {
+    pub fn new(id: TubID, path: PathBuf) -> io::Result<Self>
+    {
+        let file = File::options()
+            .create_new(true)
+            .append(true).open(&path)?;
+        Ok(TmpObject {
+            id: id,
+            path: path,
+            file: file,
+        })
+    }
+
+    pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>
+    {
+        self.file.write_all(buf)
+    }
 }
 
 

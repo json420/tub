@@ -199,7 +199,8 @@ impl Store {
     // removed after MVP.
     pub fn new_tmp() -> (TempDir, Self) {
         let tmp = TempDir::new().unwrap();
-        let store = Store::new(tmp.path()).unwrap();
+        //let store = Store::new(tmp.path()).unwrap();
+        let store = init_store(tmp.path()).unwrap();
         (tmp, store)
     }
 
@@ -239,6 +240,13 @@ impl Store {
         to_parent.pop();
         fs::create_dir_all(&to_parent)?;
         fs::rename(&from, &to)
+    }
+
+    pub fn allocate_tmp(&self) -> io::Result<TmpObject>
+    {
+        let id = random_id();
+        let path = self.tmp_path(&id);
+        TmpObject::new(id, path)
     }
 
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {

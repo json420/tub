@@ -113,13 +113,9 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
-    let mut buf: Vec<u8> = Vec::with_capacity(32 * 1024);
     for src in files.iter() {
-        let mut fp = src.open()?;
-        fp.read_to_end(&mut buf)?;
-        let (id, new) = tub.add_object(&buf);
-        println!("{} {:?} {:?}", &db32enc_str(&id), new, src.0);
-        buf.clear();
+        let root = tub.import_file(src.open()?)?;
+        println!("{} {:?}", root.as_db32(), src.0);
     }
     Ok(())
 }

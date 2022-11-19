@@ -257,7 +257,6 @@ impl Store {
         let mut to_parent = to.clone();
         to_parent.pop();
         fs::create_dir_all(&to_parent)?;
-        eprintln!("{:?} -> {:?}", from, to);
         fs::rename(&from, &to)
     }
 
@@ -267,11 +266,9 @@ impl Store {
         let mut tmp = self.allocate_tmp()?;
         let mut buf = new_leaf_buf();
         while let Some(info) = reader.read_next_leaf(&mut buf)? {
-            println!("{}", info.index);
             tmp.write_leaf(&buf)?;
         }
         let root = reader.hash_root();
-        println!("{}", root.as_db32());
         self.finalize_tmp(tmp, &root.hash)?;
         Ok(root)
     }

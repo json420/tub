@@ -19,8 +19,9 @@ fn main() -> io::Result<()> {
     let mut lr = LeafReader::new(file);
 
     while let Some(info) = lr.read_next_leaf(&mut buf)? {
-        println!("{} {} {}", db32enc_str(&info.hash), info.index, buf.len());
+        println!("{} {} {}", db32enc_str(&info.hash), buf.len(), info.index);
     }
-    println!("done");
+    let root = lr.hash_root();
+    println!("{} {}", db32enc_str(&root.hash), root.size);
     Ok(())
 }

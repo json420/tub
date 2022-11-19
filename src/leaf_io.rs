@@ -8,7 +8,7 @@ use std::os::unix::fs::FileExt;
 use std::fs::File;
 use std::cmp;
 
-use crate::base::LEAF_SIZE;
+use crate::base::{LeafHashList, LEAF_SIZE};
 use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo};
 
 
@@ -70,31 +70,46 @@ impl Iterator for LeafOffsetIter {
 
 pub struct LeafReader {
     file: File,
-    index: u64,
     closed: bool,
+    index: u64,
+    size: u64,
+    leaf_hashes: LeafHashList,
 }
 
 impl LeafReader {
     pub fn new(file: File) -> Self
     {
-        Self {file: file, index: 0, closed: false}
+        Self {file: file, closed: false, size: 0, index: 0, leaf_hashes: Vec::new()}
     }
 
     pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafInfo>>
     {
-        
+        if self.closed {
+            panic!("LeafReader.read_next_leaf() called after closed");
+        }
         buf.resize(LEAF_SIZE as usize, 0);
         let amount = self.file.read(buf)?;
         assert!(amount as u64 <= LEAF_SIZE);
         buf.resize(amount, 0);
-        if amount < 1 {
+        if amount == 0 {
+            self.closed = true;
             Ok(None)
         }
         else {
             let info = hash_leaf(self.index, buf);
+            self.size += amount as u64;
+            self.leaf_hashes.push(info.hash);
             self.index += 1;
             Ok(Some(info))
         }
+    }
+
+    pub fn hash_root(self) -> RootInfo
+    {
+        if !self.closed {
+            panic!("LeafReader.hash_root() called before closed");
+        }
+        hash_root(self.size, self.leaf_hashes)
     }
 }
 
@@ -105,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_new_leaf_buf() {
-        let mut buf = new_leaf_buf();
+        let buf = new_leaf_buf();
         assert_eq!(buf.len(), LEAF_SIZE as usize);
         assert_eq!(buf.capacity(), LEAF_SIZE as usize);
         //let s = &mut buf[0..111];

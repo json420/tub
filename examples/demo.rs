@@ -14,8 +14,17 @@ fn main() -> io::Result<()> {
         exit(42);
     }
     let path = PathBuf::from(&args[1]);
-    let (tmpdir, store) = Store::new_tmp();
+
+    let (tmpdir, mut store) = Store::new_tmp();
     let tmp = store.allocate_tmp()?;
     println!("{:?}", tmp.path);
+    let mut reader = LeafReader::new(File::open(&path)?);
+    let mut buf = new_leaf_buf();
+    while let Some(info) = reader.read_next_leaf(&mut buf)? {
+        println!("{}", info.index);
+    }
+    let root = reader.hash_root();
+    println!("{}", root.as_db32());
+    store.finalize_tmp(tmp, &root.hash)?;
     Ok(())
 }

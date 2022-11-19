@@ -249,6 +249,17 @@ impl Store {
         TmpObject::new(id, path)
     }
 
+    pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
+    {
+        let from = tmp.path;
+        let to = self.object_path(hash);
+        let mut to_parent = to.clone();
+        to_parent.pop();
+        fs::create_dir_all(&to_parent)?;
+        eprintln!("{:?} -> {:?}", from, to);
+        fs::rename(&from, &to)
+    }
+
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {
         File::open(self.object_path(id))
     }

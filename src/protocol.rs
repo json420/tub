@@ -9,6 +9,7 @@
 */
 use blake3;
 use crate::base::*;
+use crate::dbase32::db32enc_str;
 
 
 pub fn hash(buf: &[u8]) -> ObjectID {
@@ -18,14 +19,19 @@ pub fn hash(buf: &[u8]) -> ObjectID {
     let mut id: ObjectID = [0_u8; OBJECT_ID_LEN];
     out.fill(&mut id);
     id
-    
 }
 
 
 #[derive(Debug, PartialEq)]
 pub struct LeafInfo {
-    pub index: u64,
     pub hash: LeafHash,
+    pub index: u64,
+}
+
+impl LeafInfo {
+    pub fn as_db32(&self) -> String {
+        db32enc_str(&self.hash)
+    }
 }
 
 pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
@@ -40,9 +46,15 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
 
 #[derive(Debug, PartialEq)]
 pub struct RootInfo {
-    pub size: u64,
     pub hash: LeafHash,
+    pub size: u64,
     pub leaf_hashes: LeafHashList,
+}
+
+impl RootInfo {
+    pub fn as_db32(&self) -> String {
+        db32enc_str(&self.hash)
+    }
 }
 
 pub fn hash_root(size: u64, leaf_hashes: LeafHashList) -> RootInfo {

@@ -18,6 +18,7 @@ pub type LeafIndex = u64;
 pub const HEADER_LEN: usize = OBJECT_ID_LEN + size_of::<ObjectSize>();
 pub type HeaderBuf = [u8; HEADER_LEN];
 
+//pub const LEAF_SIZE: ObjectSize = 2097152;  // 2 MiB leaf size
 pub const LEAF_SIZE: ObjectSize = 8388608;  // 8 MiB leaf size
 pub type LeafBuf = Box<[u8; LEAF_SIZE as usize]>;
 

@@ -24,7 +24,7 @@ pub fn hash(buf: &[u8]) -> TubHash {
 
 #[derive(Debug, PartialEq)]
 pub struct LeafInfo {
-    pub hash: LeafHash,
+    pub hash: TubHash,
     pub index: u64,
 }
 
@@ -38,7 +38,7 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
     let mut h = blake3::Hasher::new();
     h.update(&index.to_le_bytes());
     h.update(data);
-    let mut hash: LeafHash = [0_u8; LEAF_HASH_LEN];
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
     h.finalize_xof().fill(&mut hash);
     LeafInfo {index: index, hash: hash}
 }
@@ -46,9 +46,9 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
 
 #[derive(Debug, PartialEq)]
 pub struct RootInfo {
-    pub hash: LeafHash,
+    pub hash: TubHash,
     pub size: u64,
-    pub leaf_hashes: LeafHashList,
+    pub leaf_hashes: TubHashList,
 }
 
 impl RootInfo {
@@ -57,7 +57,7 @@ impl RootInfo {
     }
 }
 
-pub fn hash_root(size: u64, leaf_hashes: LeafHashList) -> RootInfo {
+pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
     let mut h = blake3::Hasher::new();
     h.update(&size.to_le_bytes());
     for leaf_hash in leaf_hashes.iter() {

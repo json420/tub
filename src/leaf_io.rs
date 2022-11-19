@@ -8,7 +8,7 @@ use std::os::unix::fs::FileExt;
 use std::fs::File;
 use std::cmp;
 
-use crate::base::{LeafHashList, LEAF_SIZE};
+use crate::base::{TubHashList, LEAF_SIZE};
 use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo};
 
 
@@ -73,7 +73,7 @@ pub struct LeafReader {
     closed: bool,
     index: u64,
     size: u64,
-    leaf_hashes: LeafHashList,
+    leaf_hashes: TubHashList,
 }
 
 impl LeafReader {

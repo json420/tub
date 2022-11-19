@@ -198,6 +198,22 @@ impl Store {
         pb
     }
 
+    pub fn tmp_path(&self, id: &TubID) -> PathBuf {
+        let mut pb = self.path();
+        push_tmp_path(&mut pb, id);
+        pb
+    }
+
+    pub fn move_to_canonical(&self, id: &TubID, hash: &TubHash) -> io::Result<()>
+    {
+        let from = self.tmp_path(id);
+        let to = self.object_path(hash);
+        let mut to_parent = to.clone();
+        to_parent.pop();
+        fs::create_dir_all(&to_parent)?;
+        fs::rename(&from, &to)
+    }
+
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {
         File::open(self.object_path(id))
     }

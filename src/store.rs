@@ -163,6 +163,15 @@ impl TmpObject {
         })
     }
 
+    pub fn is_small(&mut self) -> bool
+    {
+        !self.buf.is_none()
+    }
+
+    pub fn into_data(self) -> Vec<u8> {
+        self.buf.unwrap()
+    }
+
     pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>
     {
         if self.buf.is_none() && self.file.is_none() {
@@ -275,8 +284,8 @@ impl Store {
         let root = reader.hash_root();
         if root.is_small() {
             // Super lame, fix ASAP!
-            let mut buf:Vec<u8> = Vec::with_capacity(root.size as usize);
-            buf.resize(root.size as usize, 0);
+            let data = tmp.into_data();
+            self.add_small_object(&root, &data)?;
         }
         else {
             self.finalize_tmp(tmp, &root.hash)?;
@@ -351,18 +360,46 @@ impl Store {
         Ok(())
     }
 
-    pub fn add_large_object_meta(&mut self, root: &RootInfo) -> io::Result<()>
+    pub fn add_small_object(&mut self, root: &RootInfo, data: &[u8]) -> io::Result<bool>
     {
-        let entry = Entry {
-            offset: self.file.stream_position()?,
-            size: root.size,
-        };
-        self.file.write_all_vectored(&mut [
-            io::IoSlice::new(&root.hash),
-            io::IoSlice::new(&root.size.to_le_bytes()),
-        ])?;
-        self.index.insert(root.hash.clone(), entry);
-        Ok(())
+        assert!(root.is_small());
+        if let Some(_entry) = self.index.get(&root.hash) {
+            Ok(false)  // Already in object store
+        }
+        else {
+            let entry = Entry {
+                offset: self.file.stream_position().unwrap(),
+                size: data.len() as ObjectSize,
+            };
+            self.file.write_all_vectored(&mut [
+                io::IoSlice::new(&root.hash),
+                io::IoSlice::new(&entry.size.to_le_bytes()),
+                io::IoSlice::new(data),
+            ])?;
+            self.index.insert(root.hash.clone(), entry);
+            Ok(true)
+        }
+    }
+
+    pub fn add_large_object_meta(&mut self, root: &RootInfo) -> io::Result<bool>
+    {
+        assert!( !root.is_small());
+        if let Some(_entry) = self.index.get(&root.hash) {
+            Ok(false)  // Already in object store
+        }
+        else {
+            let entry = Entry {
+                offset: self.file.stream_position()?,
+                size: root.size,
+            };
+            self.file.write_all_vectored(&mut [
+                io::IoSlice::new(&root.hash),
+                io::IoSlice::new(&root.size.to_le_bytes()),
+                // NOTE: we write just the header for large object, no data
+            ])?;
+            self.index.insert(root.hash.clone(), entry);
+            Ok(true)
+        }
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> (TubHash, bool) {

@@ -558,7 +558,7 @@ mod tests {
         // Known test vector or something like that
         let (id3, new) = store.add_object(b"Federation44");
         assert_eq!(&db32enc_str(&id3),
-            "OK5UTJXH6H3Q9DU7EHY9LEAN8P6TPY553SIGLQH5KAXEG6EN"
+            "TDJGJI47CFS53WQWE7K77R8GJVIAE9KB6465SPUV6NDYPVKA"
         );
         assert!(new);
     }

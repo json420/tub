@@ -273,7 +273,7 @@ impl Store {
         fs::rename(&from, &to)
     }
 
-    pub fn import_file(&mut self, file: File) -> io::Result<RootInfo>
+    pub fn import_file(&mut self, file: File) -> io::Result<(RootInfo, bool)>
     {
         let mut reader = LeafReader::new(file);
         let mut tmp = self.allocate_tmp()?;
@@ -282,16 +282,17 @@ impl Store {
             tmp.write_leaf(&buf)?;
         }
         let root = reader.hash_root();
-        if root.is_small() {
-            // Super lame, fix ASAP!
-            let data = tmp.into_data();
-            self.add_small_object(&root, &data)?;
-        }
-        else {
-            self.finalize_tmp(tmp, &root.hash)?;
-            self.add_large_object_meta(&root)?;
-        }
-        Ok(root)
+        let new = match root.is_small() {
+            true => {
+                let data = tmp.into_data();
+                self.add_small_object(&root, &data)?
+            }
+            false => {
+                self.finalize_tmp(tmp, &root.hash)?;
+                self.add_large_object_meta(&root)?
+            }
+        };
+        Ok((root, new))
     }
 
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {

@@ -114,8 +114,8 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let mut tub = get_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
     for src in files.iter() {
-        let root = tub.import_file(src.open()?)?;
-        println!("{} {:?}", root.as_db32(), src.0);
+        let (root, new) = tub.import_file(src.open()?)?;
+        println!("{} {} {:?}", root.as_db32(), new, src.0);
     }
     Ok(())
 }

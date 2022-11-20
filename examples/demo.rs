@@ -20,8 +20,8 @@ fn main() -> io::Result<()> {
     println!("{:?}", tmp.path);
 
     let mut file = File::open(&path)?;
-    let root = store.import_file(file)?;
-    println!("{}", root.as_db32());
+    let (root, new) = store.import_file(file)?;
+    println!("{} {}", root.as_db32(), new);
     store.finalize_tmp(tmp, &root.hash)?;
     Ok(())
 }

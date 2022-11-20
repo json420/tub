@@ -66,7 +66,7 @@ type Index = HashMap<TubHash, Entry>;
 
 pub fn find_store(path: &Path) -> io::Result<Store>
 {
-    let mut pb = path.canonicalize()?;
+    let mut pb = PathBuf::from(path);
     loop {
         pb.push(DOTDIR);
         if pb.is_dir() {
@@ -84,7 +84,7 @@ pub fn find_store(path: &Path) -> io::Result<Store>
 /// Initialize a store layout in an empty directory.
 pub fn init_store(path: &Path) -> io::Result<Store>
 {
-    let mut pb = path.canonicalize()?;
+    let mut pb = PathBuf::from(path);
 
     // objects directory and sub-directories
     pb.push(OBJECTDIR);
@@ -206,7 +206,7 @@ pub struct Store {
 impl Store {
     pub fn new(path: &Path) -> io::Result<Self>
     {
-        let pb = path.canonicalize()?;
+        let pb = PathBuf::from(path);
 
         let mut pb_copy = pb.clone();
         pb_copy.push(PACKFILE);

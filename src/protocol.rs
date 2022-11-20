@@ -52,6 +52,10 @@ impl RootInfo {
     pub fn as_db32(&self) -> String {
         db32enc_str(&self.hash)
     }
+
+    pub fn is_small(&self) -> bool {
+        self.size <= LEAF_SIZE
+    }
 }
 
 pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {

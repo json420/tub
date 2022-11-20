@@ -148,25 +148,38 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
 pub struct TmpObject {
     pub id: TubID,
     pub path: PathBuf,
-    file: File,
+    buf: Vec<u8>,
+    file: Option<File>,
 }
 
 impl TmpObject {
     pub fn new(id: TubID, path: PathBuf) -> io::Result<Self>
     {
-        let file = File::options()
-            .create_new(true)
-            .append(true).open(&path)?;
         Ok(TmpObject {
             id: id,
             path: path,
-            file: file,
+            buf: vec![],
+            file: None,
         })
     }
 
     pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>
     {
-        self.file.write_all(buf)
+        if self.buf.len() == 0 {
+            // First leaf, keep in memory in case it's a small object
+            self.buf = Vec::from(buf);
+            Ok(())
+        }
+        else {
+            if self.file.is_none() {
+                let mut file = File::options()
+                    .create_new(true)
+                    .append(true).open(&self.path)?;
+                file.write_all(&self.buf)?;
+                self.file = Some(file);
+            }
+            self.file.as_ref().unwrap().write_all(buf)
+        }
     }
 }
 
@@ -259,7 +272,15 @@ impl Store {
             tmp.write_leaf(&buf)?;
         }
         let root = reader.hash_root();
-        self.finalize_tmp(tmp, &root.hash)?;
+        if root.is_small() {
+            // Super lame, fix ASAP!
+            let mut buf:Vec<u8> = Vec::with_capacity(root.size as usize);
+            buf.resize(root.size as usize, 0);
+        }
+        else {
+            self.finalize_tmp(tmp, &root.hash)?;
+            self.add_large_object_meta(&root)?;
+        }
         Ok(root)
     }
 

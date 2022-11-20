@@ -330,12 +330,26 @@ impl Store {
                 self.index.insert(id, entry);
                 offset += HEADER_LEN as ObjectSize;
                 if size <= LEAF_SIZE {
-                    // Only small objects in main file
+                    // Only small objects are in self.file
                     offset += size;
                     self.file.seek(io::SeekFrom::Current(size as i64))?;
                 }
             }
         }
+        Ok(())
+    }
+
+    pub fn add_large_object_meta(&mut self, root: &RootInfo) -> io::Result<()>
+    {
+        let entry = Entry {
+            offset: self.file.stream_position()?,
+            size: root.size,
+        };
+        self.file.write_all_vectored(&mut [
+            io::IoSlice::new(&root.hash),
+            io::IoSlice::new(&root.size.to_le_bytes()),
+        ])?;
+        self.index.insert(root.hash.clone(), entry);
         Ok(())
     }
 

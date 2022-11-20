@@ -7,6 +7,7 @@
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */
+use std::fmt;
 use blake3;
 use crate::base::*;
 use crate::dbase32::db32enc_str;
@@ -53,10 +54,26 @@ impl RootInfo {
         db32enc_str(&self.hash)
     }
 
-    pub fn is_small(&self) -> bool {
+    pub fn small(&self) -> bool {
         self.size <= LEAF_SIZE
     }
+
+    pub fn large(&self) -> bool {
+        self.size > LEAF_SIZE
+    }
 }
+
+impl fmt::Display for RootInfo {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{}", db32enc_str(&self.hash))
+    }
+}
+
 
 pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
     let mut h = blake3::Hasher::new();

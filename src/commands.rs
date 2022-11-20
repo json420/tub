@@ -93,6 +93,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
     let target = dir_or_cwd(target)?;
     if let Ok(mut store) = find_store(&target) {
         store.reindex()?;
+        println!("Using store {:?}", store.path());
         Ok(store)
     }
     else {
@@ -122,7 +123,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let files = Scanner::scan_dir(&source)?;
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?)?;
-        println!("{} {} {:?}", root.as_db32(), new, src.0);
+        println!("{} {} {:?}", root, new, src.0);
     }
     Ok(())
 }
@@ -132,7 +133,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let pb = path.canonicalize()?;
     let file = fs::File::open(&pb)?;
     let root = hash_object(file)?;
-    println!("{}", root.as_db32());
+    println!("{}", root);
     Ok(())
 }
 

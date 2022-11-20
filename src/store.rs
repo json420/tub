@@ -282,7 +282,7 @@ impl Store {
             tmp.write_leaf(&buf)?;
         }
         let root = reader.hash_root();
-        let new = match root.is_small() {
+        let new = match root.small() {
             true => {
                 let data = tmp.into_data();
                 self.add_small_object(&root, &data)?
@@ -300,6 +300,7 @@ impl Store {
     }
 
     fn remove_large(&self, id: &TubHash) -> io::Result<()> {
+        eprintln!("Deleting {}", db32enc_str(id));
         fs::remove_file(self.object_path(id))
     }
 
@@ -363,7 +364,7 @@ impl Store {
 
     pub fn add_small_object(&mut self, root: &RootInfo, data: &[u8]) -> io::Result<bool>
     {
-        assert!(root.is_small());
+        assert!(root.small());
         if let Some(_entry) = self.index.get(&root.hash) {
             Ok(false)  // Already in object store
         }
@@ -384,7 +385,7 @@ impl Store {
 
     pub fn add_large_object_meta(&mut self, root: &RootInfo) -> io::Result<bool>
     {
-        assert!( !root.is_small());
+        assert!( !root.small());
         if let Some(_entry) = self.index.get(&root.hash) {
             Ok(false)  // Already in object store
         }

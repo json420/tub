@@ -233,16 +233,6 @@ impl Store {
         pb
     }
 
-    pub fn move_to_canonical(&self, id: &TubID, hash: &TubHash) -> io::Result<()>
-    {
-        let from = self.tmp_path(id);
-        let to = self.object_path(hash);
-        let mut to_parent = to.clone();
-        to_parent.pop();
-        fs::create_dir_all(&to_parent)?;
-        fs::rename(&from, &to)
-    }
-
     pub fn allocate_tmp(&self) -> io::Result<TmpObject>
     {
         let id = random_id();

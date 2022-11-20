@@ -65,6 +65,13 @@ enum Commands {
         #[arg(help="Path of input file")]
         path: PathBuf,
     },
+
+    #[command(about = "Print hash of each object specified Tub.")]
+    ListObjects {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
 }
 
 
@@ -129,6 +136,18 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_list_objects(tub: OptPath) -> io::Result<()>
+{
+    let mut tub = get_tub(tub)?;
+    let mut keys = tub.keys();
+    keys.sort();
+    for hash in keys {
+        println!("{}", db32enc_str(&hash));
+    }
+    eprintln!("{} objects in store", tub.len());
+    Ok(())
+}
+
 
 pub fn run() -> io::Result<()> {
     let args = Cli::parse();
@@ -141,6 +160,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::HashObject {path} => {
             cmd_hash(&path)
+        }
+        Commands::ListObjects {tub} => {
+            cmd_list_objects(tub)
         }
     }
 }

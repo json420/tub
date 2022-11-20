@@ -402,22 +402,10 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> (TubHash, bool) {
-        let id = hash(data);
-        if let Some(_entry) = self.index.get(&id) {
-            return (id, false);  // Already in object store
-        }
-        let entry = Entry {
-            offset: self.file.stream_position().unwrap(),
-            size: data.len() as ObjectSize,
-        };
-        self.file.write_all_vectored(&mut [
-            io::IoSlice::new(&id),
-            io::IoSlice::new(&entry.size.to_le_bytes()),
-            io::IoSlice::new(data),
-        ]).expect("object append failed");
-        self.index.insert(id, entry);
-        (id, true)
+    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
+        let root = hash(data);
+        let new = self.add_small_object(&root, data)?;
+        Ok((root, new))
     }
 
     pub fn get_object(&mut self, id: &TubHash, verify: bool) -> Option<Vec<u8>> {
@@ -426,7 +414,7 @@ impl Store {
             let s = &mut buf[0..entry.size as usize];
             let offset = entry.offset + (HEADER_LEN as ObjectSize);
             self.file.read_exact_at(s, offset).expect("oops");
-            if verify && id != &hash(s) {
+            if verify && id != &hash(s).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id);
             }
@@ -590,33 +578,33 @@ mod tests {
         assert_eq!(store.keys(), empty);
 
         let data = random_small_object();
-        let (id, new) = store.add_object(&data);
+        let (root, new) = store.add_object(&data).unwrap();
         assert!(new);
         assert_eq!(store.len(), 1);
-        assert_eq!(store.keys(), vec![id]);
-        assert_eq!(store.get_object(&id, false).unwrap(), data);
-        assert_eq!(store.get_object(&id, true).unwrap(), data);
+        assert_eq!(store.keys(), vec![root.hash]);
+        assert_eq!(store.get_object(&root.hash, false).unwrap(), data);
+        assert_eq!(store.get_object(&root.hash, true).unwrap(), data);
 
         // Re-add object:
-        let (id2, new) = store.add_object(&data);
-        assert_eq!(id2, id);
+        let (root2, new) = store.add_object(&data).unwrap();
+        assert_eq!(root2, root);
         assert!(!new);
         assert_eq!(store.len(), 1);
-        assert_eq!(store.keys(), vec![id]);
-        assert_eq!(store.get_object(&id, false).unwrap(), data);
-        assert_eq!(store.get_object(&id, true).unwrap(), data);
+        assert_eq!(store.keys(), vec![root.hash]);
+        assert_eq!(store.get_object(&root.hash, false).unwrap(), data);
+        assert_eq!(store.get_object(&root.hash, true).unwrap(), data);
 
         assert_eq!(store.get_object(&rid, false), None);
         assert_eq!(store.get_object(&rid, true), None);
 
         // Delete object:
-        assert_eq!(store.delete_object(&id), true);
+        assert_eq!(store.delete_object(&root.hash), true);
         assert_eq!(store.len(), 0);
-        assert_eq!(store.delete_object(&id), false);
+        assert_eq!(store.delete_object(&root.hash), false);
 
         // Known test vector or something like that
-        let (id3, new) = store.add_object(b"Federation44");
-        assert_eq!(&db32enc_str(&id3),
+        let (root3, new) = store.add_object(b"Federation44").unwrap();
+        assert_eq!(&db32enc_str(&root3.hash),
             "TDJGJI47CFS53WQWE7K77R8GJVIAE9KB6465SPUV6NDYPVKA"
         );
         assert!(new);

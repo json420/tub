@@ -12,10 +12,10 @@ use crate::base::*;
 use crate::dbase32::db32enc_str;
 
 
-pub fn hash(buf: &[u8]) -> TubHash {
+pub fn hash(buf: &[u8]) -> RootInfo {
     assert!(buf.len() as u64 <= LEAF_SIZE);
     let leaf = hash_leaf(0, buf);
-    hash_root(buf.len() as u64, vec![leaf.hash]).hash
+    hash_root(buf.len() as u64, vec![leaf.hash])
 }
 
 
@@ -78,8 +78,8 @@ mod tests {
 
     #[test]
     fn test_hash() {
-        let id = hash(b"Federation44");
-        assert_eq!(&db32enc_str(&id),
+        let root = hash(b"Federation44");
+        assert_eq!(&db32enc_str(&root.hash),
             "TDJGJI47CFS53WQWE7K77R8GJVIAE9KB6465SPUV6NDYPVKA"
         );
     }

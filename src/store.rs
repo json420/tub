@@ -318,19 +318,21 @@ impl Store {
             let size = u64::from_le_bytes(
                 header[30..38].try_into().expect("oops")
             );
-            if size > 0 {
-                let entry = Entry {
-                    offset: offset,
-                    size: size,
-                };
-                self.index.insert(id, entry);
-                offset += HEADER_LEN as ObjectSize + size;
-                self.file.seek(io::SeekFrom::Current(size as i64))?;
-            }
-            else {
-                //println!("Tombstone {}", db32enc_str(&id));
+
+            if size == 0 {
+                // Deletion tombstone
                 if self.index.remove(&id) == None {
                     panic!("{} not in index but tombstone found", db32enc_str(&id));
+                }
+            }
+            else {
+                let entry = Entry {offset: offset, size: size};
+                self.index.insert(id, entry);
+                offset += HEADER_LEN as ObjectSize;
+                if size <= LEAF_SIZE {
+                    // Only small objects in main file
+                    offset += size;
+                    self.file.seek(io::SeekFrom::Current(size as i64))?;
                 }
             }
         }

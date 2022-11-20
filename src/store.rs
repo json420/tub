@@ -148,7 +148,7 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
 pub struct TmpObject {
     pub id: TubID,
     pub path: PathBuf,
-    buf: Vec<u8>,
+    buf: Option<Vec<u8>>,
     file: Option<File>,
 }
 
@@ -158,16 +158,16 @@ impl TmpObject {
         Ok(TmpObject {
             id: id,
             path: path,
-            buf: vec![],
+            buf: None,
             file: None,
         })
     }
 
     pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>
     {
-        if self.buf.len() == 0 {
+        if self.buf.is_none() && self.file.is_none() {
             // First leaf, keep in memory in case it's a small object
-            self.buf = Vec::from(buf);
+            self.buf = Some(Vec::from(buf));
             Ok(())
         }
         else {
@@ -175,7 +175,8 @@ impl TmpObject {
                 let mut file = File::options()
                     .create_new(true)
                     .append(true).open(&self.path)?;
-                file.write_all(&self.buf)?;
+                file.write_all(self.buf.as_ref().unwrap())?;
+                self.buf = None;
                 self.file = Some(file);
             }
             self.file.as_ref().unwrap().write_all(buf)

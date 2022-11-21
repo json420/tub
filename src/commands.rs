@@ -82,6 +82,44 @@ enum Commands {
         #[arg(help="Path of Tub control directory")]
         tub: Option<PathBuf>,
     },
+
+    #[command(about = "Cat object data to file or stdout")]
+    CatFile {
+        #[arg(help="Source directory (defaults to current CWD)")]
+        hash: String,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
+
+        #[arg(help="File name to write data to")]
+        dst: Option<PathBuf>,
+    },
+}
+
+
+pub fn run() -> io::Result<()> {
+    let args = Cli::parse();
+    match args.command {
+        Commands::Init {target} => {
+            cmd_init(target)
+        }
+        Commands::Import {source, tub} => {
+            cmd_import(source, tub)
+        }
+        Commands::HashObject {path} => {
+            cmd_hash(&path)
+        }
+        Commands::ListObjects {tub} => {
+            cmd_list_objects(tub)
+        }
+        Commands::DelObject {tub, hash} => {
+            cmd_obj_del(tub, hash)
+        }
+        Commands::CatFile {hash, tub, dst} => {
+            cmd_obj_cat(hash, tub, dst)
+        }
+    }
 }
 
 
@@ -195,24 +233,25 @@ fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
     Ok(())
 }
 
-
-pub fn run() -> io::Result<()> {
-    let args = Cli::parse();
-    match args.command {
-        Commands::Init {target} => {
-            cmd_init(target)
-        }
-        Commands::Import {source, tub} => {
-            cmd_import(source, tub)
-        }
-        Commands::HashObject {path} => {
-            cmd_hash(&path)
-        }
-        Commands::ListObjects {tub} => {
-            cmd_list_objects(tub)
-        }
-        Commands::DelObject {tub, hash} => {
-            cmd_obj_del(tub, hash)
-        }
+fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
+{
+    if txt.len() != 48 {
+        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
+        exit(42);
     }
+    if let Some(hash) = decode_hash(&txt) {
+        println!("good db32: {}", txt);
+        let mut tub = get_tub(tub)?;
+        let pb = match dst {
+            Some(inner) => {
+                inner
+            }
+            None => {
+                PathBuf::from(txt)
+            }
+       };
+       println!("Writting to {:?}", &pb);
+    }
+    Ok(())
 }
+

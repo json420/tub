@@ -114,6 +114,36 @@ impl LeafReader {
 }
 
 
+/// Represents an object open for reading (both large and small objects)
+#[derive(Debug)]
+pub struct Object {
+    file: File,
+    loi: LeafOffsetIter,
+}
+
+impl Object {
+    pub fn new(file: File, size: u64, offset: u64) -> Self {
+        Self {
+            file: file,
+            loi: LeafOffsetIter::new(size, offset),
+        }
+    }
+
+    pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafOffset>>
+    {
+        if let Some(lo) = self.loi.next() {
+            buf.resize(lo.size as usize, 0);
+            self.file.read_exact_at(buf, lo.offset)?;
+            Ok(Some(lo))
+        }
+        else {
+            Ok(None)
+        }
+    }
+
+}
+
+
 pub fn hash_object(file: File) -> io::Result<RootInfo>
 {
     let mut reader = LeafReader::new(file);
@@ -125,18 +155,6 @@ pub fn hash_object(file: File) -> io::Result<RootInfo>
 }
 
 
-/// Represents an object open for reading (both large and small objects)
-#[derive(Debug)]
-pub struct Object {
-    offset: OffsetSize,
-    size: ObjectSize,
-    id: TubHash,
-    rfile: fs::File,
-}
-
-impl Object {
-
-}
 
 
 #[cfg(test)]

@@ -5,12 +5,12 @@ use std::io;
 use std::fs;
 use std::process::exit;
 
-
 use clap::{ArgAction, Parser, Subcommand};
 
+use crate::base::*;
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
-use crate::dbase32::db32enc_str;
+use crate::dbase32::{db32enc_str, db32dec, db32dec_into};
 use crate::leaf_io::hash_object;
 
 
@@ -72,7 +72,35 @@ enum Commands {
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
+
+    #[command(about = "Delete object from object store")]
+    DelObject {
+        #[arg(help="Source directory (defaults to current CWD)")]
+        hash: String,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
+    },
 }
+
+
+fn decode_hash(txt: &String) -> Option<TubHash>
+{
+    if txt.len() != 48 {
+        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
+        exit(42);
+    }
+    let mut bin = [0_u8; TUB_HASH_LEN];
+    if db32dec_into(txt.as_bytes(), &mut bin) {
+        Some(bin)
+    }
+    else {
+        None
+    }
+    
+}
+
 
 
 fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
@@ -149,6 +177,24 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
+{
+    if txt.len() != 48 {
+        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
+        exit(42);
+    }
+    if let Some(hash) = decode_hash(&txt) {
+        println!("good db32: {}", txt);
+        let mut tub = get_tub(tub)?;
+        tub.delete_object(&hash);
+    }
+    else {
+        println!("Invalid Dbase32 encoding: {:?}", txt);
+        exit(42);
+    }
+    Ok(())
+}
+
 
 pub fn run() -> io::Result<()> {
     let args = Cli::parse();
@@ -164,6 +210,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::ListObjects {tub} => {
             cmd_list_objects(tub)
+        }
+        Commands::DelObject {tub, hash} => {
+            cmd_obj_del(tub, hash)
         }
     }
 }

@@ -125,6 +125,20 @@ pub fn hash_object(file: File) -> io::Result<RootInfo>
 }
 
 
+/// Represents an object open for reading (both large and small objects)
+#[derive(Debug)]
+pub struct Object {
+    offset: OffsetSize,
+    size: ObjectSize,
+    id: TubHash,
+    rfile: fs::File,
+}
+
+impl Object {
+
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

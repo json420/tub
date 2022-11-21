@@ -39,20 +39,6 @@ macro_rules! other_err {
 }
 
 
-/// Represents an object open for reading (both large and small objects)
-#[derive(Debug)]
-pub struct Object {
-    offset: OffsetSize,
-    size: ObjectSize,
-    id: TubHash,
-    rfile: fs::File,
-}
-
-impl Object {
-
-}
-
-
 /// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
@@ -78,7 +64,6 @@ pub fn find_store(path: &Path) -> io::Result<Store>
         }
     }
 }
-
 
 
 /// Initialize a store layout in an empty directory.
@@ -142,6 +127,20 @@ fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
 fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
     pb.push(TMPDIR);
     pb.push(db32enc_str(key));
+}
+
+
+/// Represents an object open for reading (both large and small objects)
+#[derive(Debug)]
+pub struct Object {
+    offset: OffsetSize,
+    size: ObjectSize,
+    id: TubHash,
+    rfile: fs::File,
+}
+
+impl Object {
+    
 }
 
 #[derive(Debug)]

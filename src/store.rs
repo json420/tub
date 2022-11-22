@@ -309,7 +309,7 @@ impl Store {
                 }
                 false => {
                     let file = self.file.try_clone()?;
-                    Object::new(file, entry.size, entry.offset)
+                    Object::new(file, entry.size, entry.offset + HEADER_LEN as u64)
                 }
             };
             Ok(Some(obj))

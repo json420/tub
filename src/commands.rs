@@ -240,17 +240,22 @@ fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
         exit(42);
     }
     if let Some(hash) = decode_hash(&txt) {
-        println!("good db32: {}", txt);
         let mut tub = get_tub(tub)?;
-        let pb = match dst {
+        let pb: PathBuf = match dst {
             Some(inner) => {
                 inner
             }
             None => {
                 PathBuf::from(txt)
             }
-       };
-       println!("Writting to {:?}", &pb);
+        };
+        if let Some(mut obj) = tub.open(&hash)? {
+            eprintln!("Writting to {:?}", &pb);
+            let mut file = fs::File::options()
+                            .create_new(true)
+                            .append(true).open(&pb)?;
+            obj.write_to_file(&mut file)?;
+        }
     }
     Ok(())
 }

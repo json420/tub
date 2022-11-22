@@ -10,7 +10,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use crate::base::*;
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
-use crate::dbase32::{db32enc_str, db32dec, db32dec_into};
+use crate::dbase32::{db32enc_str, db32dec_into};
 use crate::leaf_io::hash_object;
 
 
@@ -205,7 +205,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
 
 fn cmd_list_objects(tub: OptPath) -> io::Result<()>
 {
-    let mut tub = get_tub(tub)?;
+    let tub = get_tub(tub)?;
     let mut keys = tub.keys();
     keys.sort();
     for hash in keys {
@@ -240,7 +240,7 @@ fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
         exit(42);
     }
     if let Some(hash) = decode_hash(&txt) {
-        let mut tub = get_tub(tub)?;
+        let tub = get_tub(tub)?;
         let pb: PathBuf = match dst {
             Some(inner) => {
                 inner

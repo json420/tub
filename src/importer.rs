@@ -78,7 +78,6 @@ impl Scanner {
 mod tests {
     use super::*;
     use crate::helpers::TestTempDir;
-    use std::io::prelude::*;
 
     fn mk_test_dirs(tmp: &TestTempDir) {
         tmp.makedirs(&["A", "B", "C"]);

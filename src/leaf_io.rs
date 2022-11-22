@@ -156,7 +156,7 @@ pub fn hash_object(file: File) -> io::Result<RootInfo>
 {
     let mut reader = LeafReader::new(file);
     let mut buf = new_leaf_buf();
-    while let Some(info) = reader.read_next_leaf(&mut buf)? {
+    while let Some(_info) = reader.read_next_leaf(&mut buf)? {
         //eprintln!("leaf {}", info.index);
     }
     Ok(reader.hash_root())

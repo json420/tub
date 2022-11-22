@@ -274,7 +274,7 @@ impl Store {
         let mut reader = LeafReader::new(file);
         let mut tmp = self.allocate_tmp()?;
         let mut buf = new_leaf_buf();
-        while let Some(info) = reader.read_next_leaf(&mut buf)? {
+        while let Some(_info) = reader.read_next_leaf(&mut buf)? {
             tmp.write_leaf(&buf)?;
         }
         let root = reader.hash_root();
@@ -429,7 +429,7 @@ impl Store {
             self.file.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));
-                self.delete_object(id);
+                self.delete_object(id).unwrap();
             }
             return Some(buf);
         }

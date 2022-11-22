@@ -14,7 +14,6 @@ pub type HeaderBuf = [u8; HEADER_LEN];
 
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB leaf size
 pub const LEAF_SIZE: u64 = 8388608;  // 8 MiB leaf size
-pub type LeafBuf = Box<[u8; LEAF_SIZE as usize]>;
 
 
 pub const DOTDIR: &str = ".bathtub_db";

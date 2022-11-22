@@ -436,7 +436,7 @@ impl Store {
         None
     }
 
-    pub fn delete_object(&mut self, id: &TubHash) -> bool {
+    pub fn delete_object(&mut self, hash: &TubHash) -> io::Result<bool> {
         /*  Remove an object from the Store.
 
         This writes a tombstone to the pack file and then, in the large object
@@ -444,18 +444,20 @@ impl Store {
         occurs, the object entry in the pack file and the tombstone will be
         removed (not copied into the new pack file).
         */
-        if let Some(_entry) = self.index.get(id) {
-            eprintln!("Deleting {}", db32enc_str(id));
+        if let Some(entry) = self.index.get(hash) {
+            eprintln!("Deleting {}", db32enc_str(hash));
             self.file.write_all_vectored(&mut [
-                io::IoSlice::new(id),
+                io::IoSlice::new(hash),
                 io::IoSlice::new(&(0_u64).to_le_bytes()),
-            ]).expect("failed to write tombstone");
-            self.index.remove(id);
-            //FIXME: In large object case, also delete object file
-            true
+            ])?;
+            if entry.is_large() {
+                self.remove_large(hash)?;
+            }
+            self.index.remove(hash);
+            Ok(true)
         }
         else {
-            false  // id not in this store
+            Ok(false)  // object not in this store
         }
     }
 }
@@ -586,7 +588,7 @@ mod tests {
         let rid = random_hash();
         assert_eq!(store.get_object(&rid, false), None);
         assert_eq!(store.get_object(&rid, true), None);
-        assert_eq!(store.delete_object(&rid), false);
+        assert_eq!(store.delete_object(&rid).unwrap(), false);
         assert_eq!(store.len(), 0);
         assert_eq!(store.keys(), empty);
 
@@ -611,9 +613,9 @@ mod tests {
         assert_eq!(store.get_object(&rid, true), None);
 
         // Delete object:
-        assert_eq!(store.delete_object(&root.hash), true);
+        assert_eq!(store.delete_object(&root.hash).unwrap(), true);
         assert_eq!(store.len(), 0);
-        assert_eq!(store.delete_object(&root.hash), false);
+        assert_eq!(store.delete_object(&root.hash).unwrap(), false);
 
         // Known test vector or something like that
         let (root3, new) = store.add_object(b"Federation44").unwrap();

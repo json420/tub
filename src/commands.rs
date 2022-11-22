@@ -224,7 +224,7 @@ fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
     if let Some(hash) = decode_hash(&txt) {
         println!("good db32: {}", txt);
         let mut tub = get_tub(tub)?;
-        tub.delete_object(&hash);
+        tub.delete_object(&hash)?;
     }
     else {
         println!("Invalid Dbase32 encoding: {:?}", txt);

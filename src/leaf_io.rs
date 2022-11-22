@@ -141,6 +141,14 @@ impl Object {
         }
     }
 
+    pub fn write_to_file(&mut self, file: &mut File) -> io::Result<()> {
+        let mut buf: Vec<u8> = Vec::new();
+        while let Some(_) = self.read_next_leaf(&mut buf)? {
+            file.write_all(&buf)?;
+        }
+        Ok(())
+    }
+
 }
 
 

@@ -42,8 +42,8 @@ macro_rules! other_err {
 /// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
-    offset: OffsetSize,
-    size: ObjectSize,
+    offset: u64,
+    size: u64,
 }
 
 impl Entry {
@@ -342,7 +342,7 @@ impl Store {
         self.index.clear();
         self.file.seek(io::SeekFrom::Start(0))?;
 
-        let mut offset: OffsetSize = 0;
+        let mut offset: u64 = 0;
         let mut header: HeaderBuf = [0_u8; HEADER_LEN];
         loop {
             if let Err(_) = self.file.read_exact(&mut header) {
@@ -362,7 +362,7 @@ impl Store {
             else {
                 let entry = Entry {offset: offset, size: size};
                 self.index.insert(id, entry);
-                offset += HEADER_LEN as ObjectSize;
+                offset += HEADER_LEN as u64;
                 if size <= LEAF_SIZE {
                     // Only small objects are in self.file
                     offset += size;
@@ -382,7 +382,7 @@ impl Store {
         else {
             let entry = Entry {
                 offset: self.file.stream_position().unwrap(),
-                size: data.len() as ObjectSize,
+                size: data.len() as u64,
             };
             self.file.write_all_vectored(&mut [
                 io::IoSlice::new(&root.hash),
@@ -425,7 +425,7 @@ impl Store {
         if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             let s = &mut buf[0..entry.size as usize];
-            let offset = entry.offset + (HEADER_LEN as ObjectSize);
+            let offset = entry.offset + (HEADER_LEN as u64);
             self.file.read_exact_at(s, offset).expect("oops");
             if verify && id != &hash(s).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));

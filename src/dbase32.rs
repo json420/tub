@@ -129,7 +129,7 @@ macro_rules! rotate {
 pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
     if bin.len() != 0 && bin.len() % 5 == 0 && txt.len() == bin.len() * 8 / 5 {
         assert!(txt.len() % 8 == 0);
-        let mut taxi: u64 = 0;
+        let mut taxi: u64;
         for i in 0..bin.len() / 5 {
             /* Pack 40 bits into the taxi (8 bits at a time) */
             taxi = bin_at!(bin, i, 0) as u64;
@@ -188,7 +188,7 @@ pub fn isdb32(txt: &[u8]) -> bool {
 
 pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     if txt.len() != 0 && txt.len() % 8 == 0 && bin.len() == txt.len() * 5 / 8 {
-        let mut taxi: u64 = 0;
+        let mut taxi: u64;
         let mut r: u8 = 0;
         for i in 0..txt.len() / 8 {
 

@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 use std::env;
-use std::io::prelude::*;
 use std::io;
 use std::fs;
 use std::process::exit;

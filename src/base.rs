@@ -34,24 +34,6 @@ What's even more relaxing than a Couch?  A Bathtub!
 ";
 
 
-pub struct ObjectInfo {
-    id: TubHash,
-    size: ObjectSize,
-    leaf_hashes: TubHashList,
-}
-
-impl ObjectInfo
-{
-    pub fn new(id: TubHash, size: ObjectSize, leaf_hashes: TubHashList) -> Self
-    {
-        Self {
-            id: id,
-            size: size,
-            leaf_hashes: leaf_hashes,
-        }
-    }
-}
-
 
 #[cfg(test)]
 mod tests {

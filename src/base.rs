@@ -5,7 +5,7 @@ use std::mem::size_of;
 pub const TUB_ID_LEN: usize = 15;
 pub const TUB_HASH_LEN: usize = 30;
 
-pub type TubID = [u8; TUB_ID_LEN];
+pub type TubId = [u8; TUB_ID_LEN];
 pub type TubHash = [u8; TUB_HASH_LEN];
 pub type TubHashList = Vec<TubHash>;
 

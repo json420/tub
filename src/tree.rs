@@ -61,13 +61,13 @@ impl Tree {
         }
     }
     
-    pub fn read_next_id(&mut self) -> TubID {
+    pub fn read_next_id(&mut self) -> TubId {
         let r = self.ids[self.cur].id;
         self.cur += 1;
         r
     }
     
-    pub fn get_object_id(&mut self, abstract_id: TubID) -> TubHash {
+    pub fn get_object_id(&mut self, abstract_id: TubId) -> TubHash {
         let len: f64 = self.ids.len() as f64;
         let fraction: f64 = abstract_id[0] as f64 * len / 256.0;
         let mut i = fraction.floor() as usize;
@@ -98,19 +98,19 @@ impl Tree {
 
 //same encoding but only include the keys that have changed
 impl Iterator for Tree {
-    type Item = TubID;
+    type Item = TubId;
     
     fn next(&mut self) -> Option<Self::Item> {
         
         self.cur += 1;
         if self.cur <= self.ids.len() {
-            Some(self.ids[self.cur-1].id as TubID)
+            Some(self.ids[self.cur-1].id as TubId)
         }
         else { None }
     }
     
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        Some(self.ids[n].id as TubID)
+        Some(self.ids[n].id as TubId)
     }
 
 }

@@ -134,7 +134,7 @@ fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(db32enc_str(id));
 }
 
-fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
+fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
     pb.push(TMPDIR);
     pb.push(db32enc_str(key));
 }
@@ -142,14 +142,14 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubID) {
 
 #[derive(Debug)]
 pub struct TmpObject {
-    pub id: TubID,
+    pub id: TubId,
     pub path: PathBuf,
     buf: Option<Vec<u8>>,
     file: Option<File>,
 }
 
 impl TmpObject {
-    pub fn new(id: TubID, path: PathBuf) -> io::Result<Self>
+    pub fn new(id: TubId, path: PathBuf) -> io::Result<Self>
     {
         Ok(TmpObject {
             id: id,
@@ -246,7 +246,7 @@ impl Store {
         pb
     }
 
-    pub fn tmp_path(&self, id: &TubID) -> PathBuf {
+    pub fn tmp_path(&self, id: &TubId) -> PathBuf {
         let mut pb = self.path();
         push_tmp_path(&mut pb, id);
         pb

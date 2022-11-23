@@ -416,6 +416,7 @@ impl Store {
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
+        // FIXME: no reason not to handle the large object case as well
         let root = hash(data);
         let new = self.add_small_object(&root, data)?;
         Ok((root, new))
@@ -435,6 +436,24 @@ impl Store {
         }
         else {
             Ok(None)
+        }
+    }
+
+    pub fn get_object_new(&mut self, id: &TubHash, buf: &mut Vec<u8>) -> io::Result<bool>
+    {
+        if let Some(entry) = self.index.get(id) {
+            buf.resize(entry.size as usize, 0);
+            assert_eq!(buf.len() as u64, entry.size);
+            let offset = entry.offset + (HEADER_LEN as u64);
+            self.file.read_exact_at(buf, offset)?;
+            if id != &hash(buf).hash {
+                eprintln!("{} is corrupt", db32enc_str(id));
+                self.delete_object(id)?;
+            }
+            Ok(true)
+        }
+        else {
+            Ok(false)
         }
     }
 

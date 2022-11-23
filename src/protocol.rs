@@ -32,12 +32,18 @@ impl LeafInfo {
     }
 }
 
-pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
+pub fn hash_leaf_into(index: u64, data: &[u8], hash: &mut [u8])
+{
+    assert_eq!(hash.len(), TUB_HASH_LEN);
     let mut h = blake3::Hasher::new();
     h.update(&index.to_le_bytes());
     h.update(data);
+    h.finalize_xof().fill(hash);
+}
+
+pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
-    h.finalize_xof().fill(&mut hash);
+    hash_leaf_into(index, data, &mut hash);
     LeafInfo {index: index, hash: hash}
 }
 
@@ -85,6 +91,71 @@ pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
     h.finalize_xof().fill(&mut id);
     RootInfo {size: size, hash: id, leaf_hashes: leaf_hashes}
 }
+
+
+pub struct TubTop {
+    index: u64,
+    size: u64,
+    buf: Vec<u8>,
+}
+
+impl TubTop {
+    pub fn new() -> Self {
+        let mut buf = Vec::with_capacity(HEADER_LEN + TUB_HASH_LEN);
+        buf.resize(HEADER_LEN, 0);
+        Self {index: 0, size: 0, buf: buf}
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn hash(&self) -> TubHash {
+        self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+    }
+
+    pub fn size(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[TUB_HASH_LEN..TUB_HASH_LEN + 8].try_into().expect("oops")
+        )
+    }
+
+    pub fn leaf_hash(&self, index: usize) -> TubHash {
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        self.buf[start..stop].try_into().expect("oops")
+    }
+
+    pub fn hash_next_leaf(&mut self, data: &[u8]) {
+        assert!(data.len() > 0);
+        self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
+        let stop = self.buf.len();
+        let start = stop - TUB_HASH_LEN;
+        hash_leaf_into(self.index, data, &mut self.buf[start..stop]);
+        self.index += 1;
+        self.size += data.len() as u64;
+    }
+
+}
+
+/*
+
+pub fn hash_leaf_into(index: u64, data: &[u8], hash: &mut TubHash)
+{
+    assert_eq!(hash.len(), TUB_HASH_LEN);
+    let mut h = blake3::Hasher::new();
+    h.update(&index.to_le_bytes());
+    h.update(data);
+    h.finalize_xof().fill(hash);
+}
+
+pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    hash_leaf_into(index, data, &mut hash);
+    LeafInfo {index: index, hash: hash}
+}
+*/
+
 
 
 #[cfg(test)]

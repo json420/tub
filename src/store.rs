@@ -415,6 +415,27 @@ impl Store {
         }
     }
 
+    pub fn write_header<'a>(&mut self, root: &'a RootInfo) -> io::Result<()>
+    {
+        /* FIXME: we want too build this all up in memory and make a single
+        let mut parts = vec![
+            io::IoSlice::new(&root.hash),
+            io::IoSlice::new(&root.size.to_le_bytes()),
+            io::IoSlice::new(&root.leaf_hashes[0]),
+            // NOTE: we write just the header for large object, no data
+        ];
+        */
+        self.file.write_all_vectored(&mut [
+            io::IoSlice::new(&root.hash),
+            io::IoSlice::new(&root.size.to_le_bytes()),
+            io::IoSlice::new(&root.leaf_hashes[0]),
+        ]);
+        for i in 1..(root.leaf_hashes.len()) {
+            self.file.write_all(&root.leaf_hashes[i]);
+        }
+        Ok(())
+    }
+
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
         // FIXME: no reason not to handle the large object case as well
         let root = hash(data);

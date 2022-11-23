@@ -7,11 +7,21 @@ use std::io;
 
 const MAX_DEPTH: usize = 32;
 
-pub struct SrcFile(pub PathBuf, pub u64);
+pub struct SrcFile {
+    pub path: PathBuf,
+    pub size: u64,
+}
 
 impl SrcFile {
+    pub fn new(path: PathBuf, size: u64) -> Self {
+        Self {
+            path: path,
+            size: size,
+        }
+    }
+
     pub fn open(&self) -> io::Result<File> {
-        File::open(&self.0)
+        File::open(&self.path)
     }
 }
 
@@ -32,7 +42,7 @@ fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> io::Result<
             else if ft.is_file() {
                 let size = metadata(&path)?.len();
                 if size > 0 {
-                    accum.push(SrcFile(path, size));
+                    accum.push(SrcFile::new(path, size));
                     total += size;
                 }
                 else {

@@ -172,11 +172,11 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(_store) = find_store(&target) {
-        eprintln!("Store alread exists at {:?}", target);
+        eprintln!("Tub already exists: {:?}", target);
         exit(42);
     }
     else if let Ok(store) = init_tree(&target) {
-        eprintln!("created store at {:?}", store.path());
+        eprintln!("Created Tub: {:?}", store.path());
     }
     Ok(())
 }
@@ -188,7 +188,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let files = Scanner::scan_dir(&source)?;
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?)?;
-        println!("{} {} {:?}", root, new, src.0);
+        println!("{} {} {:?}", root, new, src.path);
     }
     Ok(())
 }

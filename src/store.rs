@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::protocol::{hash, RootInfo};
+use crate::protocol::{hash, RootInfo, TubTop};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf};
@@ -434,6 +434,11 @@ impl Store {
             self.file.write_all(&root.leaf_hashes[i]);
         }
         Ok(())
+    }
+
+    pub fn write_top(&mut self, top: &TubTop) -> io::Result<()>
+    {
+        self.file.write_all(top.as_buf())
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {

@@ -127,7 +127,7 @@ impl TubTop {
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) {
-        assert!(data.len() > 0);
+        assert!(data.len() > 0 && data.len() <= LEAF_SIZE as usize);
         self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
         let start = self.buf.len() - TUB_HASH_LEN;
         hash_leaf_into(self.index, data, &mut self.buf[start..]);
@@ -140,6 +140,15 @@ impl TubTop {
         let mut h = blake3::Hasher::new();
         h.update(&self.buf[TUB_HASH_LEN..]);
         h.finalize_xof().fill(&mut self.buf[0..TUB_HASH_LEN]);
+    }
+
+    pub fn is_large(&self) -> bool {
+        assert_ne!(self.size(), 0);
+        self.size() > LEAF_SIZE
+    }
+
+    pub fn is_small(&self) -> bool {
+        ! self.is_large()
     }
 }
 

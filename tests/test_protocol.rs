@@ -23,5 +23,7 @@ fn test_tub_top() {
     let root = hash(&obj);
     assert_eq!(tt.hash(), root.hash);
     assert_eq!(tt.size(), root.size);
+    assert!(! tt.is_large());
+    assert!(tt.is_small());
 }
 

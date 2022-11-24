@@ -9,7 +9,7 @@ use std::fs::File;
 use std::cmp;
 
 use crate::base::{TubHashList, LEAF_SIZE};
-use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo};
+use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo, TubTop};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -74,12 +74,20 @@ pub struct LeafReader {
     index: u64,
     size: u64,
     leaf_hashes: TubHashList,
+    tt: TubTop,
 }
 
 impl LeafReader {
     pub fn new(file: File) -> Self
     {
-        Self {file: file, closed: false, size: 0, index: 0, leaf_hashes: Vec::new()}
+        Self {
+            file: file,
+            closed: false,
+            size: 0,
+            index: 0,
+            leaf_hashes: Vec::new(),
+            tt: TubTop::new(),
+        }
     }
 
     pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafInfo>>
@@ -97,6 +105,7 @@ impl LeafReader {
         }
         else {
             let info = hash_leaf(self.index, buf);
+            self.tt.hash_next_leaf(buf);
             self.size += amount as u64;
             self.leaf_hashes.push(info.hash);
             self.index += 1;

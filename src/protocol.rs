@@ -110,6 +110,10 @@ impl TubTop {
         &self.buf
     }
 
+    pub fn into_buf(self) -> Vec<u8> {
+        self.buf
+    }
+
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
@@ -151,24 +155,6 @@ impl TubTop {
         ! self.is_large()
     }
 }
-
-/*
-
-pub fn hash_leaf_into(index: u64, data: &[u8], hash: &mut TubHash)
-{
-    assert_eq!(hash.len(), TUB_HASH_LEN);
-    let mut h = blake3::Hasher::new();
-    h.update(&index.to_le_bytes());
-    h.update(data);
-    h.finalize_xof().fill(hash);
-}
-
-pub fn hash_leaf(index: u64, data: &[u8]) -> LeafInfo {
-    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
-    hash_leaf_into(index, data, &mut hash);
-    LeafInfo {index: index, hash: hash}
-}
-*/
 
 
 

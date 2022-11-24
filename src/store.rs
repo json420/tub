@@ -29,7 +29,7 @@ use crate::base::*;
 use crate::protocol::{hash, RootInfo};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
-use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop};
+use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject};
 
 
 macro_rules! other_err {
@@ -139,55 +139,6 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
     pb.push(db32enc_str(key));
 }
 
-
-#[derive(Debug)]
-pub struct TmpObject {
-    pub id: TubId,
-    pub path: PathBuf,
-    buf: Option<Vec<u8>>,
-    file: Option<File>,
-}
-
-impl TmpObject {
-    pub fn new(id: TubId, path: PathBuf) -> io::Result<Self>
-    {
-        Ok(TmpObject {
-            id: id,
-            path: path,
-            buf: None,
-            file: None,
-        })
-    }
-
-    pub fn is_small(&mut self) -> bool
-    {
-        !self.buf.is_none()
-    }
-
-    pub fn into_data(self) -> Vec<u8> {
-        self.buf.unwrap()
-    }
-
-    pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>
-    {
-        if self.buf.is_none() && self.file.is_none() {
-            // First leaf, keep in memory in case it's a small object
-            self.buf = Some(Vec::from(buf));
-            Ok(())
-        }
-        else {
-            if self.file.is_none() {
-                let mut file = File::options()
-                    .create_new(true)
-                    .append(true).open(&self.path)?;
-                file.write_all(self.buf.as_ref().unwrap())?;
-                self.buf = None;
-                self.file = Some(file);
-            }
-            self.file.as_ref().unwrap().write_all(buf)
-        }
-    }
-}
 
 
 /// Layout of large and small objects on the filesystem.

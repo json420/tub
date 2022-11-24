@@ -8,14 +8,79 @@ use std::os::unix::fs::FileExt;
 use std::fs::File;
 use std::cmp;
 
-use crate::base::{TubHashList, LEAF_SIZE};
-use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo, TubTop};
+use crate::base::{TubHashList, TubHash, LEAF_SIZE, TUB_HASH_LEN, HEADER_LEN};
+use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
     let mut buf = Vec::with_capacity(LEAF_SIZE as usize);
     buf.resize(LEAF_SIZE as usize, 0);
     buf
+}
+
+
+pub struct TubTop {
+    index: u64,
+    total: u64,
+    buf: Vec<u8>,
+}
+
+impl TubTop {
+    pub fn new() -> Self {
+        let mut buf = Vec::with_capacity(HEADER_LEN + TUB_HASH_LEN);
+        buf.resize(HEADER_LEN, 0);
+        Self {index: 0, total: 0, buf: buf}
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn into_buf(self) -> Vec<u8> {
+        self.buf
+    }
+
+    pub fn hash(&self) -> TubHash {
+        self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+    }
+
+    pub fn size(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+        )
+    }
+
+    pub fn leaf_hash(&self, index: usize) -> TubHash {
+        assert_eq!(self.size(), 0);
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        self.buf[start..stop].try_into().expect("oops")
+    }
+
+    pub fn hash_next_leaf(&mut self, data: &[u8]) {
+        assert!(data.len() > 0 && data.len() <= LEAF_SIZE as usize);
+        self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
+        let start = self.buf.len() - TUB_HASH_LEN;
+        hash_leaf_into(self.index, data, &mut self.buf[start..]);
+        self.index += 1;
+        self.total += data.len() as u64;
+    }
+
+    pub fn finalize(&mut self) {
+        assert_eq!(self.size(), 0);
+        self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.total.to_le_bytes());
+        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        self.buf.splice(0..TUB_HASH_LEN, hash);
+    }
+
+    pub fn is_large(&self) -> bool {
+        assert_ne!(self.size(), 0);
+        self.size() > LEAF_SIZE
+    }
+
+    pub fn is_small(&self) -> bool {
+        ! self.is_large()
+    }
 }
 
 

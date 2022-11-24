@@ -2,6 +2,7 @@ use std::io;
 
 use bathtub_db::base::*;
 use bathtub_db::protocol::*;
+use bathtub_db::leaf_io::*;
 use bathtub_db::util::{random_hash, random_small_object};
 
 #[cfg(test)]

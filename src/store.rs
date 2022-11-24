@@ -366,30 +366,24 @@ impl Store {
         }
     }
 
-    pub fn write_header<'a>(&mut self, root: &'a RootInfo) -> io::Result<()>
+    pub fn write_small_object(&mut self, top: &TubTop, data: &[u8]) -> io::Result<bool>
     {
-        /* FIXME: we want too build this all up in memory and make a single
-        let mut parts = vec![
-            io::IoSlice::new(&root.hash),
-            io::IoSlice::new(&root.size.to_le_bytes()),
-            io::IoSlice::new(&root.leaf_hashes[0]),
-            // NOTE: we write just the header for large object, no data
-        ];
-        */
-        self.file.write_all_vectored(&mut [
-            io::IoSlice::new(&root.hash),
-            io::IoSlice::new(&root.size.to_le_bytes()),
-            io::IoSlice::new(&root.leaf_hashes[0]),
-        ]);
-        for i in 1..(root.leaf_hashes.len()) {
-            self.file.write_all(&root.leaf_hashes[i]);
+        assert!(top.is_small());
+        if let Some(_entry) = self.index.get(&top.hash()) {
+            Ok(false)  // Already in object store
         }
-        Ok(())
-    }
-
-    pub fn write_top(&mut self, top: &TubTop) -> io::Result<()>
-    {
-        self.file.write_all(top.as_buf())
+        else {
+            let entry = Entry {
+                offset: self.file.stream_position().unwrap(),
+                size: data.len() as u64,
+            };
+            self.file.write_all_vectored(&mut [
+                io::IoSlice::new(top.as_buf()),
+                io::IoSlice::new(data),
+            ])?;
+            self.index.insert(top.hash(), entry);
+            Ok(true)
+        }
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {

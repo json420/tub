@@ -18,5 +18,10 @@ fn test_tub_top() {
     assert_eq!(tt.as_buf().len(), HEADER_LEN + TUB_HASH_LEN);
     let info = hash_leaf(0, &obj);
     assert_eq!(tt.leaf_hash(0), info.hash);
+
+    tt.finalize();    
+    let root = hash(&obj);
+    assert_eq!(tt.hash(), root.hash);
+    assert_eq!(tt.size(), root.size);
 }
 

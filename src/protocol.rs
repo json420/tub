@@ -116,7 +116,7 @@ impl TubTop {
 
     pub fn size(&self) -> u64 {
         u64::from_le_bytes(
-            self.buf[TUB_HASH_LEN..TUB_HASH_LEN + 8].try_into().expect("oops")
+            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
         )
     }
 
@@ -129,13 +129,18 @@ impl TubTop {
     pub fn hash_next_leaf(&mut self, data: &[u8]) {
         assert!(data.len() > 0);
         self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
-        let stop = self.buf.len();
-        let start = stop - TUB_HASH_LEN;
-        hash_leaf_into(self.index, data, &mut self.buf[start..stop]);
+        let start = self.buf.len() - TUB_HASH_LEN;
+        hash_leaf_into(self.index, data, &mut self.buf[start..]);
         self.index += 1;
         self.size += data.len() as u64;
     }
 
+    pub fn finalize(&mut self) {
+        self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.size.to_le_bytes());
+        let mut h = blake3::Hasher::new();
+        h.update(&self.buf[TUB_HASH_LEN..]);
+        h.finalize_xof().fill(&mut self.buf[0..TUB_HASH_LEN]);
+    }
 }
 
 /*

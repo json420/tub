@@ -80,6 +80,13 @@ impl fmt::Display for RootInfo {
     }
 }
 
+pub fn hash_root_raw(data: &[u8]) -> TubHash {
+    let mut h = blake3::Hasher::new();
+    h.update(data);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
 
 pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
     let mut h = blake3::Hasher::new();
@@ -95,7 +102,7 @@ pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
 
 pub struct TubTop {
     index: u64,
-    size: u64,
+    total: u64,
     buf: Vec<u8>,
 }
 
@@ -103,7 +110,7 @@ impl TubTop {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(HEADER_LEN + TUB_HASH_LEN);
         buf.resize(HEADER_LEN, 0);
-        Self {index: 0, size: 0, buf: buf}
+        Self {index: 0, total: 0, buf: buf}
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -125,6 +132,7 @@ impl TubTop {
     }
 
     pub fn leaf_hash(&self, index: usize) -> TubHash {
+        assert_eq!(self.size(), 0);
         let start = HEADER_LEN + (index * TUB_HASH_LEN);
         let stop = start + TUB_HASH_LEN;
         self.buf[start..stop].try_into().expect("oops")
@@ -136,14 +144,14 @@ impl TubTop {
         let start = self.buf.len() - TUB_HASH_LEN;
         hash_leaf_into(self.index, data, &mut self.buf[start..]);
         self.index += 1;
-        self.size += data.len() as u64;
+        self.total += data.len() as u64;
     }
 
     pub fn finalize(&mut self) {
-        self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.size.to_le_bytes());
-        let mut h = blake3::Hasher::new();
-        h.update(&self.buf[TUB_HASH_LEN..]);
-        h.finalize_xof().fill(&mut self.buf[0..TUB_HASH_LEN]);
+        assert_eq!(self.size(), 0);
+        self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.total.to_le_bytes());
+        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        self.buf.splice(0..TUB_HASH_LEN, hash);
     }
 
     pub fn is_large(&self) -> bool {

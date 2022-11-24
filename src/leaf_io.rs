@@ -178,8 +178,7 @@ impl LeafReader {
             Ok(None)
         }
         else {
-            let info = hash_leaf(self.index, buf);
-            self.tt.hash_next_leaf(buf);
+            let info = self.tt.hash_next_leaf(buf);
             self.size += amount as u64;
             self.leaf_hashes.push(info.hash);
             self.index += 1;
@@ -187,12 +186,18 @@ impl LeafReader {
         }
     }
 
-    pub fn hash_root(self) -> RootInfo
+    pub fn hash_root(mut self) -> RootInfo
     {
         if !self.closed {
             panic!("LeafReader.hash_root() called before closed");
         }
+        self.tt.finalize();
         hash_root(self.size, self.leaf_hashes)
+    }
+
+    pub fn finalize(mut self) -> TubTop {
+        self.tt.finalize();
+        self.tt
     }
 }
 

@@ -26,5 +26,8 @@ fn test_tub_top() {
     assert_eq!(tt.size(), root.size);
     assert!(! tt.is_large());
     assert!(tt.is_small());
+
+    tt.reset();
+    assert_eq!(tt.size(), 0);
 }
 

@@ -19,7 +19,7 @@ pub fn new_leaf_buf() -> Vec<u8> {
     buf
 }
 
-
+#[derive(Debug)]
 pub struct TubTop {
     index: u64,
     total: u64,
@@ -58,13 +58,16 @@ impl TubTop {
         self.buf[start..stop].try_into().expect("oops")
     }
 
-    pub fn hash_next_leaf(&mut self, data: &[u8]) {
+    pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
         assert!(data.len() > 0 && data.len() <= LEAF_SIZE as usize);
         self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
         let start = self.buf.len() - TUB_HASH_LEN;
         hash_leaf_into(self.index, data, &mut self.buf[start..]);
+        let hash = self.leaf_hash(self.index as usize);
+        let info = LeafInfo::new(hash, self.index);
         self.index += 1;
         self.total += data.len() as u64;
+        info
     }
 
     pub fn finalize(&mut self) {
@@ -72,6 +75,11 @@ impl TubTop {
         self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.total.to_le_bytes());
         let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
         self.buf.splice(0..TUB_HASH_LEN, hash);
+    }
+
+    pub fn reset(&mut self) {
+        self.buf.clear();
+        self.buf.resize(HEADER_LEN, 0);
     }
 
     pub fn is_large(&self) -> bool {
@@ -133,7 +141,7 @@ impl Iterator for LeafOffsetIter {
     }
 }
 
-
+#[derive(Debug)]
 pub struct LeafReader {
     file: File,
     closed: bool,

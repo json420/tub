@@ -27,6 +27,10 @@ pub struct LeafInfo {
 }
 
 impl LeafInfo {
+    pub fn new(hash: TubHash, index: u64) -> Self {
+        Self {hash: hash, index: index}   
+    }
+
     pub fn as_db32(&self) -> String {
         db32enc_str(&self.hash)
     }

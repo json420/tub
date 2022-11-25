@@ -21,6 +21,7 @@ pub fn new_leaf_buf() -> Vec<u8> {
     buf
 }
 
+
 #[derive(Debug)]
 pub struct TubTop {
     index: u64,
@@ -154,6 +155,46 @@ impl Iterator for LeafOffsetIter {
         }
     }
 }
+
+pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
+    assert_ne!(size, 0);
+    let start = index * LEAF_SIZE;
+    if start < size {
+        let stop = cmp::min(start + LEAF_SIZE, size);
+        Some((start, stop))
+    }
+    else {
+        None
+    }
+}
+
+#[derive(Debug)]
+pub struct LeafRangeIter {
+    pub size: u64,
+    index: u64,
+}
+
+impl LeafRangeIter {
+    pub fn new(size: u64) -> Self
+    {
+        Self {size: size, index: 0}
+    }
+}
+
+impl Iterator for LeafRangeIter {
+    type Item = (u64, u64);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(r) = get_leaf_range(self.index, self.size) {
+            self.index += 1;
+            Some(r)
+        }
+        else {
+            None
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct LeafReader {
@@ -326,6 +367,45 @@ mod tests {
         assert_eq!(buf.len(), LEAF_SIZE as usize);
         assert_eq!(buf.capacity(), LEAF_SIZE as usize);
         //let s = &mut buf[0..111];
+    }
+
+    #[test]
+    fn test_get_leaf_range() {
+        assert_eq!(get_leaf_range(0, 1), Some((0, 1)));
+        assert_eq!(get_leaf_range(0, LEAF_SIZE - 1), Some((0, LEAF_SIZE - 1)));
+        assert_eq!(get_leaf_range(0, LEAF_SIZE), Some((0, LEAF_SIZE)));
+        assert_eq!(get_leaf_range(0, LEAF_SIZE + 1), Some((0, LEAF_SIZE)));
+
+        assert_eq!(get_leaf_range(1, 1), None);
+        assert_eq!(get_leaf_range(1, LEAF_SIZE - 1), None);
+        assert_eq!(get_leaf_range(1, LEAF_SIZE), None);
+        assert_eq!(get_leaf_range(1, LEAF_SIZE + 1), Some((LEAF_SIZE, LEAF_SIZE + 1)));
+    }
+
+    #[test]
+    fn test_leaf_range_iter() {
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(1)), vec![(0, 1)]);
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(2)), vec![(0, 2)]);
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(LEAF_SIZE - 1)),
+            vec![(0, LEAF_SIZE - 1)]
+        );
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(LEAF_SIZE)),
+            vec![(0, LEAF_SIZE)]
+        );
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(LEAF_SIZE + 1)),
+            vec![(0, LEAF_SIZE), (LEAF_SIZE, LEAF_SIZE + 1)]
+        );
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(2* LEAF_SIZE - 1)),
+            vec![(0, LEAF_SIZE), (LEAF_SIZE, 2* LEAF_SIZE - 1)]
+        );
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(2* LEAF_SIZE)),
+            vec![(0, LEAF_SIZE), (LEAF_SIZE, 2* LEAF_SIZE)]
+        );
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(2* LEAF_SIZE + 1)), vec![
+            (0, LEAF_SIZE),
+            (LEAF_SIZE, 2* LEAF_SIZE),
+            (2 * LEAF_SIZE, 2 * LEAF_SIZE + 1),
+        ]);
     }
 
     #[test]

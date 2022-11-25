@@ -140,6 +140,11 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
 }
 
 
+pub enum NewObj<'a> {
+    File(TmpObject),
+    Mem(&'a [u8]),
+}
+
 
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
@@ -362,6 +367,33 @@ impl Store {
                 // NOTE: we write just the header for large object, no data
             ])?;
             self.index.insert(root.hash.clone(), entry);
+            Ok(true)
+        }
+    }
+
+    pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
+    {
+        if let Some(_entry) = self.index.get(&top.hash()) {
+            Ok(false)  // Already in object store
+        }
+        else {
+            let entry = Entry {
+                offset: self.file.stream_position()?,
+                size: top.size(),
+            };
+            match obj {
+                NewObj::File(tmp) => {
+                    self.finalize_tmp(tmp, &top.hash())?;
+                    self.file.write_all(top.as_buf())?;
+                }
+                NewObj::Mem(data) => {
+                    self.file.write_all_vectored(&mut [
+                        io::IoSlice::new(top.as_buf()),
+                        io::IoSlice::new(data),
+                    ])?;
+                }
+            }
+            self.index.insert(top.hash(), entry);
             Ok(true)
         }
     }

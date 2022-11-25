@@ -7,9 +7,11 @@ use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
 use std::fs::File;
 use std::cmp;
+use std::fmt;
 use std::path::PathBuf;
 
 use crate::base::*;
+use crate::dbase32::db32enc_str;
 use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw};
 
 
@@ -91,6 +93,18 @@ impl TubTop {
         ! self.is_large()
     }
 }
+
+impl fmt::Display for TubTop {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{}", db32enc_str(&self.hash()))
+    }
+}
+
 
 
 #[derive(Debug, PartialEq)]

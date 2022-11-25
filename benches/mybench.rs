@@ -22,23 +22,23 @@ fn bm_hash2(c: &mut Criterion) {
 }
 
 fn bm_isdb32(c: &mut Criterion) {
-    let txt = db32enc(&random_object_id());
+    let txt = db32enc(&random_hash());
     c.bench_function("isdb32",
         |b| b.iter(|| isdb32(black_box(&txt[..])))
     );
 }
 
 fn bm_db32enc_into(c: &mut Criterion) {
-    let src: ObjectID = [0_u8; OBJECT_ID_LEN];
-    let mut dst = [0_u8; OBJECT_ID_LEN * 8 / 5];
+    let src: TubHash = [0_u8; TUB_HASH_LEN];
+    let mut dst = [0_u8; TUB_HASH_LEN * 8 / 5];
     c.bench_function("db32enc_into",
         |b| b.iter(|| db32enc_into(black_box(&src), black_box(&mut dst)))
     );
 }
 
 fn bm_db32dec_into(c: &mut Criterion) {
-    let txt = db32enc(&random_object_id());
-    let mut bin = [0_u8; OBJECT_ID_LEN];
+    let txt = db32enc(&random_hash());
+    let mut bin = [0_u8; TUB_HASH_LEN];
     c.bench_function("db32dec_into",
         |b| b.iter(|| db32dec_into(black_box(&txt[..]), black_box(&mut bin)))
     );

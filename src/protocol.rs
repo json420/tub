@@ -14,7 +14,6 @@ use crate::dbase32::db32enc_str;
 
 
 pub fn hash(buf: &[u8]) -> RootInfo {
-    assert!(buf.len() as u64 <= LEAF_SIZE);
     let leaf = hash_leaf(0, buf);
     hash_root(buf.len() as u64, vec![leaf.hash])
 }
@@ -60,6 +59,11 @@ pub struct RootInfo {
 }
 
 impl RootInfo {
+    pub fn new(hash: TubHash, size: u64, leaf_hashes: TubHashList) -> Self
+    {
+        Self {hash: hash, size: size, leaf_hashes: leaf_hashes}
+    }
+
     pub fn as_db32(&self) -> String {
         db32enc_str(&self.hash)
     }
@@ -83,6 +87,7 @@ impl fmt::Display for RootInfo {
         write!(f, "{}", db32enc_str(&self.hash))
     }
 }
+
 
 pub fn hash_root_raw(data: &[u8]) -> TubHash {
     let mut h = blake3::Hasher::new();

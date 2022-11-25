@@ -44,6 +44,17 @@ impl TubTop {
         self.buf
     }
 
+    pub fn as_root_info(&self) -> RootInfo
+    {
+        let size = self.size();
+        let index: usize = self.index as usize;
+        let mut leaf_hashes: TubHashList = Vec::with_capacity(index);
+        for i in 0..index {
+            leaf_hashes.push(self.leaf_hash(i));
+        }
+        RootInfo {hash: self.hash(), size: self.size(), leaf_hashes: leaf_hashes}
+    }
+
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
@@ -55,10 +66,13 @@ impl TubTop {
     }
 
     pub fn leaf_hash(&self, index: usize) -> TubHash {
-        assert_eq!(self.size(), 0);
         let start = HEADER_LEN + (index * TUB_HASH_LEN);
         let stop = start + TUB_HASH_LEN;
         self.buf[start..stop].try_into().expect("oops")
+    }
+
+    pub fn leaf_count(&self) -> u64 {
+        0
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
@@ -83,6 +97,14 @@ impl TubTop {
     pub fn reset(&mut self) {
         self.buf.clear();
         self.buf.resize(HEADER_LEN, 0);
+    }
+
+    pub fn hash_data(&mut self, data: &[u8]) {
+        self.reset();
+        for (start, stop) in LeafRangeIter::new(data.len() as u64) {
+            self.hash_next_leaf(&data[start as usize..stop as usize]);
+        }
+        self.finalize()
     }
 
     pub fn is_large(&self) -> bool {

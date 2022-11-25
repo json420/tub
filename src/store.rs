@@ -388,9 +388,12 @@ impl Store {
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
         // FIXME: no reason not to handle the large object case as well
+        let mut tt = TubTop::new();
+        tt.hash_data(data);
         let root = hash(data);
+        assert_eq!(tt.hash(), root.hash);
         let new = self.add_small_object(&root, data)?;
-        Ok((root, new))
+        Ok((tt.as_root_info(), new))
     }
 
     pub fn get_object(&mut self, id: &TubHash, verify: bool) -> io::Result<Option<Vec<u8>>>

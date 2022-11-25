@@ -157,7 +157,7 @@ impl Iterator for LeafOffsetIter {
 }
 
 pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
-    assert_ne!(size, 0);
+    //assert_ne!(size, 0);  // Should we panic on size==0 case?
     let start = index * LEAF_SIZE;
     if start < size {
         let stop = cmp::min(start + LEAF_SIZE, size);
@@ -371,19 +371,30 @@ mod tests {
 
     #[test]
     fn test_get_leaf_range() {
+        assert_eq!(get_leaf_range(0, 0), None);
         assert_eq!(get_leaf_range(0, 1), Some((0, 1)));
         assert_eq!(get_leaf_range(0, LEAF_SIZE - 1), Some((0, LEAF_SIZE - 1)));
         assert_eq!(get_leaf_range(0, LEAF_SIZE), Some((0, LEAF_SIZE)));
         assert_eq!(get_leaf_range(0, LEAF_SIZE + 1), Some((0, LEAF_SIZE)));
 
+        assert_eq!(get_leaf_range(1, 0), None);
         assert_eq!(get_leaf_range(1, 1), None);
         assert_eq!(get_leaf_range(1, LEAF_SIZE - 1), None);
         assert_eq!(get_leaf_range(1, LEAF_SIZE), None);
         assert_eq!(get_leaf_range(1, LEAF_SIZE + 1), Some((LEAF_SIZE, LEAF_SIZE + 1)));
+
+        assert_eq!(get_leaf_range(2, 0), None);
+        assert_eq!(get_leaf_range(2, LEAF_SIZE + 1), None);
+        assert_eq!(get_leaf_range(2, 2 * LEAF_SIZE), None);
+        assert_eq!(get_leaf_range(2, 2 * LEAF_SIZE), None);
+        assert_eq!(get_leaf_range(2, 2 * LEAF_SIZE + 1),
+            Some((2 * LEAF_SIZE, 2 * LEAF_SIZE + 1))
+        );
     }
 
     #[test]
     fn test_leaf_range_iter() {
+        assert_eq!(Vec::from_iter(LeafRangeIter::new(0)), vec![]);
         assert_eq!(Vec::from_iter(LeafRangeIter::new(1)), vec![(0, 1)]);
         assert_eq!(Vec::from_iter(LeafRangeIter::new(2)), vec![(0, 2)]);
         assert_eq!(Vec::from_iter(LeafRangeIter::new(LEAF_SIZE - 1)),

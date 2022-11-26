@@ -33,6 +33,10 @@ impl TubTop {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(HEADER_LEN + TUB_HASH_LEN);
         buf.resize(HEADER_LEN, 0);
+        Self::new_with_buf(buf)
+    }
+
+    pub fn new_with_buf(buf: Vec<u8>) -> Self {
         Self {index: 0, total: 0, buf: buf}
     }
 
@@ -49,7 +53,6 @@ impl TubTop {
     }
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
-        self.reset();
         &mut self.buf[0..HEADER_LEN]
     }
 
@@ -103,13 +106,21 @@ impl TubTop {
         info
     }
 
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self) -> TubHash {
         //assert_eq!(self.size(), 0);
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(
             &self.total.to_le_bytes()
         );
         let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
         self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
+        hash
+    }
+
+    pub fn finalize_raw(&mut self) -> TubHash {
+        assert_ne!(self.size(), 0);
+        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
+        hash
     }
 
     pub fn is_valid(&self) -> bool {
@@ -118,11 +129,13 @@ impl TubTop {
     }
 
     pub fn reset(&mut self) {
+        self.index = 0;
+        self.total = 0;
         self.buf.clear();
         self.buf.resize(HEADER_LEN, 0);
     }
 
-    pub fn hash_data(&mut self, data: &[u8]) {
+    pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
         self.reset();
         for (start, stop) in LeafRangeIter::new(data.len() as u64) {
             self.hash_next_leaf(&data[start as usize..stop as usize]);
@@ -480,8 +493,13 @@ mod tests {
 
             // Test validation stuffs
             assert_eq!(tt.is_valid(), false);
-            tt.finalize();
+            assert_eq!(tt.size(), size);
+            tt.finalize_raw();
+            assert_eq!(tt.size(), size);
             assert_eq!(tt.is_valid(), true);
+            tt.as_mut_header()[TUB_HASH_LEN..].copy_from_slice(&(size + 1).to_le_bytes());
+            assert_eq!(tt.size(), size + 1);
+            assert_eq!(tt.is_valid(), false);
         }
 
         // 2 Leaves
@@ -511,8 +529,11 @@ mod tests {
 
             // Test validation stuffs
             assert_eq!(tt.is_valid(), false);
-            tt.finalize();
+            tt.finalize_raw();
             assert_eq!(tt.is_valid(), true);
+            tt.as_mut_header()[TUB_HASH_LEN..].copy_from_slice(&(size + 1).to_le_bytes());
+            assert_eq!(tt.size(), size + 1);
+            assert_eq!(tt.is_valid(), false);
         }
     }
 

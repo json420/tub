@@ -178,6 +178,16 @@ impl Iterator for LeafOffsetIter {
     }
 }
 
+pub fn get_leaf_count(size: u64) -> u64 {
+    let count = size / LEAF_SIZE;
+    if size % LEAF_SIZE == 0 {
+        count
+    }
+    else {
+        count + 1
+    }
+}
+
 pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
     //assert_ne!(size, 0);  // Should we panic on size==0 case?
     let start = index * LEAF_SIZE;
@@ -401,6 +411,21 @@ mod tests {
         assert_eq!(buf.len(), LEAF_SIZE as usize);
         assert_eq!(buf.capacity(), LEAF_SIZE as usize);
         //let s = &mut buf[0..111];
+    }
+
+    #[test]
+    fn test_get_leaf_count() {
+        assert_eq!(get_leaf_count(0), 0);
+        assert_eq!(get_leaf_count(1), 1);
+        assert_eq!(get_leaf_count(2), 1);
+
+        assert_eq!(get_leaf_count(LEAF_SIZE - 1), 1);
+        assert_eq!(get_leaf_count(LEAF_SIZE), 1);
+        assert_eq!(get_leaf_count(LEAF_SIZE + 1), 2);
+
+        assert_eq!(get_leaf_count(2 * LEAF_SIZE - 1), 2);
+        assert_eq!(get_leaf_count(2 * LEAF_SIZE), 2);
+        assert_eq!(get_leaf_count(2 * LEAF_SIZE + 1), 3);
     }
 
     #[test]

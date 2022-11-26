@@ -273,7 +273,7 @@ impl Store {
                 }
                 false => {
                     let file = self.file.try_clone()?;
-                    Object::new(file, entry.size, entry.offset + HEADER_LEN as u64)
+                    Object::new(file, entry.size, entry.data_offset())
                 }
             };
             Ok(Some(obj))
@@ -421,9 +421,10 @@ impl Store {
         // FIXME: no reason not to handle the large object case as well
         let mut tt = TubTop::new();
         tt.hash_data(data);
-        let root = hash(data);
-        assert_eq!(tt.hash(), root.hash);
-        let new = self.add_small_object(&root, data)?;
+        //let root = hash(data);
+        //assert_eq!(tt.hash(), root.hash);
+        //let new = self.add_small_object(&root, data)?;
+        let new = self.commit_object(&tt, NewObj::Mem(data))?;
         Ok((tt.as_root_info(), new))
     }
 
@@ -431,8 +432,7 @@ impl Store {
     {
         if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
-            let offset = entry.offset + (HEADER_LEN as u64);
-            self.file.read_exact_at(&mut buf, offset)?;
+            self.file.read_exact_at(&mut buf, entry.data_offset())?;
             if verify && id != &hash(&buf).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id)?;
@@ -449,8 +449,7 @@ impl Store {
         if let Some(entry) = self.index.get(id) {
             buf.resize(entry.size as usize, 0);
             assert_eq!(buf.len() as u64, entry.size);
-            let offset = entry.offset + (HEADER_LEN as u64);
-            self.file.read_exact_at(buf, offset)?;
+            self.file.read_exact_at(buf, entry.data_offset())?;
             if id != &hash(buf).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id)?;

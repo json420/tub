@@ -298,7 +298,7 @@ impl TmpObject {
         })
     }
 
-    pub fn is_small(&mut self) -> bool
+    pub fn is_small(&self) -> bool
     {
         !self.buf.is_none()
     }
@@ -325,6 +325,18 @@ impl TmpObject {
             }
             self.file.as_ref().unwrap().write_all(buf)
         }
+    }
+
+    pub fn write_all(&mut self, buf: &[u8]) -> io::Result<()>
+    {
+        assert!(self.buf.is_none());
+        if self.file.is_none() {
+            let mut file = File::options()
+                .create_new(true)
+                .append(true).open(&self.path)?;
+            self.file = Some(file);
+        }
+        self.file.as_ref().unwrap().write_all(buf)
     }
 }
 

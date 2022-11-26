@@ -383,10 +383,21 @@ impl Store {
             };
             match obj {
                 NewObj::File(tmp) => {
+                    if top.is_small() {
+                        assert!(tmp.is_small());
+                        return self.commit_object(top, NewObj::Mem(&tmp.into_data()));
+                    }
+                    assert!(top.is_large());
                     self.finalize_tmp(tmp, &top.hash())?;
                     self.file.write_all(top.as_buf())?;
                 }
                 NewObj::Mem(data) => {
+                    if top.is_large() {
+                        let mut tmp = self.allocate_tmp()?;
+                        tmp.write_all(data)?;
+                        return self.commit_object(top, NewObj::File(tmp));
+                    }
+                    assert!(top.is_small());
                     self.file.write_all_vectored(&mut [
                         io::IoSlice::new(top.as_buf()),
                         io::IoSlice::new(data),

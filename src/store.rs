@@ -409,26 +409,6 @@ impl Store {
         }
     }
 
-    pub fn write_small_object(&mut self, top: &TubTop, data: &[u8]) -> io::Result<bool>
-    {
-        assert!(top.is_small());
-        if let Some(_entry) = self.index.get(&top.hash()) {
-            Ok(false)  // Already in object store
-        }
-        else {
-            let entry = Entry {
-                offset: self.file.stream_position().unwrap(),
-                size: data.len() as u64,
-            };
-            self.file.write_all_vectored(&mut [
-                io::IoSlice::new(top.as_buf()),
-                io::IoSlice::new(data),
-            ])?;
-            self.index.insert(top.hash(), entry);
-            Ok(true)
-        }
-    }
-
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
         // FIXME: no reason not to handle the large object case as well
         let mut tt = TubTop::new();

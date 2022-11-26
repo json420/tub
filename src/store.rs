@@ -233,7 +233,7 @@ impl Store {
         fs::rename(&from, &to)
     }
 
-    pub fn import_file(&mut self, file: File) -> io::Result<(RootInfo, bool)>
+    pub fn import_file(&mut self, file: File) -> io::Result<(TubTop, bool)>
     {
         let mut reader = LeafReader::new(file);
         let mut tmp = self.allocate_tmp()?;
@@ -241,18 +241,9 @@ impl Store {
         while let Some(_info) = reader.read_next_leaf(&mut buf)? {
             tmp.write_leaf(&buf)?;
         }
-        let root = reader.hash_root();
-        let new = match root.small() {
-            true => {
-                let data = tmp.into_data();
-                self.add_small_object(&root, &data)?
-            }
-            false => {
-                self.finalize_tmp(tmp, &root.hash)?;
-                self.add_large_object_meta(&root)?
-            }
-        };
-        Ok((root, new))
+        let tt = reader.finalize();
+        let new = self.commit_object(&tt, NewObj::File(tmp))?;
+        Ok((tt, new))
     }
 
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {
@@ -337,48 +328,6 @@ impl Store {
         Ok(())
     }
 
-    pub fn add_small_object(&mut self, root: &RootInfo, data: &[u8]) -> io::Result<bool>
-    {
-        assert!(root.small());
-        if let Some(_entry) = self.index.get(&root.hash) {
-            Ok(false)  // Already in object store
-        }
-        else {
-            let entry = Entry {
-                offset: self.file.stream_position().unwrap(),
-                size: data.len() as u64,
-            };
-            self.file.write_all_vectored(&mut [
-                io::IoSlice::new(&root.hash),
-                io::IoSlice::new(&entry.size.to_le_bytes()),
-                io::IoSlice::new(data),
-            ])?;
-            self.index.insert(root.hash.clone(), entry);
-            Ok(true)
-        }
-    }
-
-    pub fn add_large_object_meta(&mut self, root: &RootInfo) -> io::Result<bool>
-    {
-        assert!( !root.small());
-        if let Some(_entry) = self.index.get(&root.hash) {
-            Ok(false)  // Already in object store
-        }
-        else {
-            let entry = Entry {
-                offset: self.file.stream_position()?,
-                size: root.size,
-            };
-            self.file.write_all_vectored(&mut [
-                io::IoSlice::new(&root.hash),
-                io::IoSlice::new(&root.size.to_le_bytes()),
-                // NOTE: we write just the header for large object, no data
-            ])?;
-            self.index.insert(root.hash.clone(), entry);
-            Ok(true)
-        }
-    }
-
     pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&top.hash()) {
@@ -421,9 +370,6 @@ impl Store {
         // FIXME: no reason not to handle the large object case as well
         let mut tt = TubTop::new();
         tt.hash_data(data);
-        //let root = hash(data);
-        //assert_eq!(tt.hash(), root.hash);
-        //let new = self.add_small_object(&root, data)?;
         let new = self.commit_object(&tt, NewObj::Mem(data))?;
         Ok((tt.as_root_info(), new))
     }

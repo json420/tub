@@ -366,12 +366,12 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(RootInfo, bool)> {
+    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubTop, bool)> {
         // FIXME: no reason not to handle the large object case as well
         let mut tt = TubTop::new();
         tt.hash_data(data);
         let new = self.commit_object(&tt, NewObj::Mem(data))?;
-        Ok((tt.as_root_info(), new))
+        Ok((tt, new))
     }
 
     pub fn get_object(&mut self, id: &TubHash, verify: bool) -> io::Result<Option<Vec<u8>>>

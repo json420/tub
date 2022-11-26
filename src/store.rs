@@ -298,27 +298,26 @@ impl Store {
         self.file.seek(io::SeekFrom::Start(0))?;
 
         let mut offset: u64 = 0;
-        let mut header: HeaderBuf = [0_u8; HEADER_LEN];
+        let mut tt = TubTop::new();
         loop {
-            if let Err(_) = self.file.read_exact(&mut header) {
+            if let Err(_) = self.file.read_exact(tt.as_mut_header()) {
                 break;
             }
-            let id: TubHash = header[0..30].try_into().expect("oops");
-            let size = u64::from_le_bytes(
-                header[30..38].try_into().expect("oops")
-            );
-
+            let hash = tt.hash();
+            let size = tt.size();
             if size == 0 {
                 // Deletion tombstone
-                if self.index.remove(&id) == None {
-                    panic!("{} not in index but tombstone found", db32enc_str(&id));
+                if self.index.remove(&hash) == None {
+                    panic!("{} not in index but tombstone found", tt);
                 }
             }
             else {
+                // We need to read the leaf hashes into the TubTop.buf still:
+                self.file.read_exact(tt.as_mut_leaf_hashes())?;
                 let entry = Entry {offset: offset, size: size};
-                self.index.insert(id, entry);
-                offset += HEADER_LEN as u64;
-                if size <= LEAF_SIZE {
+                self.index.insert(hash, entry);
+                offset += tt.len() as u64;
+                if tt.is_small() {
                     // Only small objects are in self.file
                     offset += size;
                     self.file.seek(io::SeekFrom::Current(size as i64))?;

@@ -1,5 +1,3 @@
-use std::io;
-
 use bathtub_db::store::Store;
 use bathtub_db::util::{random_hash, random_small_object};
 

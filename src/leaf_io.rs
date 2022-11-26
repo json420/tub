@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{hash_leaf, LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw};
+use crate::protocol::{LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -46,7 +46,6 @@ impl TubTop {
 
     pub fn as_root_info(&self) -> RootInfo
     {
-        let size = self.size();
         let index: usize = self.index as usize;
         let mut leaf_hashes: TubHashList = Vec::with_capacity(index);
         for i in 0..index {
@@ -346,7 +345,7 @@ impl TmpObject {
     {
         assert!(self.buf.is_none());
         if self.file.is_none() {
-            let mut file = File::options()
+            let file = File::options()
                 .create_new(true)
                 .append(true).open(&self.path)?;
             self.file = Some(file);

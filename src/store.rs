@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::protocol::{hash, RootInfo};
+use crate::protocol::{hash};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, data_offset};
@@ -440,7 +440,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dbase32::{db32enc_str, Name2Iter};
+    use crate::dbase32::Name2Iter;
     use crate::util::*;
     use crate::helpers::TestTempDir;
 

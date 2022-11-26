@@ -29,7 +29,7 @@ use crate::base::*;
 use crate::protocol::{hash, RootInfo};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
-use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject};
+use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, data_offset};
 
 
 macro_rules! other_err {

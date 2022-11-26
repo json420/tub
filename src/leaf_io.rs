@@ -110,6 +110,11 @@ impl TubTop {
         self.buf.splice(0..TUB_HASH_LEN, hash);
     }
 
+    pub fn is_valid(&self) -> bool {
+        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        hash == self.hash()
+    }
+
     pub fn reset(&mut self) {
         self.buf.clear();
         self.buf.resize(HEADER_LEN, 0);
@@ -432,6 +437,17 @@ mod tests {
         assert_eq!(buf.len(), LEAF_SIZE as usize);
         assert_eq!(buf.capacity(), LEAF_SIZE as usize);
         //let s = &mut buf[0..111];
+    }
+
+    #[test]
+    fn test_tubtop() {
+        let mut tt = TubTop::new();
+        assert_eq!(tt.len(), HEADER_LEN);
+        assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
+        assert_eq!(tt.size(), 0);
+        assert_eq!(tt.is_valid(), false);
+        assert_eq!(tt.as_buf(), [0_u8; HEADER_LEN]);
+        assert_eq!(tt.as_mut_header(), [0_u8; HEADER_LEN]);       
     }
 
     #[test]

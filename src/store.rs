@@ -314,6 +314,9 @@ impl Store {
             else {
                 // We need to read the leaf hashes into the TubTop.buf still:
                 self.file.read_exact(tt.as_mut_leaf_hashes())?;
+                if ! tt.is_valid() {
+                    panic!("not valid: {}", tt);
+                }
                 let entry = Entry {offset: offset, size: size};
                 self.index.insert(hash, entry);
                 offset += tt.len() as u64;

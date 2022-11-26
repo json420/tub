@@ -42,17 +42,25 @@ macro_rules! other_err {
 /// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
-    offset: u64,
     size: u64,
+    offset: u64,
 }
 
 impl Entry {
-    pub fn is_small(&self) -> bool {
-        ! self.is_large()
+    pub fn new(size: u64, offset: u64) -> Self {
+        Self {size: size, offset: offset}
+    }
+
+    pub fn data_offset(&self) -> u64 {
+        self.offset + data_offset(self.size)
     }
 
     pub fn is_large(&self) -> bool {
         self.size > LEAF_SIZE
+    }
+
+    pub fn is_small(&self) -> bool {
+        ! self.is_large()
     }
 }
 
@@ -490,6 +498,23 @@ mod tests {
     use crate::dbase32::{db32enc_str, Name2Iter};
     use crate::util::*;
     use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_entry() {
+        let entry = Entry::new(1, 7);
+        assert_eq!(entry.size, 1);
+        assert_eq!(entry.offset, 7);
+        assert_eq!(entry.data_offset(), 7 + data_offset(1));
+        assert_eq!(entry.is_large(), false);
+        assert_eq!(entry.is_small(), true);
+
+        let entry = Entry::new(LEAF_SIZE + 1, 11);
+        assert_eq!(entry.size, LEAF_SIZE + 1);
+        assert_eq!(entry.offset, 11);
+        assert_eq!(entry.data_offset(), 11 + data_offset(LEAF_SIZE + 1));
+        assert_eq!(entry.is_large(), true);
+        assert_eq!(entry.is_small(), false);
+    }
 
     #[test]
     fn test_find_store() {

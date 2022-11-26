@@ -44,6 +44,19 @@ impl TubTop {
         self.buf
     }
 
+    pub fn as_header_buf_mut(&mut self) -> &mut [u8] {
+        self.reset();
+        &mut self.buf[0..HEADER_LEN]
+    }
+
+    pub fn as_leaf_hashes_buf_mut(&mut self) -> &mut [u8] {
+        assert_ne!(self.size(), 0);
+        let count = get_leaf_count(self.size()) as usize;
+        let stop = HEADER_LEN + count * TUB_HASH_LEN;
+        self.buf.resize(stop, 0);
+        &mut self.buf[HEADER_LEN..stop]
+    }
+
     pub fn as_root_info(&self) -> RootInfo
     {
         let index: usize = self.index as usize;

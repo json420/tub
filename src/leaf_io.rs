@@ -104,10 +104,12 @@ impl TubTop {
     }
 
     pub fn finalize(&mut self) {
-        assert_eq!(self.size(), 0);
-        self.buf.splice(TUB_HASH_LEN..HEADER_LEN, self.total.to_le_bytes());
+        //assert_eq!(self.size(), 0);
+        self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(
+            &self.total.to_le_bytes()
+        );
         let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
-        self.buf.splice(0..TUB_HASH_LEN, hash);
+        self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
     }
 
     pub fn is_valid(&self) -> bool {
@@ -460,10 +462,7 @@ mod tests {
             assert_eq!(header, [0_u8; HEADER_LEN]);
 
             // Set the size
-            let sbuf = size.to_le_bytes();
-            for i in 0..8 {
-                header[TUB_HASH_LEN + i] = sbuf[i];
-            }
+            header[TUB_HASH_LEN..].copy_from_slice(&size.to_le_bytes());
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEADER_LEN);
@@ -477,7 +476,12 @@ mod tests {
             assert_eq!(leaf_hashes, [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEADER_LEN + TUB_HASH_LEN);
-            assert_eq!(tt.size(), size)  // Should not have changed
+            assert_eq!(tt.size(), size);  // Should not have changed
+
+            // Test validation stuffs
+            assert_eq!(tt.is_valid(), false);
+            tt.finalize();
+            assert_eq!(tt.is_valid(), true);
         }
 
         // 2 Leaves
@@ -489,10 +493,7 @@ mod tests {
             assert_eq!(header, [0_u8; HEADER_LEN]);
 
             // Set the size
-            let sbuf = size.to_le_bytes();
-            for i in 0..8 {
-                header[TUB_HASH_LEN + i] = sbuf[i];
-            }
+            header[TUB_HASH_LEN..].copy_from_slice(&size.to_le_bytes());
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEADER_LEN);
@@ -506,7 +507,12 @@ mod tests {
             assert_eq!(leaf_hashes, [0_u8; 2 * TUB_HASH_LEN]);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEADER_LEN + 2 * TUB_HASH_LEN);
-            assert_eq!(tt.size(), size)  // Should not have changed
+            assert_eq!(tt.size(), size);  // Should not have changed
+
+            // Test validation stuffs
+            assert_eq!(tt.is_valid(), false);
+            tt.finalize();
+            assert_eq!(tt.is_valid(), true);
         }
     }
 

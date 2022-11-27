@@ -55,10 +55,18 @@ impl TubTop {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
 
+    fn set_hash(&mut self, hash: &TubHash) {
+        self.buf[0..TUB_HASH_LEN].copy_from_slice(hash);
+    }
+
     pub fn size(&self) -> u64 {
         u64::from_le_bytes(
             self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
         )
+    }
+
+    fn set_size(&mut self, size: u64) {
+        self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
     }
 
     pub fn leaf_hash(&self, index: usize) -> TubHash {
@@ -131,19 +139,14 @@ impl TubTop {
     }
 
     pub fn finalize(&mut self) -> TubHash {
-        //assert_eq!(self.size(), 0);
-        self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(
-            &self.total.to_le_bytes()
-        );
-        let hash = hash_root_raw(self.as_hashable());
-        self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
-        hash
+        self.set_size(self.total);
+        self.finalize_raw()
     }
 
     pub fn finalize_raw(&mut self) -> TubHash {
         assert_ne!(self.size(), 0);
         let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
-        self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
+        self.set_hash(&hash);
         hash
     }
 

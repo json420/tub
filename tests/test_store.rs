@@ -62,5 +62,8 @@ fn test_store_roundtrip() {
     store.delete_object(&a.hash).unwrap();
     store.add_object(&c.data).unwrap();
     store.reindex();
+    store.delete_object(&b.hash);
+    store.reindex();
+    assert_eq!(store.len(), 1);
 }
 

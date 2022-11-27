@@ -299,8 +299,6 @@ impl Store {
         self.offset = 0;
         let mut tt = TubTop::new();
         loop {
-            tt.reset();
-            // FIXME: This doesn't correctly handly a tombstone at end of file
             if let Err(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
                 break;
             }
@@ -311,7 +309,6 @@ impl Store {
                 if self.index.remove(&hash) == None {
                     panic!("{} not in index but tombstone found", tt);
                 }
-                self.offset += HEADER_LEN as u64;
             }
             else {
                 if tt.is_large() {
@@ -326,12 +323,13 @@ impl Store {
                 }
                 let entry = Entry {offset: self.offset, size: size};
                 self.index.insert(hash, entry);
-                self.offset += tt.len() as u64;
                 if tt.is_small() {
                     // Only small objects are in self.file
                     self.offset += size;
                 }
             }
+            self.offset += tt.len() as u64;
+            tt.reset();
         }
         Ok(())
     }
@@ -430,6 +428,8 @@ impl Store {
             self.file.write_all_vectored(&mut [
                 io::IoSlice::new(hash),
                 io::IoSlice::new(&(0_u64).to_le_bytes()),
+                // FIXME: We should write the hash of the zero byte leaf at index 0
+                io::IoSlice::new(&[0_u8; TUB_HASH_LEN]),
             ])?;
             if entry.is_large() {
                 self.remove_large(hash)?;

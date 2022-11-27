@@ -311,6 +311,7 @@ impl Store {
                 if self.index.remove(&hash) == None {
                     panic!("{} not in index but tombstone found", tt);
                 }
+                self.offset += HEADER_LEN as u64;
             }
             else {
                 if tt.is_large() {

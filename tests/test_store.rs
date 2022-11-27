@@ -1,7 +1,22 @@
+#[cfg(test)]
+
+use bathtub_db::base::*;
 use bathtub_db::store::Store;
+use bathtub_db::leaf_io::TubTop;
 use bathtub_db::util::{random_hash, random_small_object};
 
-#[cfg(test)]
+struct RandObj {
+    data: Vec<u8>,
+    hash: TubHash,
+}
+
+fn mk_rand_obj() -> RandObj {
+    let data = random_small_object();
+    let mut tt = TubTop::new();
+    let hash = tt.hash_data(&data);
+    RandObj {data: data, hash: hash}
+}
+
 
 #[test]
 fn test_get_object() {
@@ -10,6 +25,7 @@ fn test_get_object() {
     let ch = random_hash();
     assert!(store.get_object(&ch, false).is_ok());
 }
+
 
 #[test]
 fn test_get_object_new() {
@@ -31,3 +47,20 @@ fn test_get_object_new() {
     assert_eq!(buf.len(), obj.len());
     assert_eq!(buf, obj);
 }
+
+
+#[test]
+fn test_store_roundtrip() {
+    let a = mk_rand_obj();
+    let b = mk_rand_obj();
+    let c = mk_rand_obj();
+
+    // Make sure reindex correctly adjusts offset when tombstones are found
+    let (tmp, mut store) = Store::new_tmp();
+    store.add_object(&a.data).unwrap();
+    store.add_object(&b.data).unwrap();
+    store.delete_object(&a.hash).unwrap();
+    store.add_object(&c.data).unwrap();
+    store.reindex();
+}
+

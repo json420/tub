@@ -296,12 +296,12 @@ impl Store {
         // valid object entry... then a prior object append operation was
         // interrupted, and so we should discard the invalid partial object.
         self.index.clear();
-        //self.file.seek(io::SeekFrom::Start(0))?;
-
         self.offset = 0;
         let mut tt = TubTop::new();
         loop {
-            if let Err(_) = self.file.read_exact_at(tt.as_mut_header(), self.offset) {
+            tt.reset();
+            // FIXME: This doesn't correctly handly a tombstone at end of file
+            if let Err(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
                 break;
             }
             let hash = tt.hash();
@@ -313,26 +313,25 @@ impl Store {
                 }
             }
             else {
-                // We need to read the leaf hashes into the TubTop.buf still:
-                self.file.read_exact_at(
-                    tt.as_mut_leaf_hashes(), self.offset + HEADER_LEN as u64
-                )?;
-                /*
+                if tt.is_large() {
+                    // More than one leaf, read in remaining leaf hashes
+                    tt.resize_to_size();
+                    self.file.read_exact_at(
+                        tt.as_mut_tail(), self.offset + HEAD_LEN as u64
+                    )?;
+                }
                 if ! tt.is_valid() {
                     panic!("not valid: {}", tt);
                 }
-                */
                 let entry = Entry {offset: self.offset, size: size};
                 self.index.insert(hash, entry);
                 self.offset += tt.len() as u64;
                 if tt.is_small() {
                     // Only small objects are in self.file
                     self.offset += size;
-                    //self.file.seek(io::SeekFrom::Current(size as i64))?;
                 }
             }
         }
-        //assert_eq!(self.offset, self.file.stream_position()?);
         Ok(())
     }
 

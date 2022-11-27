@@ -12,6 +12,8 @@ pub type TubHashList = Vec<TubHash>;
 pub const HEADER_LEN: usize = TUB_HASH_LEN + size_of::<u64>();
 pub type HeaderBuf = [u8; HEADER_LEN];
 
+pub const HEAD_LEN: usize = HEADER_LEN + TUB_HASH_LEN;
+
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB leaf size
 pub const LEAF_SIZE: u64 = 8388608;  // 8 MiB leaf size
 

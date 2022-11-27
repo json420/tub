@@ -31,12 +31,12 @@ pub struct TubTop {
 
 impl TubTop {
     pub fn new() -> Self {
-        let mut buf = Vec::with_capacity(HEADER_LEN + TUB_HASH_LEN);
-        buf.resize(HEADER_LEN, 0);
-        Self::new_with_buf(buf)
+        Self::new_with_buf(Vec::with_capacity(HEAD_LEN))
     }
 
-    pub fn new_with_buf(buf: Vec<u8>) -> Self {
+    pub fn new_with_buf(mut buf: Vec<u8>) -> Self {
+        buf.clear();
+        buf.resize(HEAD_LEN, 0);
         Self {index: 0, total: 0, buf: buf}
     }
 
@@ -50,6 +50,18 @@ impl TubTop {
 
     pub fn into_buf(self) -> Vec<u8> {
         self.buf
+    }
+
+    pub fn as_mut_head(&mut self) -> &mut [u8] {
+        &mut self.buf[0..HEAD_LEN]
+    }
+
+    pub fn as_mut_tail(&mut self) -> &mut [u8] {
+        &mut self.buf[HEAD_LEN..]
+    }
+
+    pub fn as_hashable(&self) -> &[u8] {
+        &self.buf[TUB_HASH_LEN..]
     }
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
@@ -91,7 +103,12 @@ impl TubTop {
     }
 
     pub fn leaf_count(&self) -> u64 {
-        0
+        get_leaf_count(self.size())
+    }
+
+    pub fn resize_to_size(&mut self) {
+        let count = self.leaf_count() as usize;
+        self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
@@ -132,7 +149,7 @@ impl TubTop {
         self.index = 0;
         self.total = 0;
         self.buf.clear();
-        self.buf.resize(HEADER_LEN, 0);
+        self.buf.resize(HEAD_LEN, 0);
     }
 
     pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
@@ -457,15 +474,15 @@ mod tests {
     #[test]
     fn test_tubtop() {
         let mut tt = TubTop::new();
-        assert_eq!(tt.len(), HEADER_LEN);
+        assert_eq!(tt.len(), HEAD_LEN);
         assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
         assert_eq!(tt.size(), 0);
         assert_eq!(tt.is_valid(), false);
         assert_eq!(tt.is_small(), true);
         assert_eq!(tt.is_large(), false);
-        assert_eq!(tt.as_buf(), [0_u8; HEADER_LEN]);
+        assert_eq!(tt.as_buf(), [0_u8; HEAD_LEN]);
         assert_eq!(tt.as_mut_header(), [0_u8; HEADER_LEN]);
-
+        return;
         // 1 Leaf
         for size in [1, 2, 3, LEAF_SIZE - 2, LEAF_SIZE - 1, LEAF_SIZE] {
             let mut tt = TubTop::new();

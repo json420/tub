@@ -343,7 +343,7 @@ impl Store {
             Ok(false)  // Already in object store
         }
         else {
-            let entry = Entry::new(size, self.offset);
+            let entry = Entry::new(top.size(), self.offset);
             match obj {
                 NewObj::File(tmp) => {
                     if top.is_small() {

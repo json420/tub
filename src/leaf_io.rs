@@ -40,29 +40,8 @@ impl TubTop {
         Self {index: 0, total: 0, buf: buf}
     }
 
-    pub fn len(&self) -> usize {
-        self.buf.len()
-    }
-
-    pub fn as_buf(&self) -> &[u8] {
-        &self.buf
-    }
-
     pub fn into_buf(self) -> Vec<u8> {
         self.buf
-    }
-
-    pub fn as_mut_head(&mut self) -> &mut [u8] {
-        &mut self.buf[0..HEAD_LEN]
-    }
-
-    pub fn as_mut_tail(&mut self) -> &mut [u8] {
-        &mut self.buf[HEAD_LEN..]
-    }
-
-    // Return size + leaf_hashes part of buf (fed to `hash_root_into()`).
-    pub fn as_hashable(&self) -> &[u8] {
-        &self.buf[TUB_HASH_LEN..]
     }
 
     pub fn hash(&self) -> TubHash {
@@ -83,6 +62,40 @@ impl TubTop {
 
     pub fn leaf_count(&self) -> u64 {
         get_leaf_count(self.size())
+    }
+
+    pub fn is_large(&self) -> bool {
+        //assert_ne!(self.size(), 0);
+        self.size() > LEAF_SIZE
+    }
+
+    pub fn is_small(&self) -> bool {
+        ! self.is_large()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        hash == self.hash()
+    }
+
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_hashable(&self) -> &[u8] {
+        &self.buf[TUB_HASH_LEN..]
+    }
+
+    pub fn as_mut_head(&mut self) -> &mut [u8] {
+        &mut self.buf[0..HEAD_LEN]
+    }
+
+    pub fn as_mut_tail(&mut self) -> &mut [u8] {
+        &mut self.buf[HEAD_LEN..]
     }
 
     pub fn resize_to_size(&mut self) {
@@ -119,11 +132,6 @@ impl TubTop {
         hash
     }
 
-    pub fn is_valid(&self) -> bool {
-        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
-        hash == self.hash()
-    }
-
     pub fn reset(&mut self) {
         self.index = 0;
         self.total = 0;
@@ -137,15 +145,6 @@ impl TubTop {
             self.hash_next_leaf(&data[start as usize..stop as usize]);
         }
         self.finalize()
-    }
-
-    pub fn is_large(&self) -> bool {
-        //assert_ne!(self.size(), 0);
-        self.size() > LEAF_SIZE
-    }
-
-    pub fn is_small(&self) -> bool {
-        ! self.is_large()
     }
 }
 

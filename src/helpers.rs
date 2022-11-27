@@ -66,12 +66,17 @@ impl TestTempDir {
         buf
     }
 
+    pub fn touch(&self, names: &[&str]) {
+        fs::File::create(self.build(names)).unwrap();
+    }
+
     pub fn write(&self, names: &[&str], data: &[u8]) {
         fs::File::create(self.build(names)).unwrap().write_all(data).unwrap();
     }
 
-    pub fn touch(&self, names: &[&str]) {
-        fs::File::create(self.build(names)).unwrap();
+    pub fn append(&self, names: &[&str], data: &[u8]) {
+        fs::File::options().append(true).open(self.build(names)).unwrap()
+            .write_all(data).unwrap();
     }
 
     pub fn mkdir(&self, names: &[&str]) -> PathBuf {

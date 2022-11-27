@@ -290,11 +290,6 @@ impl Store {
 
     pub fn reindex(&mut self) -> io::Result<()>
     {
-        // FIXME: We should truncate off the end of the file any partially
-        // written object we find.  Basically if after the last valid object
-        // is read there is still additional data, but not enough to make a
-        // valid object entry... then a prior object append operation was
-        // interrupted, and so we should discard the invalid partial object.
         self.index.clear();
         self.offset = 0;
         let mut tt = TubTop::new();
@@ -306,6 +301,7 @@ impl Store {
             let size = tt.size();
             if size == 0 {
                 // Deletion tombstone
+                assert_eq!(tt.leaf_hash(0), [0_u8; TUB_HASH_LEN]);
                 if self.index.remove(&hash) == None {
                     panic!("{} not in index but tombstone found", tt);
                 }
@@ -330,6 +326,13 @@ impl Store {
             }
             self.offset += tt.len() as u64;
             tt.reset();
+        }
+        // Was there any leftover?
+        let leftover = self.file.read_at(tt.as_mut_head(), self.offset)?;
+        if leftover > 0 {
+            // FIXME: should we write dangling bits to a backup file?
+            eprintln!("Trunkcating to {} bytes", self.offset);
+            self.file.set_len(self.offset)?;
         }
         Ok(())
     }

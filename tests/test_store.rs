@@ -1,5 +1,7 @@
 #[cfg(test)]
 
+use std::io::prelude::*;
+use std::fs::File;
 use bathtub_db::base::*;
 use bathtub_db::store::Store;
 use bathtub_db::leaf_io::TubTop;
@@ -65,5 +67,11 @@ fn test_store_roundtrip() {
     store.delete_object(&b.hash);
     store.reindex();
     assert_eq!(store.len(), 1);
+
+    let mut pb = store.path();
+    pb.push(PACKFILE);
+    let mut file = File::options().append(true).open(&pb).unwrap();
+    file.write_all(b"some extra junk").unwrap();
+    store.reindex();
 }
 

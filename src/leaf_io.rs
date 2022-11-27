@@ -64,18 +64,6 @@ impl TubTop {
         &self.buf[TUB_HASH_LEN..]
     }
 
-    pub fn as_mut_header(&mut self) -> &mut [u8] {
-        &mut self.buf[0..HEADER_LEN]
-    }
-
-    pub fn as_mut_leaf_hashes(&mut self) -> &mut [u8] {
-        assert_ne!(self.size(), 0);
-        let count = get_leaf_count(self.size()) as usize;
-        let stop = HEADER_LEN + count * TUB_HASH_LEN;
-        self.buf.resize(stop, 0);
-        &mut self.buf[HEADER_LEN..stop]
-    }
-
     pub fn as_root_info(&self) -> RootInfo
     {
         let index: usize = self.index as usize;
@@ -481,29 +469,26 @@ mod tests {
         assert_eq!(tt.is_small(), true);
         assert_eq!(tt.is_large(), false);
         assert_eq!(tt.as_buf(), [0_u8; HEAD_LEN]);
-        assert_eq!(tt.as_mut_header(), [0_u8; HEADER_LEN]);
+        assert_eq!(tt.as_mut_head(), [0_u8; HEAD_LEN]);
         return;
         // 1 Leaf
         for size in [1, 2, 3, LEAF_SIZE - 2, LEAF_SIZE - 1, LEAF_SIZE] {
             let mut tt = TubTop::new();
 
             // Get mutable reference to header portion of buffer
-            let mut header = tt.as_mut_header();
-            assert_eq!(header, [0_u8; HEADER_LEN]);
+            let mut head = tt.as_mut_head();
+            assert_eq!(head, [0_u8; HEAD_LEN]);
 
             // Set the size
-            header[TUB_HASH_LEN..].copy_from_slice(&size.to_le_bytes());
+            head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEADER_LEN);
+            assert_eq!(tt.len(), HEAD_LEN);
             assert_eq!(tt.is_small(), true);
             assert_eq!(tt.is_large(), false);
 
             // With a size set, calling .as_mut_leaf_hashes() should resize .buf
             // correctly for the number of leaves
-            let mut leaf_hashes = tt.as_mut_leaf_hashes();
-            assert_eq!(leaf_hashes.len(), TUB_HASH_LEN);
-            assert_eq!(leaf_hashes, [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEADER_LEN + TUB_HASH_LEN);
             assert_eq!(tt.size(), size);  // Should not have changed
@@ -514,7 +499,7 @@ mod tests {
             tt.finalize_raw();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.is_valid(), true);
-            tt.as_mut_header()[TUB_HASH_LEN..].copy_from_slice(&(size + 1).to_le_bytes());
+            tt.as_mut_head()[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&(size + 1).to_le_bytes());
             assert_eq!(tt.size(), size + 1);
             assert_eq!(tt.is_valid(), false);
         }
@@ -524,31 +509,28 @@ mod tests {
             let mut tt = TubTop::new();
 
             // Get mutable reference to header portion of buffer
-            let mut header = tt.as_mut_header();
-            assert_eq!(header, [0_u8; HEADER_LEN]);
+            let mut head = tt.as_mut_head();
+            assert_eq!(head, [0_u8; HEAD_LEN]);
 
             // Set the size
-            header[TUB_HASH_LEN..].copy_from_slice(&size.to_le_bytes());
+            head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEADER_LEN);
+            assert_eq!(tt.len(), HEAD_LEN);
             assert_eq!(tt.is_small(), false);
             assert_eq!(tt.is_large(), true);
 
             // With a size set, calling .as_mut_leaf_hashes() should resize .buf
             // correctly for the number of leaves
-            let mut leaf_hashes = tt.as_mut_leaf_hashes();
-            assert_eq!(leaf_hashes.len(), 2 * TUB_HASH_LEN);
-            assert_eq!(leaf_hashes, [0_u8; 2 * TUB_HASH_LEN]);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEADER_LEN + 2 * TUB_HASH_LEN);
+            assert_eq!(tt.len(), HEAD_LEN + 2 * TUB_HASH_LEN);
             assert_eq!(tt.size(), size);  // Should not have changed
 
             // Test validation stuffs
             assert_eq!(tt.is_valid(), false);
             tt.finalize_raw();
             assert_eq!(tt.is_valid(), true);
-            tt.as_mut_header()[TUB_HASH_LEN..].copy_from_slice(&(size + 1).to_le_bytes());
+            tt.as_mut_head()[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&(size + 1).to_le_bytes());
             assert_eq!(tt.size(), size + 1);
             assert_eq!(tt.is_valid(), false);
         }

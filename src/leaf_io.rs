@@ -470,7 +470,7 @@ mod tests {
         assert_eq!(tt.is_large(), false);
         assert_eq!(tt.as_buf(), [0_u8; HEAD_LEN]);
         assert_eq!(tt.as_mut_head(), [0_u8; HEAD_LEN]);
-        return;
+
         // 1 Leaf
         for size in [1, 2, 3, LEAF_SIZE - 2, LEAF_SIZE - 1, LEAF_SIZE] {
             let mut tt = TubTop::new();
@@ -481,17 +481,12 @@ mod tests {
 
             // Set the size
             head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
+            tt.resize_to_size();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEAD_LEN);
             assert_eq!(tt.is_small(), true);
             assert_eq!(tt.is_large(), false);
-
-            // With a size set, calling .as_mut_leaf_hashes() should resize .buf
-            // correctly for the number of leaves
-            assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEADER_LEN + TUB_HASH_LEN);
-            assert_eq!(tt.size(), size);  // Should not have changed
 
             // Test validation stuffs
             assert_eq!(tt.is_valid(), false);
@@ -514,17 +509,12 @@ mod tests {
 
             // Set the size
             head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
+            tt.resize_to_size();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEAD_LEN);
+            assert_eq!(tt.len(), HEAD_LEN + TUB_HASH_LEN);
             assert_eq!(tt.is_small(), false);
             assert_eq!(tt.is_large(), true);
-
-            // With a size set, calling .as_mut_leaf_hashes() should resize .buf
-            // correctly for the number of leaves
-            assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
-            assert_eq!(tt.len(), HEAD_LEN + 2 * TUB_HASH_LEN);
-            assert_eq!(tt.size(), size);  // Should not have changed
 
             // Test validation stuffs
             assert_eq!(tt.is_valid(), false);

@@ -160,6 +160,7 @@ pub struct Store {
     path: PathBuf,
     file: fs::File,
     index: Index,
+    offset: u64,
 }
 
 // FIXME: for multithread, Store needs to be wrapped in Arc<Mutex<>>
@@ -175,7 +176,7 @@ impl Store {
                         .append(true)
                         .create(true).open(pb_copy)?;
         Ok(
-            Store {path: pb, file: file, index: HashMap::new()}
+            Store {path: pb, file: file, index: HashMap::new(), offset: 0}
         )
     }
 
@@ -297,7 +298,7 @@ impl Store {
         self.index.clear();
         self.file.seek(io::SeekFrom::Start(0))?;
 
-        let mut offset: u64 = 0;
+        self.offset = 0;
         let mut tt = TubTop::new();
         loop {
             if let Err(_) = self.file.read_exact(tt.as_mut_header()) {
@@ -317,27 +318,29 @@ impl Store {
                 if ! tt.is_valid() {
                     panic!("not valid: {}", tt);
                 }
-                let entry = Entry {offset: offset, size: size};
+                let entry = Entry {offset: self.offset, size: size};
                 self.index.insert(hash, entry);
-                offset += tt.len() as u64;
+                self.offset += tt.len() as u64;
                 if tt.is_small() {
                     // Only small objects are in self.file
-                    offset += size;
+                    self.offset += size;
                     self.file.seek(io::SeekFrom::Current(size as i64))?;
                 }
             }
         }
+        assert_eq!(self.offset, self.file.stream_position()?);
         Ok(())
     }
 
     pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
     {
+        assert_eq!(self.offset, self.file.stream_position()?);
         if let Some(_entry) = self.index.get(&top.hash()) {
             Ok(false)  // Already in object store
         }
         else {
             let entry = Entry {
-                offset: self.file.stream_position()?,
+                offset: self.offset,
                 size: top.size(),
             };
             match obj {
@@ -349,6 +352,7 @@ impl Store {
                     assert!(top.is_large());
                     self.finalize_tmp(tmp, &top.hash())?;
                     self.file.write_all(top.as_buf())?;
+                    self.offset += top.len() as u64;
                 }
                 NewObj::Mem(data) => {
                     if top.is_large() {
@@ -361,9 +365,11 @@ impl Store {
                         io::IoSlice::new(top.as_buf()),
                         io::IoSlice::new(data),
                     ])?;
+                    self.offset += (top.len() + data.len()) as u64;
                 }
             }
             self.index.insert(top.hash(), entry);
+            assert_eq!(self.offset, self.file.stream_position()?);
             Ok(true)
         }
     }

@@ -44,6 +44,13 @@ impl TubTop {
         self.buf
     }
 
+    pub fn reset(&mut self) {
+        self.index = 0;
+        self.total = 0;
+        self.buf.clear();
+        self.buf.resize(HEAD_LEN, 0);
+    }
+
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
@@ -115,6 +122,14 @@ impl TubTop {
         info
     }
 
+    pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
+        self.reset();
+        for (start, stop) in LeafRangeIter::new(data.len() as u64) {
+            self.hash_next_leaf(&data[start as usize..stop as usize]);
+        }
+        self.finalize()
+    }
+
     pub fn finalize(&mut self) -> TubHash {
         //assert_eq!(self.size(), 0);
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(
@@ -132,20 +147,6 @@ impl TubTop {
         hash
     }
 
-    pub fn reset(&mut self) {
-        self.index = 0;
-        self.total = 0;
-        self.buf.clear();
-        self.buf.resize(HEAD_LEN, 0);
-    }
-
-    pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
-        self.reset();
-        for (start, stop) in LeafRangeIter::new(data.len() as u64) {
-            self.hash_next_leaf(&data[start as usize..stop as usize]);
-        }
-        self.finalize()
-    }
 }
 
 impl fmt::Display for TubTop {

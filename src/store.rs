@@ -321,7 +321,7 @@ impl Store {
                     )?;
                 }
                 if ! tt.is_valid() {
-                    panic!("not valid: {}", tt);
+                    panic!("not valid: {}; offset={}", tt, self.offset);
                 }
                 let entry = Entry {offset: self.offset, size: size};
                 self.index.insert(hash, entry);
@@ -337,7 +337,6 @@ impl Store {
 
     pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
     {
-        assert_eq!(self.offset, self.file.stream_position()?);
         if let Some(_entry) = self.index.get(&top.hash()) {
             Ok(false)  // Already in object store
         }
@@ -372,7 +371,6 @@ impl Store {
                 }
             }
             self.index.insert(top.hash(), entry);
-            assert_eq!(self.offset, self.file.stream_position()?);
             Ok(true)
         }
     }

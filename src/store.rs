@@ -317,7 +317,7 @@ impl Store {
                 if ! tt.is_valid() {
                     panic!("not valid: {}; offset={}", tt, self.offset);
                 }
-                let entry = Entry {offset: self.offset, size: size};
+                let entry = Entry::new(size, self.offset);
                 self.index.insert(hash, entry);
                 if tt.is_small() {
                     // Only small objects are in self.file
@@ -343,10 +343,7 @@ impl Store {
             Ok(false)  // Already in object store
         }
         else {
-            let entry = Entry {
-                offset: self.offset,
-                size: top.size(),
-            };
+            let entry = Entry::new(size, self.offset);
             match obj {
                 NewObj::File(tmp) => {
                     if top.is_small() {

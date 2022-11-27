@@ -60,18 +60,9 @@ impl TubTop {
         &mut self.buf[HEAD_LEN..]
     }
 
+    // Return size + leaf_hashes part of buf (fed to `hash_root_into()`).
     pub fn as_hashable(&self) -> &[u8] {
         &self.buf[TUB_HASH_LEN..]
-    }
-
-    pub fn as_root_info(&self) -> RootInfo
-    {
-        let index: usize = self.index as usize;
-        let mut leaf_hashes: TubHashList = Vec::with_capacity(index);
-        for i in 0..index {
-            leaf_hashes.push(self.leaf_hash(i));
-        }
-        RootInfo {hash: self.hash(), size: self.size(), leaf_hashes: leaf_hashes}
     }
 
     pub fn hash(&self) -> TubHash {
@@ -116,7 +107,7 @@ impl TubTop {
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(
             &self.total.to_le_bytes()
         );
-        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        let hash = hash_root_raw(self.as_hashable());
         self.buf[0..TUB_HASH_LEN].copy_from_slice(&hash);
         hash
     }

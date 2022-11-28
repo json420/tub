@@ -293,10 +293,7 @@ impl Store {
         self.index.clear();
         self.offset = 0;
         let mut tt = TubTop::new();
-        loop {
-            if let Err(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
-                break;
-            }
+        while let Ok(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
             let hash = tt.hash();
             let size = tt.size();
             if size == 0 {

@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::protocol::{hash};
+use crate::protocol::{hash, hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, data_offset};
@@ -301,7 +301,9 @@ impl Store {
             let size = tt.size();
             if size == 0 {
                 // Deletion tombstone
-                assert_eq!(tt.leaf_hash(0), [0_u8; TUB_HASH_LEN]);
+                if ! tt.is_tombstone() {
+                    panic!("bad tombstone {}; offset={}", tt, self.offset);   
+                }
                 if self.index.remove(&hash) == None {
                     panic!("{} not in index but tombstone found", tt);
                 }
@@ -428,8 +430,8 @@ impl Store {
             self.file.write_all_vectored(&mut [
                 io::IoSlice::new(hash),
                 io::IoSlice::new(&(0_u64).to_le_bytes()),
-                // FIXME: We should write the hash of the zero byte leaf at index 0
-                io::IoSlice::new(&[0_u8; TUB_HASH_LEN]),
+                // This makes the tombstone verifiable
+                io::IoSlice::new(&hash_tombstone(hash)),
             ])?;
             if entry.is_large() {
                 self.remove_large(hash)?;

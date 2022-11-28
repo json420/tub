@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw};
+use crate::protocol::{LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -91,6 +91,10 @@ impl TubTop {
     pub fn is_valid(&self) -> bool {
         let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
         hash == self.hash()
+    }
+
+    pub fn is_tombstone(&self) -> bool {
+        self.size() == 0 && self.leaf_hash(0) == hash_tombstone(&self.hash())
     }
 
     pub fn len(&self) -> usize {

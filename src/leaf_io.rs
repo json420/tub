@@ -12,13 +12,24 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_root, RootInfo, hash_leaf_into, hash_root_raw, hash_tombstone};
+use crate::protocol::{LeafInfo, hash, hash_leaf_into, hash_root_raw, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
     let mut buf = Vec::with_capacity(LEAF_SIZE as usize);
     buf.resize(LEAF_SIZE as usize, 0);
     buf
+}
+
+
+pub fn hash_object(file: File) -> io::Result<TubTop>
+{
+    let mut reader = LeafReader::new(file);
+    let mut buf = new_leaf_buf();
+    while let Some(_info) = reader.read_next_leaf(&mut buf)? {
+        //eprintln!("leaf {}", info.index);
+    }
+    Ok(reader.finalize())
 }
 
 
@@ -278,9 +289,6 @@ impl Iterator for LeafRangeIter {
 pub struct LeafReader {
     file: File,
     closed: bool,
-    index: u64,
-    size: u64,
-    leaf_hashes: TubHashList,
     tt: TubTop,
 }
 
@@ -290,9 +298,6 @@ impl LeafReader {
         Self {
             file: file,
             closed: false,
-            size: 0,
-            index: 0,
-            leaf_hashes: Vec::new(),
             tt: TubTop::new(),
         }
     }
@@ -312,27 +317,19 @@ impl LeafReader {
         }
         else {
             let info = self.tt.hash_next_leaf(buf);
-            self.size += amount as u64;
-            self.leaf_hashes.push(info.hash);
-            self.index += 1;
             Ok(Some(info))
         }
     }
 
-    pub fn hash_root(mut self) -> RootInfo
-    {
-        if !self.closed {
-            panic!("LeafReader.hash_root() called before closed");
-        }
-        self.tt.finalize();
-        hash_root(self.size, self.leaf_hashes)
-    }
-
     pub fn finalize(mut self) -> TubTop {
+        if !self.closed {
+            panic!("LeafReader.finalize() called before closed");
+        }
         self.tt.finalize();
         self.tt
     }
 }
+
 
 
 #[derive(Debug)]
@@ -396,6 +393,7 @@ impl TmpObject {
     }
 }
 
+
 /// Represents an object open for reading (both large and small objects)
 #[derive(Debug)]
 pub struct Object {
@@ -432,18 +430,6 @@ impl Object {
     }
 
 }
-
-
-pub fn hash_object(file: File) -> io::Result<RootInfo>
-{
-    let mut reader = LeafReader::new(file);
-    let mut buf = new_leaf_buf();
-    while let Some(_info) = reader.read_next_leaf(&mut buf)? {
-        //eprintln!("leaf {}", info.index);
-    }
-    Ok(reader.hash_root())
-}
-
 
 
 

@@ -197,8 +197,8 @@ fn cmd_hash(path: &Path) -> io::Result<()>
 {
     let pb = path.canonicalize()?;
     let file = fs::File::open(&pb)?;
-    let root = hash_object(file)?;
-    println!("{}", root);
+    let tt = hash_object(file)?;
+    println!("{}", tt);
     Ok(())
 }
 

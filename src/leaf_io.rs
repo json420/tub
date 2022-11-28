@@ -133,6 +133,11 @@ impl TubTop {
         self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
     }
 
+    pub fn resize_for_data(&mut self, size: u64) {
+        let full = get_full_object_size(size);
+        self.buf.resize(full, 0);
+    }
+
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
         assert!(data.len() > 0 && data.len() <= LEAF_SIZE as usize);
         if self.index != 0 {
@@ -242,6 +247,12 @@ pub fn get_leaf_count(size: u64) -> u64 {
 
 pub fn data_offset(size: u64) -> u64 {
     (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
+}
+
+
+// Returns header + leaf_hashes + data
+pub fn get_full_object_size(size: u64) -> u64 {
+    data_offset(size) + size
 }
 
 
@@ -545,6 +556,17 @@ mod tests {
         assert_eq!(data_offset(2 * LEAF_SIZE + 1), head + tub * 3);
         assert_eq!(data_offset(3 * LEAF_SIZE - 1), head + tub * 3);
         assert_eq!(data_offset(3 * LEAF_SIZE), head + tub * 3);
+    }
+
+    #[test]
+    fn test_get_full_object_size() {
+        assert_eq!(get_full_object_size(1), (HEAD_LEN + 1) as u64);
+        assert_eq!(get_full_object_size(2), (HEAD_LEN + 2) as u64);
+        assert_eq!(get_full_object_size(3), (HEAD_LEN + 3) as u64);
+        assert_eq!(get_full_object_size(LEAF_SIZE), HEAD_LEN as u64 + LEAF_SIZE);
+        assert_eq!(get_full_object_size(LEAF_SIZE + 1),
+            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE + 1
+        );
     }
 
     #[test]

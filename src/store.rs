@@ -363,6 +363,7 @@ impl Store {
         let mut tmp_pb = self.repack_path(&id);
         let tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
 
+        let mut tt = TubTop::new();
         let dst_pb = self.pack_path();
         fs::rename(&tmp_pb, &dst_pb);
         Ok(())

@@ -128,6 +128,15 @@ pub fn init_tree(path: &Path) -> io::Result<Store>
     init_store(&pb)
 }
 
+fn push_pack_path(pb: &mut PathBuf) {
+    pb.push(PACKFILE);
+}
+
+fn push_repack_path(pb: &mut PathBuf, id: &TubId) {
+    pb.push(PACKFILE);
+    let sid = db32enc_str(id);
+    pb.set_extension(sid);
+}
 
 fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(OBJECTDIR);
@@ -192,6 +201,18 @@ impl Store {
     /// Returns clone of self.path
     pub fn path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    pub fn pack_path(&self) -> PathBuf {
+        let mut pb = self.path();
+        push_pack_path(&mut pb);
+        pb
+    }
+
+    pub fn repack_path(&self, id: &TubId) -> PathBuf {
+        let mut pb = self.path();
+        push_repack_path(&mut pb, id);
+        pb
     }
 
     /// Builds canonical large file path.
@@ -333,6 +354,17 @@ impl Store {
             eprintln!("Trunkcating to {} bytes", self.offset);
             self.file.set_len(self.offset)?;
         }
+        Ok(())
+    }
+
+    pub fn repack(&mut self) -> io::Result<()> {
+        // FIXME: yeah, this doesn't work yet
+        let id = random_id();
+        let mut tmp_pb = self.repack_path(&id);
+        let tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
+
+        let dst_pb = self.pack_path();
+        fs::rename(&tmp_pb, &dst_pb);
         Ok(())
     }
 
@@ -503,6 +535,21 @@ mod tests {
         assert_eq!(tmp.list_dir(&["foo"]), ["bar"]);
         assert_eq!(tmp.list_dir(&["foo", "bar"]), empty);
 
+    }
+
+    #[test]
+    fn test_push_pack_path() {
+        let mut pb = PathBuf::new();
+        push_pack_path(&mut pb);
+        assert_eq!(pb.as_os_str(), "bathtub.db");
+    }
+
+    #[test]
+    fn test_push_repack_path() {
+        let id = [0_u8; TUB_ID_LEN];
+        let mut pb = PathBuf::new();
+        push_repack_path(&mut pb, &id);
+        assert_eq!(pb.as_os_str(), "bathtub.333333333333333333333333");
     }
 
     #[test]

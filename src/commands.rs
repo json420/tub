@@ -94,6 +94,13 @@ enum Commands {
         #[arg(help="File name to write data to")]
         dst: Option<PathBuf>,
     },
+
+    #[command(about = "Repack and remove tombstones")]
+    Repack {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
 }
 
 
@@ -117,6 +124,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::CatFile {hash, tub, dst} => {
             cmd_obj_cat(hash, tub, dst)
+        }
+        Commands::Repack {tub} => {
+            cmd_repack(tub)
         }
     }
 }
@@ -256,6 +266,14 @@ fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
             obj.write_to_file(&mut file)?;
         }
     }
+    Ok(())
+}
+
+fn cmd_repack(tub: OptPath) -> io::Result<()>
+{
+    let mut tub = get_tub(tub)?;
+    tub.repack();
+    eprintln!("{} objects in store", tub.len());
     Ok(())
 }
 

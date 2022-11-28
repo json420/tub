@@ -358,12 +358,26 @@ impl Store {
     }
 
     pub fn repack(&mut self) -> io::Result<()> {
+        println!("Repack");
         // FIXME: yeah, this doesn't work yet
         let id = random_id();
         let mut tmp_pb = self.repack_path(&id);
-        let tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
-
+        let mut tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
         let mut tt = TubTop::new();
+        for (hash, entry) in self.index.iter() {
+            if entry.is_small() {
+                tt.resize_for_size_plus_data(entry.size);
+            }
+            else {
+                tt.resize_for_size(entry.size);
+            }
+            self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
+            if tt.is_valid() {
+                tmp.write_all(tt.as_buf())?;
+            }
+            println!("{}", tt);
+            tt.reset();
+        }
         let dst_pb = self.pack_path();
         fs::rename(&tmp_pb, &dst_pb);
         Ok(())

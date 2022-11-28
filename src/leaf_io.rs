@@ -100,8 +100,11 @@ impl TubTop {
     }
 
     pub fn is_valid(&self) -> bool {
-        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
-        hash == self.hash()
+        self.hash() == hash_root_raw(&self.buf[TUB_HASH_LEN..])
+    }
+
+    pub fn is_valid_with_data(&self) -> bool {
+        true
     }
 
     pub fn is_tombstone(&self) -> bool {
@@ -114,6 +117,10 @@ impl TubTop {
 
     pub fn as_buf(&self) -> &[u8] {
         &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
     }
 
     pub fn as_hashable(&self) -> &[u8] {
@@ -133,8 +140,13 @@ impl TubTop {
         self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
     }
 
-    pub fn resize_for_data(&mut self, size: u64) {
-        let full = get_full_object_size(size);
+    pub fn resize_for_size(&mut self, size: u64) {
+        let count = self.leaf_count() as usize;
+        self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
+    }
+
+    pub fn resize_for_size_plus_data(&mut self, size: u64) {
+        let full = get_full_object_size(size) as usize;
         self.buf.resize(full, 0);
     }
 
@@ -250,9 +262,14 @@ pub fn data_offset(size: u64) -> u64 {
 }
 
 
+pub fn get_preamble_size(size: u64) -> u64 {
+    (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
+}
+
+
 // Returns header + leaf_hashes + data
 pub fn get_full_object_size(size: u64) -> u64 {
-    data_offset(size) + size
+    get_preamble_size(size) + size
 }
 
 
@@ -556,6 +573,26 @@ mod tests {
         assert_eq!(data_offset(2 * LEAF_SIZE + 1), head + tub * 3);
         assert_eq!(data_offset(3 * LEAF_SIZE - 1), head + tub * 3);
         assert_eq!(data_offset(3 * LEAF_SIZE), head + tub * 3);
+    }
+
+    #[test]
+    fn test_get_preamble_size() {
+        let head = HEADER_LEN as u64;
+        let tub = TUB_HASH_LEN as u64;
+        assert_eq!(get_preamble_size(0), head);
+
+        assert_eq!(get_preamble_size(1), head + tub);
+        assert_eq!(get_preamble_size(2), head + tub);
+        assert_eq!(get_preamble_size(LEAF_SIZE - 1), head + tub);
+        assert_eq!(get_preamble_size(LEAF_SIZE), head + tub);
+
+        assert_eq!(get_preamble_size(LEAF_SIZE + 1), head + tub * 2);
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE - 1), head + tub * 2);
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE), head + tub * 2);
+
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE + 1), head + tub * 3);
+        assert_eq!(get_preamble_size(3 * LEAF_SIZE - 1), head + tub * 3);
+        assert_eq!(get_preamble_size(3 * LEAF_SIZE), head + tub * 3);
     }
 
     #[test]

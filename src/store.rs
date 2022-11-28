@@ -365,6 +365,7 @@ impl Store {
         let mut tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
         let mut tt = TubTop::new();
         for (hash, entry) in self.index.iter() {
+            assert!(entry.size > 0);
             if entry.is_small() {
                 tt.resize_for_size_plus_data(entry.size);
             }
@@ -372,12 +373,14 @@ impl Store {
                 tt.resize_for_size(entry.size);
             }
             self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
-            if tt.is_valid() {
+            //if tt.is_valid() {
                 tmp.write_all(tt.as_buf())?;
-            }
+            //}
             println!("{}", tt);
             tt.reset();
         }
+        tmp.flush();
+        tmp.sync_data();
         let dst_pb = self.pack_path();
         fs::rename(&tmp_pb, &dst_pb);
         Ok(())

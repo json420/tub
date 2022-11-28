@@ -142,10 +142,11 @@ impl TubTop {
 
     pub fn resize_for_size(&mut self, size: u64) {
         let count = self.leaf_count() as usize;
-        self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
+        self.buf.resize(get_preamble_size(size) as usize, 0);
     }
 
     pub fn resize_for_size_plus_data(&mut self, size: u64) {
+        assert!(size <= LEAF_SIZE);
         let full = get_full_object_size(size) as usize;
         self.buf.resize(full, 0);
     }
@@ -248,6 +249,7 @@ impl Iterator for LeafOffsetIter {
 }
 
 pub fn get_leaf_count(size: u64) -> u64 {
+    //assert!(size > 0);
     let count = size / LEAF_SIZE;
     if size % LEAF_SIZE == 0 {
         count

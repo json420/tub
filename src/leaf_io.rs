@@ -476,7 +476,7 @@ mod tests {
             let mut tt = TubTop::new();
 
             // Get mutable reference to header portion of buffer
-            let mut head = tt.as_mut_head();
+            let head = tt.as_mut_head();
             assert_eq!(head, [0_u8; HEAD_LEN]);
 
             // Set the size
@@ -504,7 +504,7 @@ mod tests {
             let mut tt = TubTop::new();
 
             // Get mutable reference to header portion of buffer
-            let mut head = tt.as_mut_head();
+            let head = tt.as_mut_head();
             assert_eq!(head, [0_u8; HEAD_LEN]);
 
             // Set the size

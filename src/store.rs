@@ -373,9 +373,9 @@ impl Store {
                 tt.resize_for_size(entry.size);
             }
             self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
-            //if tt.is_valid() {
+            if tt.is_valid_for_copy() {
                 tmp.write_all(tt.as_buf())?;
-            //}
+            }
             println!("{}", tt);
             tt.reset();
         }

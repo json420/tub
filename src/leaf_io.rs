@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_leaf_into, hash_root_raw, hash_tombstone};
+use crate::protocol::{LeafInfo, hash_leaf, hash_leaf_into, hash_root_raw, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -102,8 +102,15 @@ impl TubTop {
         self.size() > 0 && self.hash() == hash_root_raw(&self.as_hashable())
     }
 
-    pub fn is_valid_with_data(&self) -> bool {
-        true
+    pub fn has_valid_data(&self) -> bool {
+        self.is_valid()
+        && self.len() == get_full_object_size(self.size()) as usize
+        && self.leaf_hash(0) == hash_leaf(0, self.as_data()).hash
+    }
+
+    pub fn is_valid_for_copy(&self) -> bool {
+        self.is_small() && self.has_valid_data()
+        || self.is_large() && self.is_valid()
     }
 
     pub fn is_tombstone(&self) -> bool {
@@ -140,6 +147,14 @@ impl TubTop {
         let start = HEADER_LEN + (index * TUB_HASH_LEN);
         let stop = start + TUB_HASH_LEN;
         &mut self.buf[start..stop]
+    }
+
+    pub fn as_data(&self) -> &[u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = start + size;
+        assert_eq!(stop, get_full_object_size(size));
+        &self.buf[start as usize..stop as usize]
     }
 
     pub fn resize_to_size(&mut self) {

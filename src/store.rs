@@ -511,14 +511,14 @@ mod tests {
         let entry = Entry::new(1, 7);
         assert_eq!(entry.size, 1);
         assert_eq!(entry.offset, 7);
-        assert_eq!(entry.data_offset(), 7 + data_offset(1));
+        assert_eq!(entry.data_offset(), 7 + get_preamble_size(1));
         assert_eq!(entry.is_large(), false);
         assert_eq!(entry.is_small(), true);
 
         let entry = Entry::new(LEAF_SIZE + 1, 11);
         assert_eq!(entry.size, LEAF_SIZE + 1);
         assert_eq!(entry.offset, 11);
-        assert_eq!(entry.data_offset(), 11 + data_offset(LEAF_SIZE + 1));
+        assert_eq!(entry.data_offset(), 11 + get_preamble_size(LEAF_SIZE + 1));
         assert_eq!(entry.is_large(), true);
         assert_eq!(entry.is_small(), false);
     }

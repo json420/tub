@@ -87,7 +87,7 @@ fn test_store_roundtrip() {
 #[test]
 fn test_store_reindex() {
     let (_tmp, mut store) = Store::new_tmp();
-    let count = 1000;
+    let count = 999;
     let list = mk_rand_obj_list(count);
     for robj in list.iter() {
         store.add_object(&robj.data).unwrap();
@@ -96,18 +96,42 @@ fn test_store_reindex() {
     assert_eq!(store.len(), count);
     let mut keys = store.keys();
     keys.sort();
+
     let mut del = Vec::new();
+    let mut keep = Vec::new();
     for i in 0..count {
         if i % 3 == 0 {
             del.push(keys[i]);
         }
+        else {
+            keep.push(keys[i]);
+        }
+    }
+
+    for hash in del.iter() {
+        assert_eq!(store.delete_object(hash).unwrap(), true);
+    }
+    assert_eq!(store.len(), count * 2 / 3);
+    for hash in del.iter() {
+        assert!(store.get_object(hash, false).unwrap().is_none());
+    }
+    for hash in keep.iter() {
+        assert!(store.get_object(hash, false).unwrap().is_some());
     }
     for hash in del.iter() {
-        store.delete_object(hash).unwrap();
+        assert_eq!(store.delete_object(hash).unwrap(), false);
     }
-    assert_eq!(store.len(), count * 2 / 3);
+
     store.reindex().unwrap();
     assert_eq!(store.len(), count * 2 / 3);
-    store.repack().unwrap();
+    for hash in del.iter() {
+        assert!(store.get_object(hash, false).unwrap().is_none());
+    }
+    for hash in keep.iter() {
+        assert!(store.get_object(hash, false).unwrap().is_some());
+    }
+    for hash in del.iter() {
+        assert_eq!(store.delete_object(hash).unwrap(), false);
+    }
 }
 

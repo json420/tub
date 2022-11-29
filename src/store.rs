@@ -361,10 +361,10 @@ impl Store {
         println!("Repack");
         // FIXME: yeah, this doesn't work yet
         let id = random_id();
-        let mut tmp_pb = self.repack_path(&id);
+        let tmp_pb = self.repack_path(&id);
         let mut tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
         let mut tt = TubTop::new();
-        for (hash, entry) in self.index.iter() {
+        for (_hash, entry) in self.index.iter() {
             assert!(entry.size > 0);
             if entry.is_small() {
                 tt.resize_for_size_plus_data(entry.size);
@@ -379,10 +379,10 @@ impl Store {
             println!("{}", tt);
             tt.reset();
         }
-        tmp.flush();
-        tmp.sync_data();
+        tmp.flush()?;
+        tmp.sync_data()?;
         let dst_pb = self.pack_path();
-        fs::rename(&tmp_pb, &dst_pb);
+        fs::rename(&tmp_pb, &dst_pb)?;
         Ok(())
     }
 

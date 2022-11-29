@@ -272,7 +272,7 @@ fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
 fn cmd_repack(tub: OptPath) -> io::Result<()>
 {
     let mut tub = get_tub(tub)?;
-    tub.repack();
+    tub.repack()?;
     eprintln!("{} objects in store", tub.len());
     Ok(())
 }

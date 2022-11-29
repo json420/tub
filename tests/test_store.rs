@@ -40,7 +40,6 @@ fn test_get_object() {
 
 #[test]
 fn test_get_object_new() {
-    return;  // FIXME
     let (_tmp, mut store) = Store::new_tmp();
     let rch = random_hash();
 
@@ -91,7 +90,7 @@ fn test_store_reindex() {
     let count = 1000;
     let list = mk_rand_obj_list(count);
     for robj in list.iter() {
-        store.add_object(&robj.data);
+        store.add_object(&robj.data).unwrap();
     }
     store.reindex().unwrap();
     assert_eq!(store.len(), count);
@@ -109,5 +108,6 @@ fn test_store_reindex() {
     assert_eq!(store.len(), count * 2 / 3);
     store.reindex().unwrap();
     assert_eq!(store.len(), count * 2 / 3);
+    store.repack().unwrap();
 }
 

@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash, hash_leaf_into, hash_root_raw, hash_tombstone};
+use crate::protocol::{LeafInfo, hash_leaf_into, hash_root_raw, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -141,7 +141,6 @@ impl TubTop {
     }
 
     pub fn resize_for_size(&mut self, size: u64) {
-        let count = self.leaf_count() as usize;
         self.buf.resize(get_preamble_size(size) as usize, 0);
     }
 

@@ -103,14 +103,12 @@ impl TubTop {
     }
 
     pub fn has_valid_data(&self) -> bool {
-        self.is_valid()
-        && self.len() == get_full_object_size(self.size()) as usize
+        self.len() == get_full_object_size(self.size()) as usize
         && self.leaf_hash(0) == hash_leaf(0, self.as_data()).hash
     }
 
     pub fn is_valid_for_copy(&self) -> bool {
-        self.is_small() && self.has_valid_data()
-        || self.is_large() && self.is_valid()
+        self.is_valid() && (self.is_large() || self.has_valid_data())
     }
 
     pub fn is_tombstone(&self) -> bool {
@@ -170,6 +168,15 @@ impl TubTop {
         assert!(size > 0);
         assert!(size <= LEAF_SIZE);
         self.buf.resize(get_full_object_size(size) as usize, 0);
+    }
+
+    pub fn resize_for_copy(&mut self, size: u64) {
+        if size <= LEAF_SIZE {
+            self.resize_for_size_plus_data(size);
+        }
+        else {
+            self.resize_for_size(size);
+        }
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {

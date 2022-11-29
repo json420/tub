@@ -63,6 +63,10 @@ impl TubTop {
         self.buf.resize(HEAD_LEN, 0);
     }
 
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
@@ -87,6 +91,12 @@ impl TubTop {
         self.buf[start..stop].try_into().expect("oops")
     }
 
+    fn set_leaf_hash(&mut self, index: usize, hash: &TubHash) {
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        self.buf[start..stop].copy_from_slice(hash);
+    }
+
     pub fn is_large(&self) -> bool {
         self.size() > LEAF_SIZE
     }
@@ -94,7 +104,11 @@ impl TubTop {
     pub fn is_small(&self) -> bool {
         ! self.is_large()
     }
-    
+
+    pub fn is_tombstone(&self) -> bool {
+        self.size() == 0 && self.leaf_hash(0) == hash_tombstone(&self.hash())
+    }
+
     fn compute_root(&self) -> TubHash {
         hash_root(self.size(), &self.as_leaf_hashes())
     }
@@ -112,20 +126,8 @@ impl TubTop {
         self.is_valid() && (self.is_large() || self.has_valid_data())
     }
 
-    pub fn is_tombstone(&self) -> bool {
-        self.size() == 0 && self.leaf_hash(0) == hash_tombstone(&self.hash())
-    }
-
-    pub fn len(&self) -> usize {
-        self.buf.len()
-    }
-
     pub fn as_buf(&self) -> &[u8] {
         &self.buf
-    }
-
-    pub fn as_mut_buf(&mut self) -> &mut [u8] {
-        &mut self.buf
     }
 
     pub fn as_leaf_hashes(&self) -> &[u8] {
@@ -142,18 +144,16 @@ impl TubTop {
         &self.buf[start as usize..stop as usize]
     }
 
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
+    }
+
     pub fn as_mut_head(&mut self) -> &mut [u8] {
         &mut self.buf[0..HEAD_LEN]
     }
 
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
         &mut self.buf[HEAD_LEN..]
-    }
-
-    pub fn as_mut_leaf_hash(&mut self, index: usize) -> &mut [u8] {
-        let start = HEADER_LEN + (index * TUB_HASH_LEN);
-        let stop = start + TUB_HASH_LEN;
-        &mut self.buf[start..stop]
     }
 
     pub fn resize_to_claimed_size(&mut self) {
@@ -186,7 +186,7 @@ impl TubTop {
             self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
         }
         let hash = hash_leaf(self.index, data);
-        self.as_mut_leaf_hash(self.index as usize).copy_from_slice(&hash);
+        self.set_leaf_hash(self.index as usize, &hash);
         let info = LeafInfo::new(hash, self.index);
         self.index += 1;
         self.total += data.len() as u64;

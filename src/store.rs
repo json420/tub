@@ -334,7 +334,7 @@ impl Store {
             else {
                 if tt.is_large() {
                     // More than one leaf, read in remaining leaf hashes
-                    tt.resize_to_size();
+                    tt.resize_to_claimed_size();
                     self.file.read_exact_at(
                         tt.as_mut_tail(), self.offset + HEAD_LEN as u64
                     )?;

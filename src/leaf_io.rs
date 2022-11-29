@@ -160,7 +160,7 @@ impl TubTop {
         &mut self.buf[start..stop]
     }
 
-    pub fn resize_to_size(&mut self) {
+    pub fn resize_to_claimed_size(&mut self) {
         let count = self.leaf_count() as usize;
         self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
     }
@@ -540,7 +540,7 @@ mod tests {
 
             // Set the size
             head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
-            tt.resize_to_size();
+            tt.resize_to_claimed_size();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEAD_LEN);
@@ -565,7 +565,7 @@ mod tests {
 
             // Set the size
             head[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
-            tt.resize_to_size();
+            tt.resize_to_claimed_size();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
             assert_eq!(tt.len(), HEAD_LEN + TUB_HASH_LEN);

@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_leaf, hash_leaf_into, hash_root_raw, hash_tombstone};
+use crate::protocol::{LeafInfo, hash_leaf, hash_leaf_into, hash_root2, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -98,9 +98,13 @@ impl TubTop {
     pub fn is_small(&self) -> bool {
         ! self.is_large()
     }
+    
+    fn compute_root(&self) -> TubHash {
+        hash_root2(self.size(), &self.as_leaf_hashes())
+    }
 
     pub fn is_valid(&self) -> bool {
-        self.size() > 0 && self.hash() == hash_root_raw(&self.as_hashable())
+        self.size() > 0 && self.hash() == self.compute_root()
     }
 
     pub fn has_valid_data(&self) -> bool {
@@ -128,10 +132,24 @@ impl TubTop {
         &mut self.buf
     }
 
+    pub fn as_leaf_hashes(&self) -> &[u8] {
+        assert_ne!(self.size(), 0);
+        let stop = get_preamble_size(self.size()) as usize;
+        &self.buf[HEADER_LEN..stop]
+    }
+
     pub fn as_hashable(&self) -> &[u8] {
         assert_ne!(self.size(), 0);
         let stop = get_preamble_size(self.size()) as usize;
         &self.buf[TUB_HASH_LEN..stop]
+    }
+
+    pub fn as_data(&self) -> &[u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = start + size;
+        assert_eq!(stop, get_full_object_size(size));
+        &self.buf[start as usize..stop as usize]
     }
 
     pub fn as_mut_head(&mut self) -> &mut [u8] {
@@ -146,14 +164,6 @@ impl TubTop {
         let start = HEADER_LEN + (index * TUB_HASH_LEN);
         let stop = start + TUB_HASH_LEN;
         &mut self.buf[start..stop]
-    }
-
-    pub fn as_data(&self) -> &[u8] {
-        let size = self.size();
-        let start = get_preamble_size(size);
-        let stop = start + size;
-        assert_eq!(stop, get_full_object_size(size));
-        &self.buf[start as usize..stop as usize]
     }
 
     pub fn resize_to_size(&mut self) {
@@ -208,7 +218,7 @@ impl TubTop {
 
     pub fn finalize_raw(&mut self) -> TubHash {
         assert_ne!(self.size(), 0);
-        let hash = hash_root_raw(&self.as_hashable());
+        let hash = self.compute_root();
         self.set_hash(&hash);
         hash
     }

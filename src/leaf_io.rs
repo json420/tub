@@ -91,7 +91,6 @@ impl TubTop {
     }
 
     pub fn is_large(&self) -> bool {
-        //assert_ne!(self.size(), 0);
         self.size() > LEAF_SIZE
     }
 
@@ -100,7 +99,7 @@ impl TubTop {
     }
 
     pub fn is_valid(&self) -> bool {
-        self.hash() == hash_root_raw(&self.buf[TUB_HASH_LEN..])
+        self.size() > 0 && self.hash() == hash_root_raw(&self.as_hashable())
     }
 
     pub fn is_valid_with_data(&self) -> bool {
@@ -124,7 +123,9 @@ impl TubTop {
     }
 
     pub fn as_hashable(&self) -> &[u8] {
-        &self.buf[TUB_HASH_LEN..]
+        assert_ne!(self.size(), 0);
+        let stop = get_preamble_size(self.size()) as usize;
+        &self.buf[TUB_HASH_LEN..stop]
     }
 
     pub fn as_mut_head(&mut self) -> &mut [u8] {
@@ -133,6 +134,12 @@ impl TubTop {
 
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
         &mut self.buf[HEAD_LEN..]
+    }
+
+    pub fn as_mut_leaf_hash(&mut self, index: usize) -> &mut [u8] {
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        &mut self.buf[start..stop]
     }
 
     pub fn resize_to_size(&mut self) {
@@ -145,9 +152,9 @@ impl TubTop {
     }
 
     pub fn resize_for_size_plus_data(&mut self, size: u64) {
+        assert!(size > 0);
         assert!(size <= LEAF_SIZE);
-        let full = get_full_object_size(size) as usize;
-        self.buf.resize(full, 0);
+        self.buf.resize(get_full_object_size(size) as usize, 0);
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
@@ -155,8 +162,7 @@ impl TubTop {
         if self.index != 0 {
             self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
         }
-        let start = self.buf.len() - TUB_HASH_LEN;
-        hash_leaf_into(self.index, data, &mut self.buf[start..]);
+        hash_leaf_into(self.index, data, self.as_mut_leaf_hash(self.index as usize));
         let hash = self.leaf_hash(self.index as usize);
         let info = LeafInfo::new(hash, self.index);
         self.index += 1;
@@ -179,7 +185,7 @@ impl TubTop {
 
     pub fn finalize_raw(&mut self) -> TubHash {
         assert_ne!(self.size(), 0);
-        let hash = hash_root_raw(&self.buf[TUB_HASH_LEN..]);
+        let hash = hash_root_raw(&self.as_hashable());
         self.set_hash(&hash);
         hash
     }
@@ -246,6 +252,7 @@ impl Iterator for LeafOffsetIter {
         }
     }
 }
+
 
 pub fn get_leaf_count(size: u64) -> u64 {
     //assert!(size > 0);
@@ -509,9 +516,6 @@ mod tests {
             tt.finalize_raw();
             assert_eq!(tt.size(), size);
             assert_eq!(tt.is_valid(), true);
-            tt.as_mut_head()[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&(size + 1).to_le_bytes());
-            assert_eq!(tt.size(), size + 1);
-            assert_eq!(tt.is_valid(), false);
         }
 
         // 2 Leaves
@@ -535,9 +539,6 @@ mod tests {
             assert_eq!(tt.is_valid(), false);
             tt.finalize_raw();
             assert_eq!(tt.is_valid(), true);
-            tt.as_mut_head()[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&(size + 1).to_le_bytes());
-            assert_eq!(tt.size(), size + 1);
-            assert_eq!(tt.is_valid(), false);
         }
     }
 

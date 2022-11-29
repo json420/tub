@@ -29,7 +29,7 @@ use crate::base::*;
 use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
-use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, data_offset};
+use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, get_preamble_size};
 
 
 macro_rules! other_err {
@@ -52,7 +52,7 @@ impl Entry {
     }
 
     pub fn data_offset(&self) -> u64 {
-        self.offset + data_offset(self.size)
+        self.offset + get_preamble_size((self.size))
     }
 
     pub fn is_large(&self) -> bool {

@@ -292,17 +292,13 @@ pub fn get_leaf_count(size: u64) -> u64 {
     }
 }
 
-pub fn data_offset(size: u64) -> u64 {
-    (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
-}
-
-
+/// Returns size of the root hash + u64 + leaf_hashes.
 pub fn get_preamble_size(size: u64) -> u64 {
     (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
 }
 
 
-// Returns header + leaf_hashes + data
+/// Returns size of header + leaf_hashes + data.
 pub fn get_full_object_size(size: u64) -> u64 {
     get_preamble_size(size) + size
 }
@@ -592,26 +588,6 @@ mod tests {
         assert_eq!(get_leaf_count(2 * LEAF_SIZE - 1), 2);
         assert_eq!(get_leaf_count(2 * LEAF_SIZE), 2);
         assert_eq!(get_leaf_count(2 * LEAF_SIZE + 1), 3);
-    }
-
-    #[test]
-    fn test_data_offset() {
-        let head = HEADER_LEN as u64;
-        let tub = TUB_HASH_LEN as u64;
-        assert_eq!(data_offset(0), head);
-
-        assert_eq!(data_offset(1), head + tub);
-        assert_eq!(data_offset(2), head + tub);
-        assert_eq!(data_offset(LEAF_SIZE - 1), head + tub);
-        assert_eq!(data_offset(LEAF_SIZE), head + tub);
-
-        assert_eq!(data_offset(LEAF_SIZE + 1), head + tub * 2);
-        assert_eq!(data_offset(2 * LEAF_SIZE - 1), head + tub * 2);
-        assert_eq!(data_offset(2 * LEAF_SIZE), head + tub * 2);
-
-        assert_eq!(data_offset(2 * LEAF_SIZE + 1), head + tub * 3);
-        assert_eq!(data_offset(3 * LEAF_SIZE - 1), head + tub * 3);
-        assert_eq!(data_offset(3 * LEAF_SIZE), head + tub * 3);
     }
 
     #[test]

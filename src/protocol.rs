@@ -13,12 +13,6 @@ use crate::base::*;
 use crate::dbase32::db32enc_str;
 
 
-pub fn hash(buf: &[u8]) -> RootInfo {
-    let leaf = hash_leaf(0, buf);
-    hash_root(buf.len() as u64, vec![leaf.hash])
-}
-
-
 #[derive(Debug, PartialEq)]
 pub struct LeafInfo {
     pub hash: TubHash,
@@ -150,14 +144,6 @@ mod tests {
     use super::*;
     use crate::util::{random_small_object, random_hash};
     use crate::dbase32::db32enc_str;
-
-    #[test]
-    fn test_hash() {
-        let root = hash(b"Federation44");
-        assert_eq!(&db32enc_str(&root.hash),
-            "TDJGJI47CFS53WQWE7K77R8GJVIAE9KB6465SPUV6NDYPVKA"
-        );
-    }
 
     #[test]
     fn test_hashe_leaf() {

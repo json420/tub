@@ -26,7 +26,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::protocol::{hash, hash_tombstone};
+use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, data_offset};
@@ -441,10 +441,12 @@ impl Store {
         if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];
             self.file.read_exact_at(&mut buf, entry.data_offset())?;
+            /*  FIXME
             if verify && id != &hash(&buf).hash {
                 eprintln!("{} is corrupt", db32enc_str(id));
                 self.delete_object(id)?;
             }
+            */
             Ok(Some(buf))
         }
         else {
@@ -458,10 +460,6 @@ impl Store {
             buf.resize(entry.size as usize, 0);
             assert_eq!(buf.len() as u64, entry.size);
             self.file.read_exact_at(buf, entry.data_offset())?;
-            if id != &hash(buf).hash {
-                eprintln!("{} is corrupt", db32enc_str(id));
-                self.delete_object(id)?;
-            }
             Ok(true)
         }
         else {

@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_leaf2, hash_root2, hash_tombstone};
+use crate::protocol::{LeafInfo, hash_leaf, hash_root, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -100,7 +100,7 @@ impl TubTop {
     }
     
     fn compute_root(&self) -> TubHash {
-        hash_root2(self.size(), &self.as_leaf_hashes())
+        hash_root(self.size(), &self.as_leaf_hashes())
     }
 
     pub fn is_valid(&self) -> bool {
@@ -109,7 +109,7 @@ impl TubTop {
 
     pub fn has_valid_data(&self) -> bool {
         self.len() == get_full_object_size(self.size()) as usize
-        && self.leaf_hash(0) == hash_leaf2(0, self.as_data())
+        && self.leaf_hash(0) == hash_leaf(0, self.as_data())
     }
 
     pub fn is_valid_for_copy(&self) -> bool {
@@ -196,7 +196,7 @@ impl TubTop {
         if self.buf.len() < stop as usize {
             self.buf.resize(stop as usize, 0);
         }
-        let hash = hash_leaf2(self.index, data);
+        let hash = hash_leaf(self.index, data);
         self.as_mut_leaf_hash(self.index as usize).copy_from_slice(&hash);
         let info = LeafInfo::new(hash, self.index);
         self.index += 1;

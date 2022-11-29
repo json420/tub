@@ -108,7 +108,26 @@ mod tests {
 
     #[test]
     fn test_hash_root() {
+        let leaf_hashes = random_hash();
 
+        // Should be tied to size
+        let mut set: HashSet<TubHash> = HashSet::new();
+        for size in 1..1001 {
+            let is_new = set.insert(hash_root(size, &leaf_hashes));
+            assert!(is_new);
+        }
+        assert_eq!(set.len(), 1000);
+
+        // Should be tied to every byte in leaf_hashes
+        let mut set: HashSet<TubHash> = HashSet::new();
+        for i in 0..leaf_hashes.len() {
+            for v in 0_u8..=255 {
+                let mut copy = leaf_hashes.clone();
+                copy[i] = v;
+                set.insert(hash_root(1, &copy));
+            }
+        }
+        assert_eq!(set.len(), leaf_hashes.len() * 255 + 1);
     }
 
     #[test]

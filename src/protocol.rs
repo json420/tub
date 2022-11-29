@@ -108,9 +108,33 @@ pub fn hash_root(size: u64, leaf_hashes: TubHashList) -> RootInfo {
     RootInfo {size: size, hash: id, leaf_hashes: leaf_hashes}
 }
 
+
+pub fn hash_leaf2(index: u64, data: &[u8]) -> TubHash {
+    assert!(data.len() > 0);
+    let mut h = blake3::Hasher::new();
+    h.update(&index.to_le_bytes());
+    h.update(data);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
+
+
+pub fn hash_root2(size: u64, leaf_hashes: &[u8]) -> TubHash {
+    assert!(leaf_hashes.len() > 0);
+    assert!(leaf_hashes.len() % TUB_HASH_LEN == 0);
+    let mut h = blake3::Hasher::new();
+    h.update(&size.to_le_bytes());
+    h.update(leaf_hashes);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
+
+
 pub fn hash_tombstone(hash: &TubHash) -> TubHash {
     let mut h = blake3::Hasher::new();
-    h.update(b"Bathtub_DB/tombstone");  // <-- FIXME: Do more better than this
+    h.update(b"Tub/tombstone_hash");  // <-- FIXME: Do more better than this
     h.update(hash);
     h.update(&0_u64.to_le_bytes());
     let mut marker: TubHash = [0_u8; TUB_HASH_LEN];

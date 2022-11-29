@@ -191,6 +191,11 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     Ok(())
 }
 
+fn get_newmark(new: bool) -> String {
+    let m = if new {" "} else {"!"};
+    String::from(m)
+}
+
 fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
@@ -198,7 +203,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let files = Scanner::scan_dir(&source)?;
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?)?;
-        println!("{} {} {:?}", root, new, src.path);
+        println!("{} {} {:?}", root, get_newmark(new), src.path);
     }
     Ok(())
 }

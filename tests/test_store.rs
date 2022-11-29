@@ -20,6 +20,15 @@ fn mk_rand_obj() -> RandObj {
 }
 
 
+fn mk_rand_obj_list(count: usize) -> Vec<RandObj> {
+    let mut list: Vec<RandObj> = Vec::new();
+    for _ in 0..count {
+        list.push(mk_rand_obj());
+    }
+    list
+}
+
+
 #[test]
 fn test_get_object() {
     let (_tmp, mut store) = Store::new_tmp();
@@ -73,5 +82,32 @@ fn test_store_roundtrip() {
     let mut file = File::options().append(true).open(&pb).unwrap();
     file.write_all(b"some extra junk").unwrap();
     store.reindex().unwrap();
+}
+
+
+#[test]
+fn test_store_reindex() {
+    let (_tmp, mut store) = Store::new_tmp();
+    let count = 1000;
+    let list = mk_rand_obj_list(count);
+    for robj in list.iter() {
+        store.add_object(&robj.data);
+    }
+    store.reindex().unwrap();
+    assert_eq!(store.len(), count);
+    let mut keys = store.keys();
+    keys.sort();
+    let mut del = Vec::new();
+    for i in 0..count {
+        if i % 3 == 0 {
+            del.push(keys[i]);
+        }
+    }
+    for hash in del.iter() {
+        store.delete_object(hash).unwrap();
+    }
+    assert_eq!(store.len(), count * 2 / 3);
+    store.reindex().unwrap();
+    assert_eq!(store.len(), count * 2 / 3);
 }
 

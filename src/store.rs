@@ -134,13 +134,7 @@ fn push_pack_path(pb: &mut PathBuf) {
 
 fn push_old_pack_path(pb: &mut PathBuf) {
     pb.push(PACKFILE);
-    pb.set_extension("old");
-}
-
-fn push_repack_path(pb: &mut PathBuf, id: &TubId) {
-    pb.push(PACKFILE);
-    let sid = db32enc_str(id);
-    pb.set_extension(sid);
+    pb.set_extension("db.old");
 }
 
 fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
@@ -184,7 +178,7 @@ impl Store {
         let pb = PathBuf::from(path);
 
         let mut pb_copy = pb.clone();
-        pb_copy.push(PACKFILE);
+        push_pack_path(&mut pb_copy);
         let file = File::options()
                         .read(true)
                         .append(true)
@@ -220,12 +214,6 @@ impl Store {
         pb
     }
 
-    pub fn repack_path(&self, id: &TubId) -> PathBuf {
-        let mut pb = self.path();
-        push_repack_path(&mut pb, id);
-        pb
-    }
-
     /// Builds canonical large file path.
     pub fn object_path(&self, id: &TubHash) -> PathBuf {
         let mut pb = self.path();
@@ -247,6 +235,12 @@ impl Store {
         let mut pb = self.path();
         push_tmp_path(&mut pb, id);
         pb
+    }
+
+    pub fn open_tmp(&self, id: &TubId) -> io::Result<(PathBuf, File)>  {
+        let pb = self.tmp_path(id);
+        let file = File::options().append(true).create_new(true).open(&pb)?;
+        Ok((pb, file))
     }
 
     pub fn allocate_tmp(&self) -> io::Result<TmpObject>
@@ -370,25 +364,24 @@ impl Store {
 
     pub fn repack(&mut self) -> io::Result<()> {
         let id = random_id();
-        let tmp_pb = self.repack_path(&id);
-        let mut new = File::options().append(true).create_new(true).open(&tmp_pb)?;
+        let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
         let mut tt = TubTop::new();
         for (_hash, entry) in self.index.iter() {
             tt.resize_for_copy(entry.size);
             self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
             if tt.is_valid_for_copy() {
                 println!("{}", tt);
-                new.write_all(tt.as_buf())?;
+                tmp.write_all(tt.as_buf())?;
             }
             tt.reset();
         }
-        new.flush()?;
-        new.sync_all()?;
+        tmp.flush()?;
+        tmp.sync_all()?;
         let dst_pb = self.pack_path();
         fs::rename(&dst_pb, &self.old_pack_path());
         fs::rename(&tmp_pb, &dst_pb)?;
         self.file = File::options().read(true).append(true).open(dst_pb)?;
-        self.reindex();
+        self.reindex()?;
         Ok(())
     }
 
@@ -572,14 +565,6 @@ mod tests {
         let mut pb = PathBuf::new();
         push_pack_path(&mut pb);
         assert_eq!(pb.as_os_str(), "bathtub.db");
-    }
-
-    #[test]
-    fn test_push_repack_path() {
-        let id = [0_u8; TUB_ID_LEN];
-        let mut pb = PathBuf::new();
-        push_repack_path(&mut pb, &id);
-        assert_eq!(pb.as_os_str(), "bathtub.333333333333333333333333");
     }
 
     #[test]

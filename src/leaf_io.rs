@@ -422,6 +422,7 @@ impl TmpObject {
     pub fn remove_file(&mut self) -> io::Result<()> {
         if self.file.is_some() {
             assert!(! self.is_small());
+            eprintln!("Removing temporary file {:?}", &self.path);
             fs::remove_file(&self.path)?;
             self.file = None;
         }

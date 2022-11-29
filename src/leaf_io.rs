@@ -192,9 +192,8 @@ impl TubTop {
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
         assert!(data.len() > 0 && data.len() <= LEAF_SIZE as usize);
-        let stop = get_preamble_size(self.size());
-        if self.buf.len() < stop as usize {
-            self.buf.resize(stop as usize, 0);
+        if self.index != 0 {
+            self.buf.resize(self.buf.len() + TUB_HASH_LEN, 0);
         }
         let hash = hash_leaf(self.index, data);
         self.as_mut_leaf_hash(self.index as usize).copy_from_slice(&hash);

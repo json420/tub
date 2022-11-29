@@ -66,13 +66,44 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use super::*;
-    use crate::util::{random_small_object, random_hash};
+    use crate::util::{random_object, random_hash};
     use crate::dbase32::db32enc_str;
 
     #[test]
     fn test_hash_leaf() {
+        for size in [1, 2, 42, 420] {
+            let data = random_object(size);
+            let count = 1000_u64;
 
+            // Should be tied to index
+            let mut set: HashSet<TubHash> = HashSet::new();
+            for i in 0..count {
+                let is_new = set.insert(hash_leaf(i, &data));
+                assert!(is_new);
+            }
+            assert_eq!(set.len() as u64, count);
+
+            // Should be tied every byte in data
+            let mut set: HashSet<TubHash> = HashSet::new();
+            let hash = hash_leaf(0, &data);
+            for i in 0..data.len() {
+                for v in 0_u8..=255 {
+                    let mut copy = data.clone();
+                    copy[i] = v;
+                    let newhash = hash_leaf(0, &copy);
+                    set.insert(newhash);
+                    if data[i] == copy[i] {
+                        assert_eq!(hash, newhash);
+                    }
+                    else {
+                        assert_ne!(hash, newhash);
+                    }
+                }
+            }
+            assert_eq!(set.len(), data.len() * 255 + 1);
+        }
     }
 
     #[test]

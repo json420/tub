@@ -55,11 +55,14 @@ pub fn random_u16(minval: u16) -> u16 {
     }
 }
 
-pub fn random_small_object() -> Vec<u8> {
-    let size = random_u16(16);
+pub fn random_object(size: usize) -> Vec<u8> {
     let mut buf = vec![0_u8; size as usize];
     getrandom(&mut buf);
     buf
+}
+
+pub fn random_small_object() -> Vec<u8> {
+    random_object(random_u16(16) as usize)
 }
 
 pub fn bulk_random_small_objects(count: usize) -> Vec<Vec<u8>> {

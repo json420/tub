@@ -87,10 +87,6 @@ impl TubTop {
         self.buf[start..stop].try_into().expect("oops")
     }
 
-    pub fn leaf_count(&self) -> u64 {
-        get_leaf_count(self.size())
-    }
-
     pub fn is_large(&self) -> bool {
         self.size() > LEAF_SIZE
     }
@@ -161,8 +157,8 @@ impl TubTop {
     }
 
     pub fn resize_to_claimed_size(&mut self) {
-        let count = self.leaf_count() as usize;
-        self.buf.resize(HEADER_LEN + count * TUB_HASH_LEN, 0);
+        let size = get_preamble_size(self.size()) as usize;
+        self.buf.resize(size, 0);
     }
 
     pub fn resize_for_size(&mut self, size: u64) {

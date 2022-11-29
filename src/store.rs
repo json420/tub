@@ -52,7 +52,7 @@ impl Entry {
     }
 
     pub fn data_offset(&self) -> u64 {
-        self.offset + get_preamble_size((self.size))
+        self.offset + get_preamble_size(self.size)
     }
 
     pub fn is_large(&self) -> bool {

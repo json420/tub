@@ -5,6 +5,7 @@
 use std::io;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
+use std::fs;
 use std::fs::File;
 use std::cmp;
 use std::fmt;
@@ -416,6 +417,15 @@ impl TmpObject {
 
     pub fn into_data(self) -> Vec<u8> {
         self.buf.unwrap()
+    }
+
+    pub fn remove_file(&mut self) -> io::Result<()> {
+        if self.file.is_some() {
+            assert!(! self.is_small());
+            fs::remove_file(&self.path)?;
+            self.file = None;
+        }
+        Ok(())
     }
 
     pub fn write_leaf(&mut self, buf: &[u8]) -> io::Result<()>

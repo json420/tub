@@ -132,6 +132,11 @@ fn push_pack_path(pb: &mut PathBuf) {
     pb.push(PACKFILE);
 }
 
+fn push_old_pack_path(pb: &mut PathBuf) {
+    pb.push(PACKFILE);
+    pb.set_extension("old");
+}
+
 fn push_repack_path(pb: &mut PathBuf, id: &TubId) {
     pb.push(PACKFILE);
     let sid = db32enc_str(id);
@@ -206,6 +211,12 @@ impl Store {
     pub fn pack_path(&self) -> PathBuf {
         let mut pb = self.path();
         push_pack_path(&mut pb);
+        pb
+    }
+
+    pub fn old_pack_path(&self) -> PathBuf {
+        let mut pb = self.path();
+        push_old_pack_path(&mut pb);
         pb
     }
 
@@ -360,27 +371,36 @@ impl Store {
     pub fn repack(&mut self) -> io::Result<()> {
         let id = random_id();
         let tmp_pb = self.repack_path(&id);
-        let mut tmp = File::options().append(true).create_new(true).open(&tmp_pb)?;
+        let mut new = File::options().append(true).create_new(true).open(&tmp_pb)?;
         let mut tt = TubTop::new();
         for (_hash, entry) in self.index.iter() {
             tt.resize_for_copy(entry.size);
             self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
             if tt.is_valid_for_copy() {
                 println!("{}", tt);
-                tmp.write_all(tt.as_buf())?;
+                new.write_all(tt.as_buf())?;
             }
             tt.reset();
         }
-        tmp.flush()?;
-        tmp.sync_data()?;
+        new.flush()?;
+        new.sync_all()?;
         let dst_pb = self.pack_path();
+        fs::rename(&dst_pb, &self.old_pack_path());
         fs::rename(&tmp_pb, &dst_pb)?;
+        self.file = File::options().read(true).append(true).open(dst_pb)?;
+        self.reindex();
         Ok(())
     }
 
     pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&top.hash()) {
+            match obj {
+                NewObj::File(mut tmp) => {
+                    tmp.remove_file()?;
+                }
+                _ => {}
+            }
             Ok(false)  // Already in object store
         }
         else {

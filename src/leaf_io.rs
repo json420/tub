@@ -138,12 +138,6 @@ impl TubTop {
         &self.buf[HEADER_LEN..stop]
     }
 
-    pub fn as_hashable(&self) -> &[u8] {
-        assert_ne!(self.size(), 0);
-        let stop = get_preamble_size(self.size()) as usize;
-        &self.buf[TUB_HASH_LEN..stop]
-    }
-
     pub fn as_data(&self) -> &[u8] {
         let size = self.size();
         let start = get_preamble_size(size);

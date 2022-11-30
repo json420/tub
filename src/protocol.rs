@@ -22,17 +22,19 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
     hash
 }
 
+
 pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
     assert!(leaf_hashes.len() > 0);
     assert!(leaf_hashes.len() % TUB_HASH_LEN == 0);
     let mut h = blake3::Hasher::new();
-    //h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
+    h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
     h.update(&size.to_le_bytes());
     h.update(leaf_hashes);
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
     h.finalize_xof().fill(&mut hash);
     hash
 }
+
 
 pub fn hash_tombstone(hash: &TubHash) -> TubHash {
     let mut h = blake3::Hasher::new();

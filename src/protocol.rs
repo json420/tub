@@ -7,27 +7,8 @@
 /*  FIXME: Skein probably provides better performance and a better security
     margin than Blake2b, so we should strongly consider Skein.
 */
-use std::fmt;
 use blake3;
 use crate::base::*;
-use crate::dbase32::db32enc_str;
-
-
-#[derive(Debug, PartialEq)]
-pub struct LeafInfo {
-    pub hash: TubHash,
-    pub index: u64,
-}
-
-impl LeafInfo {
-    pub fn new(hash: TubHash, index: u64) -> Self {
-        Self {hash: hash, index: index}   
-    }
-
-    pub fn as_db32(&self) -> String {
-        db32enc_str(&self.hash)
-    }
-}
 
 
 pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {

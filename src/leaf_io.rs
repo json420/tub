@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{LeafInfo, hash_leaf, hash_root, hash_tombstone};
+use crate::protocol::{hash_leaf, hash_root, hash_tombstone};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -31,6 +31,20 @@ pub fn hash_object(file: File) -> io::Result<TubTop>
         //eprintln!("leaf {}", info.index);
     }
     Ok(reader.finalize())
+}
+
+
+// FIXME: not sure this is useful enough to keep around
+#[derive(Debug, PartialEq)]
+pub struct LeafInfo {
+    pub hash: TubHash,
+    pub index: u64,
+}
+
+impl LeafInfo {
+    pub fn new(hash: TubHash, index: u64) -> Self {
+        Self {hash: hash, index: index}
+    }
 }
 
 

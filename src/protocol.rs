@@ -24,6 +24,7 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
 
 
 pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
+    assert!(size > 0);
     assert!(leaf_hashes.len() > 0);
     assert!(leaf_hashes.len() % TUB_HASH_LEN == 0);
     let mut h = blake3::Hasher::new();
@@ -52,7 +53,6 @@ mod tests {
     use std::collections::HashSet;
     use super::*;
     use crate::util::{random_object, random_hash};
-    use crate::dbase32::db32enc_str;
 
     const COUNT: usize = 1000;
 
@@ -64,8 +64,7 @@ mod tests {
             // Should be tied to index
             let mut set: HashSet<TubHash> = HashSet::new();
             for i in 0..COUNT {
-                let is_new = set.insert(hash_leaf(i as u64, &data));
-                assert!(is_new);
+                set.insert(hash_leaf(i as u64, &data));
             }
             assert_eq!(set.len(), COUNT);
 
@@ -97,8 +96,7 @@ mod tests {
         // Should be tied to size
         let mut set: HashSet<TubHash> = HashSet::new();
         for size in 1..COUNT + 1 {
-            let is_new = set.insert(hash_root(size as u64, &leaf_hashes));
-            assert!(is_new);
+            set.insert(hash_root(size as u64, &leaf_hashes));
         }
         assert_eq!(set.len(), COUNT);
 

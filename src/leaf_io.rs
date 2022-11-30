@@ -208,6 +208,7 @@ impl TubTop {
     }
 
     pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
+        assert!(data.len() > 0);
         self.reset();
         for (start, stop) in LeafRangeIter::new(data.len() as u64) {
             self.hash_next_leaf(&data[start as usize..stop as usize]);
@@ -216,12 +217,13 @@ impl TubTop {
     }
 
     pub fn finalize(&mut self) -> TubHash {
+        assert!(self.total > 0);
         self.set_size(self.total);
         self.finalize_raw()
     }
 
     pub fn finalize_raw(&mut self) -> TubHash {
-        assert_ne!(self.size(), 0);
+        assert!(self.size() > 0);
         let hash = self.compute_root();
         self.set_hash(&hash);
         hash

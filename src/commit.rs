@@ -1,5 +1,4 @@
 //use crate::base::*;
-use crate::util::*;
 use crate::tree::*;
 
 
@@ -24,15 +23,15 @@ impl Commit {
 mod tests {
     use super::*;
     use crate::store::*;
-    use crate::helpers::TestTempDir;
-    
+    use crate::util::{random_hash};
+
     fn new_store() -> Store {
         const ROUNDS: u64 = 10_000;
 
         let (_tmp, mut store) = Store::new_tmp();
         store.reindex().unwrap();
         for _ in 0..ROUNDS {
-            store.add_object(&random_hash());
+            store.add_object(&random_hash()).unwrap();
         }
         store
     }

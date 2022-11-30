@@ -181,7 +181,7 @@ mod tests {
         const ROUNDS: u64 = 10_000;
 
         for _id in 0..ROUNDS {
-            store.add_object(&random_hash());
+            store.add_object(&random_hash()).unwrap();
         }
         
         let keys = store.keys();

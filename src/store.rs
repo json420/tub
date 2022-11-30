@@ -378,7 +378,7 @@ impl Store {
         tmp.flush()?;
         tmp.sync_all()?;
         let dst_pb = self.pack_path();
-        fs::rename(&dst_pb, &self.old_pack_path());
+        fs::rename(&dst_pb, &self.old_pack_path())?;
         fs::rename(&tmp_pb, &dst_pb)?;
         self.file = File::options().read(true).append(true).open(dst_pb)?;
         self.reindex()?;
@@ -436,7 +436,7 @@ impl Store {
         Ok((tt, new))
     }
 
-    pub fn get_object(&mut self, id: &TubHash, verify: bool) -> io::Result<Option<Vec<u8>>>
+    pub fn get_object(&mut self, id: &TubHash, _verify: bool) -> io::Result<Option<Vec<u8>>>
     {
         if let Some(entry) = self.index.get(id) {
             let mut buf = vec![0_u8; entry.size as usize];

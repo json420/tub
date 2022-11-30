@@ -10,7 +10,7 @@ use crate::base::*;
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
 use crate::dbase32::{db32enc_str, db32dec_into};
-use crate::leaf_io::hash_object;
+use crate::leaf_io::hash_file;
 
 
 type OptPath = Option<PathBuf>;
@@ -212,7 +212,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
 {
     let pb = path.canonicalize()?;
     let file = fs::File::open(&pb)?;
-    let tt = hash_object(file)?;
+    let tt = hash_file(file)?;
     println!("{}", tt);
     Ok(())
 }

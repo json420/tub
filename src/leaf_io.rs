@@ -23,17 +23,6 @@ pub fn new_leaf_buf() -> Vec<u8> {
 }
 
 
-pub fn hash_object(file: File) -> io::Result<TubTop>
-{
-    let mut reader = LeafReader::new(file);
-    let mut buf = new_leaf_buf();
-    while let Some(_info) = reader.read_next_leaf(&mut buf)? {
-        //eprintln!("leaf {}", info.index);
-    }
-    Ok(reader.finalize())
-}
-
-
 // FIXME: not sure this is useful enough to keep around
 #[derive(Debug, PartialEq)]
 pub struct LeafInfo {

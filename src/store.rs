@@ -264,7 +264,7 @@ impl Store {
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
         let mut tt = TubTop::new_for_leaf_buf();
         for src in files.iter() {
-            let mut reader = LeafReader::new_with_tubtop(src.open()?, tt);
+            let mut reader = LeafReader::new_with_tubtop(src.open()?, src.size, tt);
             let mut tmp = self.allocate_tmp()?;
             while let Some(buf) = reader.read_next_internal()? {
                 tmp.write_leaf(buf)?;
@@ -276,7 +276,7 @@ impl Store {
 
     pub fn import_file(&mut self, file: File) -> io::Result<(TubTop, bool)>
     {
-        let mut reader = LeafReader::new(file);
+        let mut reader = LeafReader::new(file, 0);
         let mut tmp = self.allocate_tmp()?;
         let mut buf = new_leaf_buf();
         while let Some(_info) = reader.read_next_leaf(&mut buf)? {

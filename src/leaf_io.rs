@@ -25,7 +25,7 @@ pub fn new_leaf_buf() -> Vec<u8> {
 
 pub fn hash_file(file: File) -> io::Result<TubTop>
 {
-    let mut reader = LeafReader::new(file);
+    let mut reader = LeafReader::new(file, 0);
     let mut buf = new_leaf_buf();
     while let Some(_info) = reader.read_next_leaf(&mut buf)? {
         //eprintln!("leaf {}", info.index);
@@ -374,18 +374,19 @@ impl Iterator for LeafRangeIter {
 #[derive(Debug)]
 pub struct LeafReader {
     file: File,
-    closed: bool,
     tt: TubTop,
+    size: u64,
+    closed: bool,
 }
 
 impl LeafReader {
-    pub fn new(file: File) -> Self
+    pub fn new(file: File, size: u64) -> Self
     {
-        Self::new_with_tubtop(file, TubTop::new())
+        Self::new_with_tubtop(file, size, TubTop::new())
     }
 
-    pub fn new_with_tubtop(file: File, tt: TubTop) -> Self {
-        Self {file: file, tt: tt, closed: false}
+    pub fn new_with_tubtop(file: File, size: u64, tt: TubTop) -> Self {
+        Self {file: file, tt: tt, size: size, closed: false}
     }
 
     pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafInfo>>

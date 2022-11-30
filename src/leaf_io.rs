@@ -215,15 +215,6 @@ impl TubTop {
         &self.buf[start as usize..stop as usize]
     }
 
-    pub fn as_data(&self) -> &[u8] {
-        let size = self.size();
-        let start = get_preamble_size(size);
-        let stop = start + size;
-        assert_eq!(stop, get_full_object_size(size));
-        &self.buf[start as usize..stop as usize]
-    }
-
-
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
         &mut self.buf
     }
@@ -274,8 +265,8 @@ impl TubTop {
         self.buf.resize(get_buffer_size(size) as usize, 0);
     }
 
-    pub fn hash_next_leaf_internal(&mut self) -> LeafInfo {
-        if let Some(size) = get_leaf_size(self.
+    pub fn hash_next_leaf_internal(&mut self) {
+        //if let Some(size) = get_leaf_size(
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {

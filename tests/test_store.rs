@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::fs::File;
 use bathtub_db::base::*;
 use bathtub_db::store::Store;
-use bathtub_db::leaf_io::TubTop;
+use bathtub_db::leaf_io::TubBuf;
 use bathtub_db::util::{random_hash, random_small_object};
 
 struct RandObj {
@@ -14,7 +14,7 @@ struct RandObj {
 
 fn mk_rand_obj() -> RandObj {
     let data = random_small_object();
-    let mut tt = TubTop::new();
+    let mut tt = TubBuf::new();
     let hash = tt.hash_data(&data);
     RandObj {data: data, hash: hash}
 }

@@ -30,7 +30,7 @@ use crate::importer::Scanner;
 use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
-use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubTop, TmpObject, get_preamble_size};
+use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubBuf, TmpObject, get_preamble_size};
 
 
 macro_rules! other_err {
@@ -263,7 +263,7 @@ impl Store {
     }
 
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        let mut tt = TubTop::new_for_leaf_buf();
+        let mut tt = TubBuf::new_for_leaf_buf();
         for src in files.iter() {
             let mut reader = LeafReader::new_with_tubtop(src.open()?, src.size, tt);
             let mut tmp = self.allocate_tmp()?;
@@ -276,7 +276,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn import_file(&mut self, file: File, size: u64) -> io::Result<(TubTop, bool)>
+    pub fn import_file(&mut self, file: File, size: u64) -> io::Result<(TubBuf, bool)>
     {
         let mut reader = LeafReader::new(file, size);
         let mut tmp = self.allocate_tmp()?;
@@ -334,7 +334,7 @@ impl Store {
     {
         self.index.clear();
         self.offset = 0;
-        let mut tt = TubTop::new();
+        let mut tt = TubBuf::new();
         while let Ok(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
             let hash = tt.hash();
             let size = tt.size();
@@ -381,7 +381,7 @@ impl Store {
     pub fn repack(&mut self) -> io::Result<()> {
         let id = random_id();
         let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
-        let mut tt = TubTop::new();
+        let mut tt = TubBuf::new();
         for (_hash, entry) in self.index.iter() {
             tt.resize_for_copy(entry.size);
             self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
@@ -401,7 +401,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn commit_object(&mut self, top: &TubTop, obj: NewObj) -> io::Result<bool>
+    pub fn commit_object(&mut self, top: &TubBuf, obj: NewObj) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&top.hash()) {
             match obj {
@@ -445,9 +445,9 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubTop, bool)> {
+    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubBuf, bool)> {
         // FIXME: no reason not to handle the large object case as well
-        let mut tt = TubTop::new();
+        let mut tt = TubBuf::new();
         tt.hash_data(data);
         let new = self.commit_object(&tt, NewObj::Mem(data))?;
         Ok((tt, new))

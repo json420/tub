@@ -23,7 +23,7 @@ pub fn new_leaf_buf() -> Vec<u8> {
 }
 
 
-pub fn hash_file(file: File) -> io::Result<TubTop>
+pub fn hash_file(file: File) -> io::Result<TubBuf>
 {
     let mut reader = LeafReader::new(file, 0);
     let mut buf = new_leaf_buf();
@@ -99,13 +99,13 @@ pub fn get_leaf_size(index: u64, size: u64) -> Option<u64> {
 
 
 #[derive(Debug)]
-pub struct TubTop {
+pub struct TubBuf {
     index: u64,
     total: u64,
     buf: Vec<u8>,
 }
 
-impl TubTop {
+impl TubBuf {
     pub fn new() -> Self {
         Self::new_with_buf(Vec::with_capacity(HEAD_LEN))
     }
@@ -332,7 +332,7 @@ impl TubTop {
 
 }
 
-impl fmt::Display for TubTop {
+impl fmt::Display for TubBuf {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write strictly the first element into the supplied output
@@ -424,7 +424,7 @@ impl Iterator for LeafRangeIter {
 #[derive(Debug)]
 pub struct LeafReader {
     file: File,
-    tt: TubTop,
+    tt: TubBuf,
     size: u64,
     closed: bool,
 }
@@ -432,10 +432,10 @@ pub struct LeafReader {
 impl LeafReader{
     pub fn new(file: File, size: u64) -> Self
     {
-        Self::new_with_tubtop(file, size, TubTop::new())
+        Self::new_with_tubtop(file, size, TubBuf::new())
     }
 
-    pub fn new_with_tubtop(file: File, size: u64, mut tt: TubTop) -> Self {
+    pub fn new_with_tubtop(file: File, size: u64, mut tt: TubBuf) -> Self {
         tt.resize_for_leaf_buf(size);
         Self {file: file, tt: tt, size: size, closed: false}
     }
@@ -471,7 +471,7 @@ impl LeafReader{
         }
     }
 
-    pub fn finalize(mut self) -> TubTop {
+    pub fn finalize(mut self) -> TubBuf {
         if !self.closed {
             panic!("LeafReader.finalize() called before closed");
         }
@@ -480,6 +480,11 @@ impl LeafReader{
     }
 }
 
+
+#[derive(Debug)]
+pub struct LeafReader2 {
+
+}
 
 
 #[derive(Debug)]
@@ -607,7 +612,7 @@ mod tests {
 
     #[test]
     fn test_tubtop() {
-        let mut tt = TubTop::new();
+        let mut tt = TubBuf::new();
         assert_eq!(tt.len(), HEAD_LEN);
         assert_eq!(tt.hash(), [0_u8; TUB_HASH_LEN]);
         assert_eq!(tt.size(), 0);
@@ -619,7 +624,7 @@ mod tests {
 
         // 1 Leaf
         for size in [1, 2, 3, LEAF_SIZE - 2, LEAF_SIZE - 1, LEAF_SIZE] {
-            let mut tt = TubTop::new();
+            let mut tt = TubBuf::new();
 
             // Get mutable reference to header portion of buffer
             let head = tt.as_mut_head();
@@ -644,7 +649,7 @@ mod tests {
 
         // 2 Leaves
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
-            let mut tt = TubTop::new();
+            let mut tt = TubBuf::new();
 
             // Get mutable reference to header portion of buffer
             let head = tt.as_mut_head();

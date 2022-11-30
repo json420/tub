@@ -5,14 +5,14 @@ use bathtub_db::leaf_io::*;
 
 #[test]
 fn test_tub_top() {
-    let tt = TubTop::new();
+    let tt = TubBuf::new();
     let mut buf = tt.into_buf();
     assert_eq!(buf.len(), HEAD_LEN);
     buf.resize(0, 0);
-    let tt = TubTop::new_with_buf(buf);
+    let tt = TubBuf::new_with_buf(buf);
     assert_eq!(tt.len(), HEAD_LEN);
 
-    let mut tt = TubTop::new();
+    let mut tt = TubBuf::new();
     assert_eq!(tt.len(), HEAD_LEN);
 
     for size in [1, 2, 3, LEAF_SIZE - 1, LEAF_SIZE] {

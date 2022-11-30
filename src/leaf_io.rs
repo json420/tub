@@ -66,6 +66,13 @@ impl TubTop {
         Self {index: 0, total: 0, buf: buf}
     }
 
+    pub fn new_for_leaf_buf() -> Self {
+        let size = HEAD_LEN + 16 * TUB_HASH_LEN + (LEAF_SIZE as usize);
+        let mut buf = Vec::with_capacity(size);
+        buf.resize(HEAD_LEN, 0);
+        Self {index: 0, total: 0, buf: buf}
+    }
+
     pub fn into_buf(self) -> Vec<u8> {
         self.buf
     }
@@ -168,6 +175,14 @@ impl TubTop {
 
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
         &mut self.buf[HEAD_LEN..]
+    }
+
+    pub fn as_mut_data(&mut self) -> &mut [u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = start + size;
+        assert_eq!(stop, get_full_object_size(size));
+        &mut self.buf[start as usize..stop as usize]
     }
 
     pub fn resize_to_claimed_size(&mut self) {
@@ -366,11 +381,11 @@ pub struct LeafReader {
 impl LeafReader {
     pub fn new(file: File) -> Self
     {
-        Self {
-            file: file,
-            closed: false,
-            tt: TubTop::new(),
-        }
+        Self::new_with_tubtop(file, TubTop::new())
+    }
+
+    pub fn new_with_tubtop(file: File, tt: TubTop) -> Self {
+        Self {file: file, tt: tt, closed: false}
     }
 
     pub fn read_next_leaf(&mut self, buf: &mut Vec<u8>) -> io::Result<Option<LeafInfo>>
@@ -390,6 +405,10 @@ impl LeafReader {
             let info = self.tt.hash_next_leaf(buf);
             Ok(Some(info))
         }
+    }
+
+    pub fn read_next_internal(&mut self) -> io::Result<Option<&[u8]>> {
+        Ok(Some(self.tt.as_data()))
     }
 
     pub fn finalize(mut self) -> TubTop {

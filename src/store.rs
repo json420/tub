@@ -26,6 +26,7 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
+use crate::importer::Scanner;
 use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
@@ -258,6 +259,19 @@ impl Store {
         to_parent.pop();
         fs::create_dir_all(&to_parent)?;
         fs::rename(&from, &to)
+    }
+
+    pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
+        let mut tt = TubTop::new_for_leaf_buf();
+        for src in files.iter() {
+            let mut reader = LeafReader::new_with_tubtop(src.open()?, tt);
+            let mut tmp = self.allocate_tmp()?;
+            while let Some(buf) = reader.read_next_internal()? {
+                tmp.write_leaf(buf)?;
+            }
+            tt = reader.finalize();
+        }
+        Ok(())
     }
 
     pub fn import_file(&mut self, file: File) -> io::Result<(TubTop, bool)>

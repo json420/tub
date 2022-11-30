@@ -48,6 +48,56 @@ impl LeafInfo {
 }
 
 
+pub fn get_leaf_count(size: u64) -> u64 {
+    //assert!(size > 0);
+    let count = size / LEAF_SIZE;
+    if size % LEAF_SIZE == 0 {
+        count
+    }
+    else {
+        count + 1
+    }
+}
+
+/// Returns size of the root hash + u64 + leaf_hashes.
+pub fn get_preamble_size(size: u64) -> u64 {
+    (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
+}
+
+
+/// Returns size of header + leaf_hashes + data.
+pub fn get_full_object_size(size: u64) -> u64 {
+    get_preamble_size(size) + size
+}
+
+
+pub fn get_buffer_size(size: u64) -> u64 {
+    get_preamble_size(size) + cmp::min(size, LEAF_SIZE as u64)
+}
+
+pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
+    //assert_ne!(size, 0);  // Should we panic on size==0 case?
+    let start = index * LEAF_SIZE;
+    if start < size {
+        let stop = cmp::min(start + LEAF_SIZE, size);
+        Some((start, stop))
+    }
+    else {
+        None
+    }
+}
+
+pub fn get_leaf_size(index: u64, size: u64) -> Option<u64> {
+    if let Some((start, stop)) = get_leaf_range(index, size) {
+        Some(stop - start)
+    }
+    else {
+        None
+    }
+}
+
+
+
 #[derive(Debug)]
 pub struct TubTop {
     index: u64,
@@ -165,6 +215,15 @@ impl TubTop {
         &self.buf[start as usize..stop as usize]
     }
 
+    pub fn as_data(&self) -> &[u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = start + size;
+        assert_eq!(stop, get_full_object_size(size));
+        &self.buf[start as usize..stop as usize]
+    }
+
+
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
         &mut self.buf
     }
@@ -207,6 +266,16 @@ impl TubTop {
         else {
             self.resize_for_size(size);
         }
+    }
+
+    pub fn resize_for_leaf_buf(&mut self, size: u64) {
+        assert!(size > 0);
+        self.total = size;
+        self.buf.resize(get_buffer_size(size) as usize, 0);
+    }
+
+    pub fn hash_next_leaf_internal(&mut self) -> LeafInfo {
+        if let Some(size) = get_leaf_size(self.
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
@@ -304,42 +373,6 @@ impl Iterator for LeafOffsetIter {
         else {
             None
         }
-    }
-}
-
-
-pub fn get_leaf_count(size: u64) -> u64 {
-    //assert!(size > 0);
-    let count = size / LEAF_SIZE;
-    if size % LEAF_SIZE == 0 {
-        count
-    }
-    else {
-        count + 1
-    }
-}
-
-/// Returns size of the root hash + u64 + leaf_hashes.
-pub fn get_preamble_size(size: u64) -> u64 {
-    (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
-}
-
-
-/// Returns size of header + leaf_hashes + data.
-pub fn get_full_object_size(size: u64) -> u64 {
-    get_preamble_size(size) + size
-}
-
-
-pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
-    //assert_ne!(size, 0);  // Should we panic on size==0 case?
-    let start = index * LEAF_SIZE;
-    if start < size {
-        let stop = cmp::min(start + LEAF_SIZE, size);
-        Some((start, stop))
-    }
-    else {
-        None
     }
 }
 
@@ -651,6 +684,27 @@ mod tests {
         assert_eq!(get_full_object_size(LEAF_SIZE + 1),
             HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE + 1
         );
+    }
+
+    #[test]
+    fn test_get_buffer_size() {
+        assert_eq!(get_buffer_size(1), (HEAD_LEN + 1) as u64);
+        assert_eq!(get_buffer_size(2), (HEAD_LEN + 2) as u64);
+        assert_eq!(get_buffer_size(3), (HEAD_LEN + 3) as u64);
+        assert_eq!(get_buffer_size(LEAF_SIZE), HEAD_LEN as u64 + LEAF_SIZE);
+        assert_eq!(get_buffer_size(LEAF_SIZE + 1),
+            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
+        );
+        assert_eq!(get_buffer_size(LEAF_SIZE + 1),
+            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
+        );
+
+        for size in [42 * LEAF_SIZE, 420 * LEAF_SIZE, u64::MAX - 1, u64::MAX] {
+            assert_eq!(
+                get_buffer_size(size),
+                get_preamble_size(size) + LEAF_SIZE
+            );
+        }
     }
 
     #[test]

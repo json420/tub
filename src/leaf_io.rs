@@ -273,6 +273,15 @@ impl TubTop {
         }
     }
 
+    pub fn has_leaves_remaining(&self) -> bool {
+        if let Some(size) = get_leaf_size(self.index, self.size()) {
+            true
+        }
+        else {
+            false
+        }
+    }
+
     pub fn resize_for_leaf_buf(&mut self, size: u64) {
         assert!(size > 0);
         self.total = size;
@@ -420,7 +429,7 @@ pub struct LeafReader {
     closed: bool,
 }
 
-impl LeafReader {
+impl LeafReader{
     pub fn new(file: File, size: u64) -> Self
     {
         Self::new_with_tubtop(file, size, TubTop::new())
@@ -451,9 +460,15 @@ impl LeafReader {
     }
 
     pub fn read_next_internal(&mut self) -> io::Result<Option<&[u8]>> {
-        self.file.read_exact(self.tt.as_mut_leaf())?;
-        self.tt.hash_next_leaf_internal();
-        Ok(Some(self.tt.as_data()))
+        if self.tt.has_leaves_remaining() {
+            self.file.read_exact(self.tt.as_mut_leaf())?;
+            self.tt.hash_next_leaf_internal();
+            Ok(Some(self.tt.as_data()))
+        }
+        else {
+            self.closed = true;
+            Ok(None)
+        }
     }
 
     pub fn finalize(mut self) -> TubTop {

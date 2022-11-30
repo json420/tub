@@ -202,9 +202,10 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let mut tub = get_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
     for src in files.iter() {
-        let (root, new) = tub.import_file(src.open()?)?;
+        let (root, new) = tub.import_file(src.open()?, src.size)?;
         println!("{} {} {:?}", root, get_newmark(new), src.path);
     }
+    //tub.import_files(files)?;
     Ok(())
 }
 

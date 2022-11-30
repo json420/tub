@@ -271,13 +271,14 @@ impl Store {
                 tmp.write_leaf(buf)?;
             }
             tt = reader.finalize();
+            self.commit_object(&tt, NewObj::File(tmp))?;
         }
         Ok(())
     }
 
-    pub fn import_file(&mut self, file: File) -> io::Result<(TubTop, bool)>
+    pub fn import_file(&mut self, file: File, size: u64) -> io::Result<(TubTop, bool)>
     {
-        let mut reader = LeafReader::new(file, 0);
+        let mut reader = LeafReader::new(file, size);
         let mut tmp = self.allocate_tmp()?;
         let mut buf = new_leaf_buf();
         while let Some(_info) = reader.read_next_leaf(&mut buf)? {
@@ -416,6 +417,7 @@ impl Store {
             match obj {
                 NewObj::File(tmp) => {
                     if top.is_small() {
+                        println!("{:?}", tmp.path);
                         assert!(tmp.is_small());
                         return self.commit_object(top, NewObj::Mem(&tmp.into_data()));
                     }

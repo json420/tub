@@ -71,19 +71,20 @@ mod tests {
     use crate::util::{random_object, random_hash};
     use crate::dbase32::db32enc_str;
 
+    const COUNT: usize = 1000;
+
     #[test]
     fn test_hash_leaf() {
         for size in [1, 2, 42, 420] {
             let data = random_object(size);
-            let count = 1000_u64;
 
             // Should be tied to index
             let mut set: HashSet<TubHash> = HashSet::new();
-            for i in 0..count {
-                let is_new = set.insert(hash_leaf(i, &data));
+            for i in 0..COUNT {
+                let is_new = set.insert(hash_leaf(i as u64, &data));
                 assert!(is_new);
             }
-            assert_eq!(set.len() as u64, count);
+            assert_eq!(set.len(), COUNT);
 
             // Should be tied every byte in data
             let mut set: HashSet<TubHash> = HashSet::new();
@@ -112,11 +113,11 @@ mod tests {
 
         // Should be tied to size
         let mut set: HashSet<TubHash> = HashSet::new();
-        for size in 1..1001 {
-            let is_new = set.insert(hash_root(size, &leaf_hashes));
+        for size in 1..COUNT + 1 {
+            let is_new = set.insert(hash_root(size as u64, &leaf_hashes));
             assert!(is_new);
         }
-        assert_eq!(set.len(), 1000);
+        assert_eq!(set.len(), COUNT);
 
         // Should be tied to every byte in leaf_hashes
         let mut set: HashSet<TubHash> = HashSet::new();
@@ -132,7 +133,19 @@ mod tests {
 
     #[test]
     fn test_hash_tombstone() {
+        let hash = random_hash();
 
+        // Should be tied every byte in hash
+        let mut set: HashSet<TubHash> = HashSet::new();
+        for i in 0..hash.len() {
+            for v in 0_u8..=255 {
+                let mut copy = hash.clone();
+                copy[i] = v;
+                let tombstone = hash_tombstone(&copy);
+                set.insert(tombstone);
+            }
+        }
+        assert_eq!(set.len(), hash.len() * 255 + 1);
     }
 }
 

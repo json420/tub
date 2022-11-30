@@ -353,7 +353,7 @@ mod tests {
         let bin = random_hash();
         let txt = db32enc(&bin);
         assert_eq!(isdb32(&txt), true);
-        for i in 0..bin.len() {
+        for i in 0..txt.len() {
             for v in 0..=255 {
                 let mut copy = txt.clone();
                 copy[i] = v;

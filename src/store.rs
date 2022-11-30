@@ -40,6 +40,7 @@ macro_rules! other_err {
 }
 
 
+
 /// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {

@@ -215,6 +215,13 @@ impl TubTop {
         &self.buf[start as usize..stop as usize]
     }
 
+    pub fn as_leaf(&self) -> &[u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = get_buffer_size(size);
+        &self.buf[start as usize..stop as usize]
+    }
+
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
         &mut self.buf
     }
@@ -232,6 +239,13 @@ impl TubTop {
         let start = get_preamble_size(size);
         let stop = start + size;
         assert_eq!(stop, get_full_object_size(size));
+        &mut self.buf[start as usize..stop as usize]
+    }
+
+    pub fn as_mut_leaf(&mut self) -> &mut [u8] {
+        let size = self.size();
+        let start = get_preamble_size(size);
+        let stop = get_buffer_size(size);
         &mut self.buf[start as usize..stop as usize]
     }
 
@@ -262,11 +276,14 @@ impl TubTop {
     pub fn resize_for_leaf_buf(&mut self, size: u64) {
         assert!(size > 0);
         self.total = size;
+        self.set_size(size);
         self.buf.resize(get_buffer_size(size) as usize, 0);
     }
 
     pub fn hash_next_leaf_internal(&mut self) {
-        //if let Some(size) = get_leaf_size(
+        let hash = hash_leaf(self.index, self.as_leaf());
+        self.set_leaf_hash(self.index as usize, &hash);
+        self.index += 1;
     }
 
     pub fn hash_next_leaf(&mut self, data: &[u8]) -> LeafInfo {
@@ -409,7 +426,8 @@ impl LeafReader {
         Self::new_with_tubtop(file, size, TubTop::new())
     }
 
-    pub fn new_with_tubtop(file: File, size: u64, tt: TubTop) -> Self {
+    pub fn new_with_tubtop(file: File, size: u64, mut tt: TubTop) -> Self {
+        tt.resize_for_leaf_buf(size);
         Self {file: file, tt: tt, size: size, closed: false}
     }
 
@@ -433,6 +451,8 @@ impl LeafReader {
     }
 
     pub fn read_next_internal(&mut self) -> io::Result<Option<&[u8]>> {
+        self.file.read_exact(self.tt.as_mut_leaf())?;
+        self.tt.hash_next_leaf_internal();
         Ok(Some(self.tt.as_data()))
     }
 

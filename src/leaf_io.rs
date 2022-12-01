@@ -598,6 +598,8 @@ struct LeafState {
     leaf_stop: u64,
     buf_start: usize,
     buf_stop: usize,
+    h_start: usize,
+    h_stop: usize,
 }
 
 impl LeafState {
@@ -614,6 +616,8 @@ impl LeafState {
         let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
         let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
         let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
+        let h_start = HEADER_LEN + leaf_index as usize * TUB_HASH_LEN;
+        let h_stop = h_start + TUB_HASH_LEN;
         Self {
             closed: closed,
             object_size: object_size,
@@ -622,6 +626,8 @@ impl LeafState {
             leaf_stop: leaf_stop,
             buf_start: buf_start,
             buf_stop: buf_stop,
+            h_start: h_start,
+            h_stop: h_stop,
         }
     }
 
@@ -652,18 +658,6 @@ impl TubBuf2 {
         }
     }
 
-    pub fn leaf_hash(&self, index: usize) -> TubHash {
-        let start = HEADER_LEN + (index * TUB_HASH_LEN);
-        let stop = start + TUB_HASH_LEN;
-        self.buf[start..stop].try_into().expect("oops")
-    }
-
-    fn set_leaf_hash(&mut self, index: usize, hash: &TubHash) {
-        let start = HEADER_LEN + (index * TUB_HASH_LEN);
-        let stop = start + TUB_HASH_LEN;
-        self.buf[start..stop].copy_from_slice(hash);
-    }
-
     fn compute_leaf(&self) -> TubHash {
         hash_leaf(self.state.leaf_index, &self.as_leaf())
     }
@@ -674,14 +668,16 @@ impl TubBuf2 {
     }
 
     pub fn hash_next_leaf(&mut self) {
-        if self.state.closed {
+        if self.state.closed || self.state.object_size == 0 {
             panic!("not good!");
         }
+        //self.buf[
+        //self.set_leaf(self.state.index
         self.state = self.state.next_state();
     }
 
     pub fn as_leaf(&self) -> &[u8] {
-        if self.state.closed {
+        if self.state.object_size == 0 {
             panic!("not good!");
         }
         &self.buf[self.state.buf_start..self.state.buf_stop]

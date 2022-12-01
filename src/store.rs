@@ -403,6 +403,31 @@ impl Store {
         Ok(())
     }
 
+    pub fn reindex2(&mut self) -> io::Result<()>
+    {
+        self.index.clear();
+        self.offset = 0;
+        let mut tbuf = TubBuf2::new();
+        while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
+            if tbuf.is_large() {
+                // Read remaining leaf_hashes into TubBuf
+                self.file.read_exact_at(
+                    tbuf.as_mut_tail(), self.offset + HEAD_LEN as u64
+                )?;
+            }
+            if tbuf.is_valid_pack_entry() {
+                let size = tbuf.size();
+                let hash = tbuf.hash();
+                let entry = Entry::new(size, self.offset);
+                self.index.insert(hash, entry);
+            }
+            else {
+                panic!("oopsy doopsy");
+            }
+        }
+        Ok(())
+    }
+
     pub fn repack2(&mut self) -> io::Result<()> {
         let id = random_id();
         let mut tbuf = TubBuf2::new();

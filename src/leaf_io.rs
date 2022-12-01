@@ -815,16 +815,28 @@ impl TubBuf2 {
             None
         }
     }
+    
+    pub fn is_large(&self) -> bool {
+        true
+    }
 
     pub fn as_mut_head(&mut self) -> &mut [u8] {
         &mut self.buf[self.state.head_range()]
     }
 
-    pub fn as_mut_taild(&mut self) -> &mut [u8] {
+    pub fn as_mut_tail(&mut self) -> &mut [u8] {
         &mut self.buf[self.state.head_range()]
     }
 
+    pub fn is_valid_pack_entry(&self) -> bool {
+        self.size() == self.state.object_size
+    }
+
     pub fn is_valid_for_commit(&self) -> bool {
+        self.size() == self.state.object_size
+    }
+
+    pub fn has_valid_preamble(&self) -> bool {
         self.size() == self.state.object_size
     }
 

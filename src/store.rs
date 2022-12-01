@@ -31,6 +31,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubBuf, TmpObject, get_preamble_size};
+use crate::leaf_io::{TubBuf2, LeafReader2};
 
 
 macro_rules! other_err {
@@ -263,15 +264,16 @@ impl Store {
     }
 
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        let mut tt = TubBuf::new_for_leaf_buf();
+        let mut tbuf = TubBuf2::new();
         for src in files.iter() {
-            let mut reader = LeafReader::new_with_tubtop(src.open()?, src.size, tt);
+            tbuf.resize(src.size);
+            let mut reader = LeafReader2::new(tbuf, src.open()?);
             let mut tmp = self.allocate_tmp()?;
-            while let Some(buf) = reader.read_next_internal()? {
+            while let Some(buf) = reader.read_next()? {
                 tmp.write_leaf(buf)?;
             }
-            tt = reader.finalize();
-            self.commit_object(&tt, NewObj::File(tmp))?;
+            tbuf = reader.finalize();
+            //self.commit_object(&tbuf, NewObj::File(tmp))?;
         }
         Ok(())
     }

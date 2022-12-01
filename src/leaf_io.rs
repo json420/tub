@@ -634,7 +634,7 @@ impl LeafState {
     }
 }
 
-const PREALLOC_COUNT: usize = 32;
+const PREALLOC_COUNT: usize = 1024;
 const PREALLOC_LEN: usize = HEAD_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
 
 
@@ -652,6 +652,22 @@ impl TubBuf2 {
         }
     }
 
+    pub fn leaf_hash(&self, index: usize) -> TubHash {
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        self.buf[start..stop].try_into().expect("oops")
+    }
+
+    fn set_leaf_hash(&mut self, index: usize, hash: &TubHash) {
+        let start = HEADER_LEN + (index * TUB_HASH_LEN);
+        let stop = start + TUB_HASH_LEN;
+        self.buf[start..stop].copy_from_slice(hash);
+    }
+
+    fn compute_leaf(&self) -> TubHash {
+        hash_leaf(self.state.leaf_index, &self.as_leaf())
+    }
+
     pub fn resize(&mut self, size: u64) {
         self.state = LeafState::new(size);
         self.buf.resize(self.state.buf_stop, 0);
@@ -662,6 +678,13 @@ impl TubBuf2 {
             panic!("not good!");
         }
         self.state = self.state.next_state();
+    }
+
+    pub fn as_leaf(&self) -> &[u8] {
+        if self.state.closed {
+            panic!("not good!");
+        }
+        &self.buf[self.state.buf_start..self.state.buf_stop]
     }
 
     pub fn as_mut_leaf(&mut self) -> Option<&mut [u8]> {
@@ -688,10 +711,13 @@ impl LeafReader2 {
 
     pub fn read_next(&mut self) -> io::Result<Option<&[u8]>> {
         if let Some(mut buf) = self.tubbuf.as_mut_leaf() {
-            self.file.read_exact(buf);
+            self.file.read_exact(buf)?;
             self.tubbuf.hash_next_leaf();
+            Ok(Some(self.tubbuf.as_leaf()))
         }
-        Ok(None)
+        else {
+            Ok(None)
+        }
     }
 
     pub fn finalize(mut self) -> TubBuf2 {

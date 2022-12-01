@@ -649,8 +649,7 @@ impl TubBuf2 {
         self.state = LeafState::new(size);
     }
 
-    pub fn hash_next_leaf(&self) {
-
+    pub fn hash_next_leaf(&mut self) {
     }
 
     pub fn as_mut_leaf(&self) -> Option<&mut [u8]> {
@@ -721,6 +720,18 @@ mod tests {
             let state = state.unwrap().next_state();
             assert_eq!(state, LeafState::new_raw(size, 1));
             assert_eq!(state.unwrap().next_state(), None);
+
+            let state = LeafState::new_raw(size, 1);
+            assert_eq!(state, Some(LeafState {
+                object_size: size,
+                leaf_index: 1,
+                leaf_start: LEAF_SIZE,
+                leaf_stop: size,
+                buf_start: HEAD_LEN + TUB_HASH_LEN,
+                buf_stop: HEAD_LEN + TUB_HASH_LEN + (size - LEAF_SIZE) as usize,
+            }));
+            assert_eq!(state.unwrap().next_state(), None);
+            assert_eq!(LeafState::new_raw(size, 2), None);
         }
     }
 

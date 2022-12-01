@@ -598,36 +598,48 @@ struct LeafState {
     leaf_stop: u64,
     buf_start: usize,
     buf_stop: usize,
-    h_start: usize,
-    h_stop: usize,
+    hash_start: usize,
+    hash_stop: usize,
 }
 
 impl LeafState {
     fn new_raw(object_size: u64, leaf_index: u64) -> Self {
-        let count = get_leaf_count(object_size);
-        let closed = if leaf_index < count {
-            false
+        if object_size == 0 {
+            Self {
+                closed: true,
+                object_size: 0,
+                leaf_index: 0,
+                leaf_start: 0,
+                leaf_stop: 0,
+                buf_start: 0,
+                buf_stop: 0,
+                hash_start: 0,
+                hash_stop: 0,
+            }
         }
         else {
-            let leaf_index = count - 1;
-            true
-        };
-        let leaf_start = leaf_index * LEAF_SIZE;
-        let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
-        let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
-        let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
-        let h_start = HEADER_LEN + leaf_index as usize * TUB_HASH_LEN;
-        let h_stop = h_start + TUB_HASH_LEN;
-        Self {
-            closed: closed,
-            object_size: object_size,
-            leaf_index: leaf_index,
-            leaf_start: leaf_start,
-            leaf_stop: leaf_stop,
-            buf_start: buf_start,
-            buf_stop: buf_stop,
-            h_start: h_start,
-            h_stop: h_stop,
+            let count = get_leaf_count(object_size);
+            assert!(count > 0);
+            let closed = if leaf_index < count {false} else {true};
+            let leaf_index = if closed {count - 1} else {leaf_index};
+            assert!(leaf_index < count);
+            let leaf_start = leaf_index * LEAF_SIZE;
+            let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
+            let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
+            let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
+            let hash_start = HEADER_LEN + leaf_index as usize * TUB_HASH_LEN;
+            let hash_stop = hash_start + TUB_HASH_LEN;
+            Self {
+                closed: closed,
+                object_size: object_size,
+                leaf_index: leaf_index,
+                leaf_start: leaf_start,
+                leaf_stop: leaf_stop,
+                buf_start: buf_start,
+                buf_stop: buf_stop,
+                hash_start: hash_start,
+                hash_stop: hash_stop,
+            }
         }
     }
 
@@ -635,7 +647,7 @@ impl LeafState {
         Self::new_raw(object_size, 0)
     }
 
-    fn next_state(self) -> Self {
+    fn next_leaf(self) -> Self {
         Self::new_raw(self.object_size, self.leaf_index + 1)
     }
 }
@@ -650,6 +662,9 @@ pub struct TubBuf2 {
     state: LeafState,
 }
 
+
+// When state.closed == true, don't allow access to mutable buffers
+// When state.size == 0, also don't allow access to read-only buffers
 impl TubBuf2 {
     pub fn new() -> Self {
         Self {
@@ -658,8 +673,34 @@ impl TubBuf2 {
         }
     }
 
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
     fn compute_leaf(&self) -> TubHash {
         hash_leaf(self.state.leaf_index, &self.as_leaf())
+    }
+
+    fn compute_root(&self) -> TubHash {
+        hash_root(self.size(), &self.as_leaf_hashes())
+    }
+
+    pub fn hash(&self) -> TubHash {
+        self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+    }
+
+    fn set_hash(&mut self, hash: &TubHash) {
+        self.buf[0..TUB_HASH_LEN].copy_from_slice(hash);
+    }
+
+    pub fn size(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+        )
+    }
+
+    fn set_size(&mut self, size: u64) {
+        self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
     }
 
     pub fn resize(&mut self, size: u64) {
@@ -673,14 +714,21 @@ impl TubBuf2 {
         }
         //self.buf[
         //self.set_leaf(self.state.index
-        self.state = self.state.next_state();
+        self.state = self.state.next_leaf();
+    }
+
+    pub fn as_leaf_hashes(&self) -> &[u8] {
+        if self.size() == 0 {
+            panic!("method cannot be called when size is zero");
+        }
+        &self.buf[HEADER_LEN..self.state.buf_start]
     }
 
     pub fn as_leaf(&self) -> &[u8] {
         if self.state.object_size == 0 {
             panic!("not good!");
         }
-        &self.buf[self.state.buf_start..self.state.buf_stop]
+        &self.buf[self.state.hash_start..self.state.hash_stop]
     }
 
     pub fn as_mut_leaf(&mut self) -> Option<&mut [u8]> {
@@ -688,7 +736,8 @@ impl TubBuf2 {
             None
         }
         else {
-            Some(&mut self.buf[self.state.buf_start..self.state.buf_stop])
+            assert!(self.state.object_size > 0);
+            Some(&mut self.buf[self.state.hash_start..self.state.hash_stop])
         }
     }
 }
@@ -729,24 +778,38 @@ mod tests {
 
     #[test]
     fn test_leafstate() {
-        /*
-        assert_eq!(LeafState::new_raw(0, 0), None);
-        assert_eq!(LeafState::new_raw(0, 0), None);
+        for leaf_index in [0, 1, 2, 3] {
+            assert_eq!(LeafState::new_raw(0, leaf_index), LeafState {
+                closed: true,
+                object_size: 0,
+                leaf_index: 0,
+                leaf_start: 0,
+                leaf_stop: 0,
+                buf_start: 0,
+                buf_stop: 0,
+                hash_start: 0,
+                hash_stop: 0,
+            });
+        }
 
         for size in [1, 2, 3, LEAF_SIZE - 1, LEAF_SIZE] {
             let state = LeafState::new_raw(size, 0);
-            assert_eq!(state, Some(LeafState {
+            assert_eq!(state, LeafState {
+                closed: false,
                 object_size: size,
                 leaf_index: 0,
                 leaf_start: 0,
                 leaf_stop: size,
                 buf_start: HEAD_LEN,
                 buf_stop: HEAD_LEN + size as usize,
-            }));
-            assert_eq!(state.unwrap().next_state(), None);
-            assert_eq!(LeafState::new_raw(size, 1), None);
+                hash_start: HEADER_LEN,
+                hash_stop: HEADER_LEN +  TUB_HASH_LEN,
+            });
+            let state = state.next_leaf();
+            assert_eq!(state, LeafState::new_raw(size, 1));
         }
 
+        /*
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
             let state = LeafState::new_raw(size, 0);
             assert_eq!(state, Some(LeafState {
@@ -757,9 +820,9 @@ mod tests {
                 buf_start: HEAD_LEN + TUB_HASH_LEN,
                 buf_stop: HEAD_LEN + TUB_HASH_LEN + LEAF_SIZE as usize,
             }));
-            let state = state.unwrap().next_state();
+            let state = state.unwrap().next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
-            assert_eq!(state.unwrap().next_state(), None);
+            assert_eq!(state.unwrap().next_leaf(), None);
 
             let state = LeafState::new_raw(size, 1);
             assert_eq!(state, Some(LeafState {
@@ -770,7 +833,7 @@ mod tests {
                 buf_start: HEAD_LEN + TUB_HASH_LEN,
                 buf_stop: HEAD_LEN + TUB_HASH_LEN + (size - LEAF_SIZE) as usize,
             }));
-            assert_eq!(state.unwrap().next_state(), None);
+            assert_eq!(state.unwrap().next_leaf(), None);
             assert_eq!(LeafState::new_raw(size, 2), None);
         }
         */

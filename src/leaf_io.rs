@@ -589,8 +589,9 @@ impl Object {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct LeafState {
+    closed: bool,
     object_size: u64,
     leaf_index: u64,
     leaf_start: u64,
@@ -600,32 +601,35 @@ struct LeafState {
 }
 
 impl LeafState {
-    fn new_raw(object_size: u64, leaf_index: u64) -> Option<Self> {
+    fn new_raw(object_size: u64, leaf_index: u64) -> Self {
         let count = get_leaf_count(object_size);
-        if leaf_index < count {
-            let leaf_start = leaf_index * LEAF_SIZE;
-            let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
-            let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
-            let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
-            Some(Self {
-                object_size: object_size,
-                leaf_index: leaf_index,
-                leaf_start: leaf_start,
-                leaf_stop: leaf_stop,
-                buf_start: buf_start,
-                buf_stop: buf_stop,
-            })
+        let closed = if leaf_index < count {
+            false
         }
         else {
-            None
+            let leaf_index = count - 1;
+            true
+        };
+        let leaf_start = leaf_index * LEAF_SIZE;
+        let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
+        let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
+        let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
+        Self {
+            closed: closed,
+            object_size: object_size,
+            leaf_index: leaf_index,
+            leaf_start: leaf_start,
+            leaf_stop: leaf_stop,
+            buf_start: buf_start,
+            buf_stop: buf_stop,
         }
     }
 
-    fn new(object_size: u64) -> Option<Self> {
+    fn new(object_size: u64) -> Self {
         Self::new_raw(object_size, 0)
     }
 
-    fn next_state(self) -> Option<Self> {
+    fn next_state(self) -> Self {
         Self::new_raw(self.object_size, self.leaf_index + 1)
     }
 }
@@ -637,23 +641,36 @@ const PREALLOC_LEN: usize = HEAD_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SI
 #[derive(Debug)]
 pub struct TubBuf2 {
     buf: Vec<u8>,
-    state: Option<LeafState>,
+    state: LeafState,
 }
 
 impl TubBuf2 {
     pub fn new() -> Self {
-        Self {buf: Vec::with_capacity(PREALLOC_LEN), state: None}
+        Self {
+            buf: Vec::with_capacity(PREALLOC_LEN),
+            state: LeafState::new(0),
+        }
     }
 
     pub fn resize(&mut self, size: u64) {
         self.state = LeafState::new(size);
+        self.buf.resize(self.state.buf_stop, 0);
     }
 
     pub fn hash_next_leaf(&mut self) {
+        if self.state.closed {
+            panic!("not good!");
+        }
+        self.state = self.state.next_state();
     }
 
-    pub fn as_mut_leaf(&self) -> Option<&mut [u8]> {
-        None
+    pub fn as_mut_leaf(&mut self) -> Option<&mut [u8]> {
+        if self.state.closed {
+            None
+        }
+        else {
+            Some(&mut self.buf[self.state.buf_start..self.state.buf_stop])
+        }
     }
 }
 
@@ -690,6 +707,7 @@ mod tests {
 
     #[test]
     fn test_leafstate() {
+        /*
         assert_eq!(LeafState::new_raw(0, 0), None);
         assert_eq!(LeafState::new_raw(0, 0), None);
 
@@ -733,6 +751,7 @@ mod tests {
             assert_eq!(state.unwrap().next_state(), None);
             assert_eq!(LeafState::new_raw(size, 2), None);
         }
+        */
     }
 
     #[test]

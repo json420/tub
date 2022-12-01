@@ -677,6 +677,10 @@ impl LeafState {
         assert!(self.can_write());
     }
 
+    fn head_range(&self) -> ops::Range<usize> {
+        0..HEAD_LEN
+    }
+
     fn hash_range(&self) -> ops::Range<usize> {
         0..TUB_HASH_LEN
     }
@@ -695,6 +699,15 @@ impl LeafState {
 
     fn leaf_range(&self) -> ops::Range<usize> {
         self.leaf_start..self.leaf_stop
+    }
+
+    fn commit_range(&self) -> ops::Range<usize> {
+        let stop = if self.object_size < LEAF_SIZE {
+            self.leaf_stop
+        } else {
+            self.leaf_start
+        };
+        0..stop
     }
     
 }
@@ -722,6 +735,16 @@ impl TubBuf2 {
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    pub fn resize(&mut self, size: u64) {
+        self.state = LeafState::new(size);
+        self.buf.clear();
+        self.buf.resize(self.state.leaf_stop, 0);
+    }
+
+    pub fn resize_to_claimed_size(&mut self) {
+        self.resize(self.size());
     }
 
     fn compute_leaf(&self) -> TubHash {
@@ -754,16 +777,23 @@ impl TubBuf2 {
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
     }
 
-    pub fn resize(&mut self, size: u64) {
-        self.state = LeafState::new(size);
-        self.buf.resize(self.state.leaf_stop, 0);
-    }
-
-    pub fn hash_next_leaf(&mut self) {
+    pub fn hash_leaf(&mut self) {
         self.state.check_can_read();
         let hash = self.compute_leaf();
-        //self.buf[self.state.leaf_hash_range()].copy_from_slice();
+        self.buf[self.state.leaf_hash_range()].copy_from_slice(&hash);
         self.state = self.state.next_leaf();
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_commit(&self) -> &[u8] {
+        &self.buf[self.state.commit_range()]
+    }
+
+    pub fn as_mut_commit(&mut self) -> &mut [u8] {
+        &mut self.buf[self.state.commit_range()]
     }
 
     pub fn as_leaf_hashes(&self) -> &[u8] {
@@ -785,25 +815,45 @@ impl TubBuf2 {
             None
         }
     }
+
+    pub fn as_mut_head(&mut self) -> &mut [u8] {
+        &mut self.buf[self.state.head_range()]
+    }
+
+    pub fn as_mut_taild(&mut self) -> &mut [u8] {
+        &mut self.buf[self.state.head_range()]
+    }
+
+    pub fn is_valid_for_commit(&self) -> bool {
+        self.size() == self.state.object_size
+    }
+
+    pub fn check_ready_for_commit(&self) {
+
+    }
+
+    pub fn finalize(&mut self) {
+        self.set_size(self.state.object_size);
+    }
 }
 
 
 #[derive(Debug)]
 pub struct LeafReader2 {
-    pub tubbuf: TubBuf2,
+    pub tbuf: TubBuf2,
     pub file: File,
 }
 
 impl LeafReader2 {
-    pub fn new(tubbuf: TubBuf2, file: File) -> Self {
-        Self {tubbuf: tubbuf, file: file}
+    pub fn new(tbuf: TubBuf2, file: File) -> Self {
+        Self {tbuf: tbuf, file: file}
     }
 
-    pub fn read_next(&mut self) -> io::Result<Option<&[u8]>> {
-        if let Some(mut buf) = self.tubbuf.as_mut_leaf() {
+    pub fn read_next_leaf(&mut self) -> io::Result<Option<&[u8]>> {
+        if let Some(mut buf) = self.tbuf.as_mut_leaf() {
             self.file.read_exact(buf)?;
-            self.tubbuf.hash_next_leaf();
-            Ok(Some(self.tubbuf.as_leaf()))
+            self.tbuf.hash_leaf();
+            Ok(Some(self.tbuf.as_leaf()))
         }
         else {
             Ok(None)
@@ -811,7 +861,8 @@ impl LeafReader2 {
     }
 
     pub fn finalize(mut self) -> TubBuf2 {
-        self.tubbuf
+        self.tbuf.finalize();
+        self.tbuf
     }
 }
 

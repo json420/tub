@@ -269,7 +269,7 @@ impl Store {
             tbuf.resize(src.size);
             let mut reader = LeafReader2::new(tbuf, src.open()?);
             let mut tmp = self.allocate_tmp()?;
-            while let Some(buf) = reader.read_next()? {
+            while let Some(buf) = reader.read_next_leaf()? {
                 tmp.write_leaf(buf)?;
             }
             tbuf = reader.finalize();
@@ -401,6 +401,36 @@ impl Store {
         self.file = File::options().read(true).append(true).open(dst_pb)?;
         self.reindex()?;
         Ok(())
+    }
+
+    pub fn repack2(&mut self) -> io::Result<()> {
+        let id = random_id();
+        let mut tbuf = TubBuf2::new();
+        let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
+        for (_hash, entry) in self.index.iter() {
+            assert!(entry.size > 0);
+            tbuf.resize(entry.size);
+            self.file.read_exact_at(tbuf.as_mut_commit(), entry.offset)?;
+            if tbuf.is_valid_for_commit() {
+                tmp.write_all(tbuf.as_commit())?;
+            }
+            else {
+                panic!("shit is broke, yo");
+            }
+        }
+        Ok(())
+    }
+
+    pub fn commit_object2(&mut self, tbuf: &TubBuf2) -> io::Result<bool>
+    {
+        if let Some(_entry) = self.index.get(&tbuf.hash()) {
+            Ok(false)  // Already in object store
+        }
+        else {
+            tbuf.check_ready_for_commit();
+            self.file.write_all(tbuf.as_buf())?;
+            Ok(true)
+        }
     }
 
     pub fn commit_object(&mut self, top: &TubBuf, obj: NewObj) -> io::Result<bool>

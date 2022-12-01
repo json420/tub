@@ -329,7 +329,6 @@ impl TubBuf {
         self.set_hash(&hash);
         hash
     }
-
 }
 
 impl fmt::Display for TubBuf {
@@ -342,7 +341,6 @@ impl fmt::Display for TubBuf {
         write!(f, "{}", db32enc_str(&self.hash()))
     }
 }
-
 
 
 #[derive(Debug, PartialEq)]
@@ -482,12 +480,6 @@ impl LeafReader{
 
 
 #[derive(Debug)]
-pub struct LeafReader2 {
-
-}
-
-
-#[derive(Debug)]
 pub struct TmpObject {
     pub id: TubId,
     pub path: PathBuf,
@@ -597,10 +589,140 @@ impl Object {
 }
 
 
+#[derive(Debug, PartialEq)]
+struct LeafState {
+    object_size: u64,
+    leaf_index: u64,
+    leaf_start: u64,
+    leaf_stop: u64,
+    buf_start: usize,
+    buf_stop: usize,
+}
+
+impl LeafState {
+    fn new_raw(object_size: u64, leaf_index: u64) -> Option<Self> {
+        let count = get_leaf_count(object_size);
+        if leaf_index < count {
+            let leaf_start = leaf_index * LEAF_SIZE;
+            let leaf_stop = cmp::min(leaf_start + LEAF_SIZE, object_size);
+            let buf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
+            let buf_stop = buf_start + (leaf_stop - leaf_start) as usize;
+            Some(Self {
+                object_size: object_size,
+                leaf_index: leaf_index,
+                leaf_start: leaf_start,
+                leaf_stop: leaf_stop,
+                buf_start: buf_start,
+                buf_stop: buf_stop,
+            })
+        }
+        else {
+            None
+        }
+    }
+
+    fn new(object_size: u64) -> Option<Self> {
+        Self::new_raw(object_size, 0)
+    }
+
+    fn next_state(self) -> Option<Self> {
+        Self::new_raw(self.object_size, self.leaf_index + 1)
+    }
+}
+
+const PREALLOC_COUNT: usize = 32;
+const PREALLOC_LEN: usize = HEAD_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
+
+
+#[derive(Debug)]
+pub struct TubBuf2 {
+    buf: Vec<u8>,
+    state: Option<LeafState>,
+}
+
+impl TubBuf2 {
+    pub fn new() -> Self {
+        Self {buf: Vec::with_capacity(PREALLOC_LEN), state: None}
+    }
+
+    pub fn resize(&mut self, size: u64) {
+        self.state = LeafState::new(size);
+    }
+
+    pub fn hash_next_leaf(&self) {
+
+    }
+
+    pub fn as_mut_leaf(&self) -> Option<&mut [u8]> {
+        None
+    }
+}
+
+
+#[derive(Debug)]
+pub struct LeafReader2 {
+    pub tubbuf: TubBuf2,
+    pub file: File,
+}
+
+impl LeafReader2 {
+    pub fn new(tubbuf: TubBuf2, file: File) -> Self {
+        Self {tubbuf: tubbuf, file: file}
+    }
+
+    pub fn read_next(&mut self) -> io::Result<Option<&[u8]>> {
+        if let Some(mut buf) = self.tubbuf.as_mut_leaf() {
+            self.file.read_exact(buf);
+            self.tubbuf.hash_next_leaf();
+        }
+        Ok(None)
+    }
+
+    pub fn finalize(mut self) -> TubBuf2 {
+        self.tubbuf
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_leafstate() {
+        assert_eq!(LeafState::new_raw(0, 0), None);
+        assert_eq!(LeafState::new_raw(0, 0), None);
+
+        for size in [1, 2, 3, LEAF_SIZE - 1, LEAF_SIZE] {
+            let state = LeafState::new_raw(size, 0);
+            assert_eq!(state, Some(LeafState {
+                object_size: size,
+                leaf_index: 0,
+                leaf_start: 0,
+                leaf_stop: size,
+                buf_start: HEAD_LEN,
+                buf_stop: HEAD_LEN + size as usize,
+            }));
+            assert_eq!(state.unwrap().next_state(), None);
+            assert_eq!(LeafState::new_raw(size, 1), None);
+        }
+
+        for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
+            let state = LeafState::new_raw(size, 0);
+            assert_eq!(state, Some(LeafState {
+                object_size: size,
+                leaf_index: 0,
+                leaf_start: 0,
+                leaf_stop: LEAF_SIZE,
+                buf_start: HEAD_LEN + TUB_HASH_LEN,
+                buf_stop: HEAD_LEN + TUB_HASH_LEN + LEAF_SIZE as usize,
+            }));
+            let state = state.unwrap().next_state();
+            assert_eq!(state, LeafState::new_raw(size, 1));
+            assert_eq!(state.unwrap().next_state(), None);
+        }
+    }
 
     #[test]
     fn test_new_leaf_buf() {

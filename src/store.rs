@@ -31,7 +31,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubBuf, TmpObject, get_preamble_size};
-use crate::leaf_io::{TubBuf2, LeafReader2};
+use crate::leaf_io::{TubBuf2, LeafReader2, TmpObject2};
 
 
 macro_rules! other_err {
@@ -253,6 +253,14 @@ impl Store {
         TmpObject::new(id, path)
     }
 
+    pub fn allocate_tmp2(&self) -> io::Result<TmpObject2>
+    {
+        let id = random_id();
+        let path = self.tmp_path(&id);
+        TmpObject2::new(id, path)
+    }
+
+
     pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
         let from = tmp.path;
@@ -263,21 +271,11 @@ impl Store {
         fs::rename(&from, &to)
     }
 
-    pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        let mut tbuf = TubBuf2::new();
-        for src in files.iter() {
-            //println!("{:?}", src.path);
-            tbuf.resize(src.size);
-            let mut reader = LeafReader2::new(tbuf, src.open()?);
-            //let mut tmp = self.allocate_tmp()?;
-            while let Some(buf) = reader.read_next_leaf()? {
-                
-            }
-            tbuf = reader.finalize();
-            self.file.write_all(tbuf.as_commit());
-            //self.commit_object(&tbuf, NewObj::File(tmp))?;
-        }
-        Ok(())
+    pub fn finalize_tmp2(&mut self, tmp: TmpObject2, hash: &TubHash) -> io::Result<()>
+    {
+        let from = tmp.pb;
+        let to = self.object_path(hash);
+        fs::rename(&from, &to)
     }
 
     pub fn import_file(&mut self, file: File, size: u64) -> io::Result<(TubBuf, bool)>
@@ -448,14 +446,35 @@ impl Store {
         Ok(())
     }
 
+    pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
+        let mut tbuf = TubBuf2::new();
+        for src in files.iter() {
+            tbuf.resize(src.size);
+            let mut reader = LeafReader2::new(tbuf, src.open()?);
+            if reader.is_small() {
+                reader.read_in_small()?;
+            }
+            else {
+                let mut tmp = self.allocate_tmp2()?;
+                while let Some(buf) = reader.read_next_leaf()? {
+                    tmp.write_all(buf)?;
+                }
+                self.finalize_tmp2(tmp, &[0_u8; 30])?;
+            }
+            tbuf = reader.finalize();
+            self.file.write_all(tbuf.as_commit());
+            //self.commit_object(&tbuf, NewObj::File(tmp))?;
+        }
+        Ok(())
+    }
+
     pub fn commit_object2(&mut self, tbuf: &TubBuf2) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&tbuf.hash()) {
             Ok(false)  // Already in object store
         }
         else {
-            tbuf.check_ready_for_commit();
-            self.file.write_all(tbuf.as_buf())?;
+            self.file.write_all(tbuf.as_commit())?;
             Ok(true)
         }
     }

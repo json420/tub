@@ -653,6 +653,15 @@ impl LeafState {
         Self::new_raw(self.object_size, self.leaf_index + 1)
     }
 
+    fn is_small(&self) -> bool {
+        assert!(self.object_size != 0);
+        self.object_size < LEAF_SIZE
+    }
+
+    fn is_large(&self) -> bool {
+        ! self.is_small()
+    }
+
     fn can_read(&self) -> bool {
         self.object_size > 0
     }
@@ -665,6 +674,7 @@ impl LeafState {
         if self.object_size == 0 {
             panic!("Cannot read from TubBuf when object_size is zero");
         }
+        assert!(self.can_read());
     }
 
     fn check_can_write(&self) {
@@ -672,7 +682,7 @@ impl LeafState {
             panic!("Cannot write to TubBuf when object_size is zero");
         }
         if self.closed {
-            panic!("Cannot write to TubBuf it is closed");
+            panic!("Cannot write to TubBuf when closed");
         }
         assert!(self.can_write());
     }
@@ -702,7 +712,7 @@ impl LeafState {
     }
 
     fn commit_range(&self) -> ops::Range<usize> {
-        let stop = if self.object_size < LEAF_SIZE {
+        let stop = if self.is_small() {
             self.leaf_stop
         } else {
             self.leaf_start
@@ -784,16 +794,9 @@ impl TubBuf2 {
         self.state = self.state.next_leaf();
     }
 
-    pub fn as_buf(&self) -> &[u8] {
-        &self.buf
-    }
-
     pub fn as_commit(&self) -> &[u8] {
+        self.state.check_can_read();
         &self.buf[self.state.commit_range()]
-    }
-
-    pub fn as_mut_commit(&mut self) -> &mut [u8] {
-        &mut self.buf[self.state.commit_range()]
     }
 
     pub fn as_leaf_hashes(&self) -> &[u8] {
@@ -806,6 +809,11 @@ impl TubBuf2 {
         &self.buf[self.state.leaf_range()]
     }
 
+    pub fn as_mut_commit(&mut self) -> &mut [u8] {
+        self.state.check_can_write();
+        &mut self.buf[self.state.commit_range()]
+    }
+
     pub fn as_mut_leaf(&mut self) -> Option<&mut [u8]> {
         if self.state.can_write() {
             self.state.check_can_write();  // Rendundant, but double check for now
@@ -815,17 +823,23 @@ impl TubBuf2 {
             None
         }
     }
-    
-    pub fn is_large(&self) -> bool {
-        true
-    }
 
     pub fn as_mut_head(&mut self) -> &mut [u8] {
+        self.state.check_can_write();
         &mut self.buf[self.state.head_range()]
     }
 
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
+        self.state.check_can_write();
         &mut self.buf[self.state.head_range()]
+    }
+
+    pub fn is_small(&self) -> bool {
+        self.state.is_small()
+    }
+
+    pub fn is_large(&self) -> bool {
+        self.state.is_large()
     }
 
     pub fn is_valid_pack_entry(&self) -> bool {
@@ -862,7 +876,22 @@ impl LeafReader2 {
         Self {tbuf: tbuf, file: file}
     }
 
+    pub fn is_small(&self) -> bool {
+        self.tbuf.is_small()
+    }
+
+    pub fn is_large(&self) -> bool {
+        self.tbuf.is_large()
+    }
+
+    pub fn read_in_small(&mut self) -> io::Result<()> {
+        assert!(self.tbuf.is_small());
+        self.file.read_exact(self.tbuf.as_mut_commit())?;
+        Ok(())
+    }
+
     pub fn read_next_leaf(&mut self) -> io::Result<Option<&[u8]>> {
+        assert!(self.tbuf.is_small());
         if let Some(mut buf) = self.tbuf.as_mut_leaf() {
             self.file.read_exact(buf)?;
             self.tbuf.hash_leaf();
@@ -876,6 +905,26 @@ impl LeafReader2 {
     pub fn finalize(mut self) -> TubBuf2 {
         self.tbuf.finalize();
         self.tbuf
+    }
+}
+
+
+#[derive(Debug)]
+pub struct TmpObject2 {
+    pub id: TubId,
+    pub pb: PathBuf,
+    file: File,
+}
+
+impl TmpObject2 {
+    pub fn new(id: TubId, pb: PathBuf) -> io::Result<Self>
+    {
+        let file = File::options().append(true).create_new(true).open(&pb)?;
+        Ok(TmpObject2 {id: id, pb: pb, file: file})
+    }
+
+    pub fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.file.write_all(buf)
     }
 }
 

@@ -892,7 +892,7 @@ impl LeafReader2 {
     }
 
     pub fn read_next_leaf(&mut self) -> io::Result<Option<&[u8]>> {
-        assert!(self.tbuf.is_small());
+        assert!(self.tbuf.is_large());
         if let Some(mut buf) = self.tbuf.as_mut_leaf() {
             self.file.read_exact(buf)?;
             self.tbuf.hash_leaf();

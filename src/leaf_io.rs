@@ -655,12 +655,11 @@ impl LeafState {
     }
 
     fn is_small(&self) -> bool {
-        assert!(self.object_size != 0);
-        self.object_size < LEAF_SIZE
+        self.object_size > 0 && self.object_size < LEAF_SIZE
     }
 
     fn is_large(&self) -> bool {
-        ! self.is_small()
+        self.object_size > 0 && ! self.is_small()
     }
 
     fn can_read(&self) -> bool {
@@ -760,8 +759,12 @@ impl TubBuf2 {
     }
 
     pub fn resize_to_claimed_size(&mut self) {
-        self.state = LeafState::new(self.size());
-        if self.state.is_large() {
+        let size = self.size();
+        self.state = LeafState::new(size);
+        if size == 0 {  // Tombstone
+            eprintln!("tombstone");
+        }
+        else if self.state.is_large() {
             self.buf.resize(self.state.leaf_start, 0);
         }
         else {
@@ -790,9 +793,14 @@ impl TubBuf2 {
     }
 
     pub fn size(&self) -> u64 {
-        u64::from_le_bytes(
-            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
-        )
+        if self.len() == 0 {
+            0
+        }
+        else {
+            u64::from_le_bytes(
+                self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+            )
+        }
     }
 
     fn set_size(&mut self, size: u64) {
@@ -800,7 +808,12 @@ impl TubBuf2 {
     }
 
     pub fn preamble_size(&self) -> usize {
-        self.state.leaf_start
+        if self.state.object_size == 0 {
+            HEAD_LEN
+        }
+        else {
+            self.state.leaf_start
+        }
     }
 
     pub fn hash_leaf(&mut self) {
@@ -813,6 +826,15 @@ impl TubBuf2 {
     pub fn as_commit(&self) -> &[u8] {
         self.state.check_can_read();
         &self.buf[self.state.commit_range()]
+    }
+
+    pub fn as_leaf_hash(&self) -> &[u8] {
+        if self.state.object_size == 0 {
+            &self.buf[HEADER_LEN..HEAD_LEN]
+        }
+        else {
+            &self.buf[self.state.leaf_hash_range()]
+        }
     }
 
     pub fn as_leaf_hashes(&self) -> &[u8] {
@@ -849,6 +871,11 @@ impl TubBuf2 {
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
         self.state.check_can_write();
         &mut self.buf[self.state.tail_range()]
+    }
+
+    pub fn is_tombstone(&self) -> bool {
+        assert_eq!(self.len(), HEAD_LEN); 
+        self.size() == 0 && self.as_leaf_hash() == self.compute_tombstone()
     }
 
     pub fn is_small(&self) -> bool {

@@ -75,7 +75,6 @@ fn test_store_roundtrip() {
     store.delete_object(&b.hash).unwrap();
     store.reindex().unwrap();
     assert_eq!(store.len(), 1);
-
     let mut pb = store.path();
     pb.push(PACKFILE);
     let mut file = File::options().append(true).open(&pb).unwrap();

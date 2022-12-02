@@ -260,6 +260,7 @@ impl Store {
         TmpObject2::new(id, path)
     }
 
+
     pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
         let from = tmp.path;
@@ -322,71 +323,41 @@ impl Store {
     {
         self.index.clear();
         self.offset = 0;
-        let mut tt = TubBuf::new();
-        while let Ok(_) = self.file.read_exact_at(tt.as_mut_head(), self.offset) {
-            let hash = tt.hash();
-            let size = tt.size();
-            if size == 0 {
-                // Deletion tombstone
-                if ! tt.is_tombstone() {
-                    panic!("bad tombstone {}; offset={}", tt, self.offset);   
+        let mut tbuf = TubBuf2::new();
+        while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
+            tbuf.resize_to_claimed_size();
+            assert!(tbuf.len() != 0);
+            if tbuf.size() == 0 {
+                if ! tbuf.is_tombstone() {
+                    panic!("bad tombstone {}; offset={}", tbuf, self.offset);   
                 }
-                if self.index.remove(&hash) == None {
-                    panic!("{} not in index but tombstone found", tt);
+                if self.index.remove(&tbuf.hash()) == None {
+                    panic!("{} not in index but tombstone found", tbuf);
                 }
             }
             else {
-                if tt.is_large() {
-                    // More than one leaf, read in remaining leaf hashes
-                    tt.resize_to_claimed_size();
+                if tbuf.is_large() {
+                    // Read remaining leaf_hashes into TubBuf
                     self.file.read_exact_at(
-                        tt.as_mut_tail(), self.offset + HEAD_LEN as u64
+                        tbuf.as_mut_tail(), self.offset + HEAD_LEN as u64
                     )?;
                 }
-                if ! tt.is_valid() {
-                    panic!("not valid: {}; offset={}", tt, self.offset);
-                }
+                let size = tbuf.size();
+                let hash = tbuf.hash();
                 let entry = Entry::new(size, self.offset);
                 self.index.insert(hash, entry);
-                if tt.is_small() {
-                    // Only small objects are in self.file
+                if tbuf.is_small() {
                     self.offset += size;
                 }
             }
-            self.offset += tt.len() as u64;
-            tt.reset();
+            self.offset += tbuf.preamble_size() as u64;
         }
         // Was there any leftover?
-        let leftover = self.file.read_at(tt.as_mut_head(), self.offset)?;
+        let leftover = self.file.read_at(tbuf.as_mut_head(), self.offset)?;
         if leftover > 0 {
             // FIXME: should we write dangling bits to a backup file?
             eprintln!("Trunkcating to {} bytes", self.offset);
             self.file.set_len(self.offset)?;
-        }
-        Ok(())
-    }
-
-    pub fn reindex2(&mut self) -> io::Result<()>
-    {
-        self.index.clear();
-        self.offset = 0;
-        let mut tbuf = TubBuf2::new();
-        while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
-            tbuf.resize_to_claimed_size();
-            if tbuf.is_large() {
-                // Read remaining leaf_hashes into TubBuf
-                self.file.read_exact_at(
-                    tbuf.as_mut_tail(), self.offset + HEAD_LEN as u64
-                )?;
-            }
-            let size = tbuf.size();
-            let hash = tbuf.hash();
-            let entry = Entry::new(size, self.offset);
-            self.index.insert(hash, entry);
-            self.offset += tbuf.preamble_size() as u64;
-            if tbuf.is_small() {
-                self.offset += size;
-            }
         }
         Ok(())
     }
@@ -406,7 +377,7 @@ impl Store {
                 panic!("shit is broke, yo");
             }
         }
-        self.reindex2()?;
+        self.reindex()?;
         Ok(())
     }
 

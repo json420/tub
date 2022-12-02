@@ -168,7 +168,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
     let target = dir_or_cwd(target)?;
     if let Ok(mut store) = find_store(&target) {
         eprintln!("Using store {:?}", store.path());
-        store.reindex2()?;
+        store.reindex()?;
         Ok(store)
     }
     else {

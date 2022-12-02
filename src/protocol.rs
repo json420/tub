@@ -22,16 +22,24 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
     hash
 }
 
-pub fn hash_small_object(data: &[u8]) -> TubHash {
+pub fn hash_with_pers(data: &[u8], pers: &[u8]) -> TubHash {
     assert!(data.len() > 0);
     let mut h = blake3::Hasher::new();
-    h.update(b"Tub/small_object");  // <-- FIXME: Do more better than this
+    h.update(pers);  // <-- FIXME: Do more better than this
     h.update(data);
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
     h.finalize_xof().fill(&mut hash);
     hash
 }
 
+pub fn hash_small_object(data: &[u8]) -> TubHash {
+    hash_with_pers(data, b"Tub/small_object")
+}
+
+pub fn hash_leaf_hashes(data: &[u8]) -> TubHash {
+    assert!(data.len() % TUB_HASH_LEN == 0);
+    hash_with_pers(data, b"Tub/leaf_hash_list")
+}
 
 pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
     assert!(size > 0);
@@ -46,6 +54,16 @@ pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
     hash
 }
 
+pub fn hash_root2(size: u64, payload_hash: &TubHash) -> TubHash {
+    assert!(size > 0);
+    let mut h = blake3::Hasher::new();
+    h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
+    h.update(&size.to_le_bytes());
+    h.update(payload_hash);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
 
 pub fn hash_tombstone(hash: &TubHash) -> TubHash {
     let mut h = blake3::Hasher::new();
@@ -123,6 +141,29 @@ mod tests {
             }
             assert_eq!(set.len(), data.len() * 255 + 1);
         }
+    }
+
+    #[test]
+    fn test_hash_root2() {
+        let payload_hash = random_hash();
+
+        // Should be tied to size
+        let mut set: HashSet<TubHash> = HashSet::new();
+        for size in 1..COUNT + 1 {
+            set.insert(hash_root(size as u64, &payload_hash));
+        }
+        assert_eq!(set.len(), COUNT);
+
+        // Should be tied to every byte in payload_hash
+        let mut set: HashSet<TubHash> = HashSet::new();
+        for i in 0..payload_hash.len() {
+            for v in 0_u8..=255 {
+                let mut copy = payload_hash.clone();
+                copy[i] = v;
+                set.insert(hash_root(1, &copy));
+            }
+        }
+        assert_eq!(set.len(), payload_hash.len() * 255 + 1);
     }
 
     #[test]

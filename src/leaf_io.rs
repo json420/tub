@@ -24,9 +24,9 @@ pub fn new_leaf_buf() -> Vec<u8> {
 }
 
 
-pub fn hash_file(file: File, size: u64) -> io::Result<TubBuf2>
+pub fn hash_file(file: File, size: u64) -> io::Result<TubBuf>
 {
-    let mut tbuf = TubBuf2::new();
+    let mut tbuf = TubBuf::new();
     tbuf.resize(size);
     let mut reader = LeafReader2::new(tbuf, file);
     while let Some(buf) = reader.read_next_leaf()? {
@@ -360,7 +360,7 @@ const PREALLOC_LEN: usize = HEAD_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SI
 
 
 #[derive(Debug)]
-pub struct TubBuf2 {
+pub struct TubBuf {
     buf: Vec<u8>,
     state: LeafState,
 }
@@ -368,7 +368,7 @@ pub struct TubBuf2 {
 
 // When state.closed == true, don't allow access to mutable buffers
 // When state.size == 0, also don't allow access to read-only buffers
-impl TubBuf2 {
+impl TubBuf {
     pub fn new() -> Self {
         Self {
             buf: Vec::with_capacity(PREALLOC_LEN),
@@ -593,7 +593,7 @@ impl ReindexBuf {
     }
 }
 
-impl fmt::Display for TubBuf2 {
+impl fmt::Display for TubBuf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", db32enc_str(&self.hash()))
     }
@@ -608,12 +608,12 @@ impl fmt::Display for ReindexBuf {
 
 #[derive(Debug)]
 pub struct LeafReader2 {
-    pub tbuf: TubBuf2,
+    pub tbuf: TubBuf,
     pub file: File,
 }
 
 impl LeafReader2 {
-    pub fn new(tbuf: TubBuf2, file: File) -> Self {
+    pub fn new(tbuf: TubBuf, file: File) -> Self {
         Self {tbuf: tbuf, file: file}
     }
 
@@ -644,7 +644,7 @@ impl LeafReader2 {
         }
     }
 
-    pub fn finalize(mut self) -> TubBuf2 {
+    pub fn finalize(mut self) -> TubBuf {
         self.tbuf.finalize();
         self.tbuf
     }

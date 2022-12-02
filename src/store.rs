@@ -31,7 +31,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
-use crate::leaf_io::{TubBuf2, LeafReader2, TmpObject2, ReindexBuf};
+use crate::leaf_io::{TubBuf, LeafReader2, TmpObject2, ReindexBuf};
 
 
 macro_rules! other_err {
@@ -300,7 +300,7 @@ impl Store {
     {
         self.index.clear();
         self.offset = 0;
-        let mut tbuf = TubBuf2::new();
+        let mut tbuf = TubBuf::new();
         while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
             tbuf.resize_to_claimed_size();
             assert!(tbuf.len() != 0);
@@ -372,7 +372,7 @@ impl Store {
 
     pub fn repack(&mut self) -> io::Result<()> {
         let id = random_id();
-        let mut tbuf = TubBuf2::new();
+        let mut tbuf = TubBuf::new();
         let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
         for (_hash, entry) in self.index.iter() {
             assert!(entry.size > 0);
@@ -390,7 +390,7 @@ impl Store {
     }
 
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        let mut tbuf = TubBuf2::new();
+        let mut tbuf = TubBuf::new();
         for src in files.iter() {
             tbuf.resize(src.size);
             let mut reader = LeafReader2::new(tbuf, src.open()?);
@@ -412,7 +412,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn commit_object2(&mut self, tbuf: &TubBuf2) -> io::Result<bool>
+    pub fn commit_object2(&mut self, tbuf: &TubBuf) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&tbuf.hash()) {
             Ok(false)  // Already in object store

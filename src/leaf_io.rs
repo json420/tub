@@ -858,20 +858,19 @@ impl TubBuf2 {
         self.state.is_large()
     }
 
-    pub fn is_valid_pack_entry(&self) -> bool {
-        self.size() == self.state.object_size
+    pub fn has_valid_data(&self) -> bool {
+        self.buf[HEADER_LEN..HEADER_LEN + TUB_HASH_LEN] == self.compute_leaf()
     }
 
     pub fn is_valid_for_commit(&self) -> bool {
-        self.size() == self.state.object_size
-    }
-
-    pub fn has_valid_preamble(&self) -> bool {
-        self.size() == self.state.object_size
-    }
-
-    pub fn check_ready_for_commit(&self) {
-
+        let valid_preamble = self.size() == self.state.object_size
+        && self.hash() == self.compute_root();
+        if self.is_small() {
+            valid_preamble && self.has_valid_data()
+        }
+        else {
+            valid_preamble
+        }
     }
 
     pub fn finalize(&mut self) {

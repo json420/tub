@@ -380,37 +380,12 @@ impl Store {
         Ok(())
     }
 
-    pub fn repack(&mut self) -> io::Result<()> {
-        let id = random_id();
-        let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
-        let mut tt = TubBuf::new();
-        for (_hash, entry) in self.index.iter() {
-            tt.resize_for_copy(entry.size);
-            self.file.read_exact_at(tt.as_mut_buf(), entry.offset)?;
-            if tt.is_valid_for_copy() {
-                println!("{}", tt);
-                tmp.write_all(tt.as_buf())?;
-            }
-            tt.reset();
-        }
-        tmp.flush()?;
-        tmp.sync_all()?;
-        let dst_pb = self.pack_path();
-        fs::rename(&dst_pb, &self.old_pack_path())?;
-        fs::rename(&tmp_pb, &dst_pb)?;
-        self.file = File::options().read(true).append(true).open(dst_pb)?;
-        self.reindex()?;
-        Ok(())
-    }
-
     pub fn reindex2(&mut self) -> io::Result<()>
     {
         self.index.clear();
         self.offset = 0;
         let mut tbuf = TubBuf2::new();
-        let mut i = 0;
         while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
-            i += 1;
             tbuf.resize_to_claimed_size();
             if tbuf.is_large() {
                 // Read remaining leaf_hashes into TubBuf
@@ -430,7 +405,7 @@ impl Store {
         Ok(())
     }
 
-    pub fn repack2(&mut self) -> io::Result<()> {
+    pub fn repack(&mut self) -> io::Result<()> {
         let id = random_id();
         let mut tbuf = TubBuf2::new();
         let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
@@ -445,6 +420,7 @@ impl Store {
                 panic!("shit is broke, yo");
             }
         }
+        self.reindex2()?;
         Ok(())
     }
 

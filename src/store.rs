@@ -451,19 +451,20 @@ impl Store {
         for src in files.iter() {
             tbuf.resize(src.size);
             let mut reader = LeafReader2::new(tbuf, src.open()?);
-            if reader.is_small() {
+            tbuf = if reader.is_small() {
                 reader.read_in_small()?;
+                reader.finalize()
             }
             else {
                 let mut tmp = self.allocate_tmp2()?;
                 while let Some(buf) = reader.read_next_leaf()? {
                     tmp.write_all(buf)?;
                 }
-                self.finalize_tmp2(tmp, &[0_u8; 30])?;
-            }
-            tbuf = reader.finalize();
-            self.file.write_all(tbuf.as_commit());
-            //self.commit_object(&tbuf, NewObj::File(tmp))?;
+                let tbuf = reader.finalize();
+                self.finalize_tmp2(tmp, &tbuf.hash())?;
+                tbuf
+            };
+            self.commit_object2(&tbuf)?;
         }
         Ok(())
     }

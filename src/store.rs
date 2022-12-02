@@ -407,12 +407,12 @@ impl Store {
                 self.finalize_tmp2(tmp, &tbuf.hash())?;
                 tbuf
             };
-            self.commit_object2(&tbuf)?;
+            self.commit_object(&tbuf)?;
         }
         Ok(())
     }
 
-    pub fn commit_object2(&mut self, tbuf: &TubBuf) -> io::Result<bool>
+    pub fn commit_object(&mut self, tbuf: &TubBuf) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&tbuf.hash()) {
             Ok(false)  // Already in object store

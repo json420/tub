@@ -887,6 +887,7 @@ impl LeafReader2 {
     pub fn read_in_small(&mut self) -> io::Result<()> {
         assert!(self.tbuf.is_small());
         self.file.read_exact(self.tbuf.as_mut_leaf().unwrap())?;
+        self.tbuf.hash_leaf();
         Ok(())
     }
 
@@ -982,6 +983,7 @@ mod tests {
         }
 
         let state = LeafState::new(1);
+        assert_eq!(state.leaf_range(), 68..69);
         assert_eq!(state.commit_range(), 0..69);
         assert_eq!(state.is_small(), true);
         assert_eq!(state.is_large(), false);

@@ -260,7 +260,6 @@ impl Store {
         TmpObject2::new(id, path)
     }
 
-
     pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
         let from = tmp.path;
@@ -276,19 +275,6 @@ impl Store {
         let from = tmp.pb;
         let to = self.object_path(hash);
         fs::rename(&from, &to)
-    }
-
-    pub fn import_file(&mut self, file: File, size: u64) -> io::Result<(TubBuf, bool)>
-    {
-        let mut reader = LeafReader::new(file, size);
-        let mut tmp = self.allocate_tmp()?;
-        let mut buf = new_leaf_buf();
-        while let Some(_info) = reader.read_next_leaf(&mut buf)? {
-            tmp.write_leaf(&buf)?;
-        }
-        let tt = reader.finalize();
-        let new = self.commit_object(&tt, NewObj::File(tmp))?;
-        Ok((tt, new))
     }
 
     fn open_large(&self, id: &TubHash) -> io::Result<fs::File> {

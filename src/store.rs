@@ -31,7 +31,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
-use crate::leaf_io::{TubBuf, LeafReader2, TmpObject2, ReindexBuf};
+use crate::leaf_io::{TubBuf, LeafReader, TmpObject, ReindexBuf};
 
 
 macro_rules! other_err {
@@ -240,15 +240,15 @@ impl Store {
         Ok((pb, file))
     }
 
-    pub fn allocate_tmp2(&self) -> io::Result<TmpObject2>
+    pub fn allocate_tmp2(&self) -> io::Result<TmpObject>
     {
         let id = random_id();
         let path = self.tmp_path(&id);
-        TmpObject2::new(id, path)
+        TmpObject::new(id, path)
     }
 
 
-    pub fn finalize_tmp2(&mut self, tmp: TmpObject2, hash: &TubHash) -> io::Result<()>
+    pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
         let from = tmp.pb;
         let to = self.object_path(hash);
@@ -393,7 +393,7 @@ impl Store {
         let mut tbuf = TubBuf::new();
         for src in files.iter() {
             tbuf.resize(src.size);
-            let mut reader = LeafReader2::new(tbuf, src.open()?);
+            let mut reader = LeafReader::new(tbuf, src.open()?);
             tbuf = if reader.is_small() {
                 reader.read_in_small()?;
                 reader.finalize()
@@ -404,7 +404,7 @@ impl Store {
                     tmp.write_all(buf)?;
                 }
                 let tbuf = reader.finalize();
-                self.finalize_tmp2(tmp, &tbuf.hash())?;
+                self.finalize_tmp(tmp, &tbuf.hash())?;
                 tbuf
             };
             self.commit_object(&tbuf)?;

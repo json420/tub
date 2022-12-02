@@ -10,3 +10,10 @@ fn test_tub_buf2() {
     assert_eq!(tbuf.len(), 0);
 }
 
+#[test]
+fn test_reindex_buf() {
+    let mut rbuf = ReindexBuf::new();
+    //assert!(! rbuf.is_object());
+    //assert!(! rbuf.is_tombstone());
+}
+

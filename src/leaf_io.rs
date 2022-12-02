@@ -14,7 +14,7 @@ use std::ops;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{hash_leaf, hash_root, hash_tombstone};
+use crate::protocol::{hash_leaf, hash_root, hash_tombstone, hash_root2};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -28,7 +28,7 @@ pub fn hash_file(file: File, size: u64) -> io::Result<TubBuf>
 {
     let mut tbuf = TubBuf::new();
     tbuf.resize(size);
-    let mut reader = LeafReader2::new(tbuf, file);
+    let mut reader = LeafReader::new(tbuf, file);
     while let Some(buf) = reader.read_next_leaf()? {
     
     }
@@ -554,19 +554,15 @@ impl ReindexBuf {
     }
 
     pub fn is_object(&self) -> bool {
-        true
+        self.size() != 0 && self.hash() == hash_root2(self.size(), &self.payload_hash())
     }
 
     pub fn is_tombstone(&self) -> bool {
-        false
+        self.size() == 0 && self.payload_hash() == hash_tombstone(&self.hash())
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8]{
         &mut self.buf
-    }
-
-    pub fn as_hash(&self) -> &[u8]{
-        &self.buf[0..TUB_HASH_LEN]
     }
 
     pub fn size(&self) -> u64 {
@@ -577,6 +573,10 @@ impl ReindexBuf {
 
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+    }
+
+    pub fn payload_hash(&self) -> TubHash {
+        self.buf[HEADER_LEN..HEAD_LEN].try_into().expect("oops")
     }
 
     pub fn offset_size(&self) -> u64 {
@@ -607,12 +607,12 @@ impl fmt::Display for ReindexBuf {
 
 
 #[derive(Debug)]
-pub struct LeafReader2 {
+pub struct LeafReader {
     pub tbuf: TubBuf,
     pub file: File,
 }
 
-impl LeafReader2 {
+impl LeafReader {
     pub fn new(tbuf: TubBuf, file: File) -> Self {
         Self {tbuf: tbuf, file: file}
     }
@@ -652,17 +652,17 @@ impl LeafReader2 {
 
 
 #[derive(Debug)]
-pub struct TmpObject2 {
+pub struct TmpObject {
     pub id: TubId,
     pub pb: PathBuf,
     file: File,
 }
 
-impl TmpObject2 {
+impl TmpObject {
     pub fn new(id: TubId, pb: PathBuf) -> io::Result<Self>
     {
         let file = File::options().append(true).create_new(true).open(&pb)?;
-        Ok(TmpObject2 {id: id, pb: pb, file: file})
+        Ok(TmpObject {id: id, pb: pb, file: file})
     }
 
     pub fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {

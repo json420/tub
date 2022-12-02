@@ -61,6 +61,10 @@ pub fn get_leaf_count(size: u64) -> u64 {
     }
 }
 
+pub fn get_leaf_payload_size(size: u64) -> u64 {
+    TUB_HASH_LEN as u64 * get_leaf_count(size)
+}
+
 /// Returns size of the root hash + u64 + leaf_hashes.
 pub fn get_preamble_size(size: u64) -> u64 {
     (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
@@ -921,16 +925,16 @@ impl ReindexBuf {
         }
     }
 
+    pub fn is_small(&self) -> bool {
+        self.size() < LEAF_SIZE
+    }
+
     pub fn is_object(&self) -> bool {
         true
     }
 
     pub fn is_tombstone(&self) -> bool {
         false
-    }
-
-    pub fn payload_size(&self) -> u64 {
-        8
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8]{
@@ -950,9 +954,13 @@ impl ReindexBuf {
     pub fn hash(&self) -> TubHash {
         self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
     }
-    
+
     pub fn offset_size(&self) -> u64 {
-        7
+        HEAD_LEN as u64 + if self.is_small() {
+            self.size()
+        } else {
+            get_leaf_payload_size(self.size())
+        }
     }
 
     pub fn reset(&mut self) {

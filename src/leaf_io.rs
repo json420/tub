@@ -691,6 +691,11 @@ impl LeafState {
         0..HEAD_LEN
     }
 
+    fn tail_range(&self) -> ops::Range<usize> {
+        assert!(self.is_large());
+        HEAD_LEN..self.leaf_start
+    }
+
     fn hash_range(&self) -> ops::Range<usize> {
         0..TUB_HASH_LEN
     }
@@ -754,7 +759,13 @@ impl TubBuf2 {
     }
 
     pub fn resize_to_claimed_size(&mut self) {
-        self.resize(self.size());
+        self.state = LeafState::new(self.size());
+        if self.state.is_large() {
+            self.buf.resize(self.state.leaf_start, 0);
+        }
+        else {
+            assert_eq!(self.buf.len(), HEAD_LEN);
+        }
     }
 
     fn compute_leaf(&self) -> TubHash {
@@ -785,6 +796,10 @@ impl TubBuf2 {
 
     fn set_size(&mut self, size: u64) {
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
+    }
+
+    pub fn preamble_size(&self) -> usize {
+        self.state.leaf_start
     }
 
     pub fn hash_leaf(&mut self) {
@@ -825,13 +840,14 @@ impl TubBuf2 {
     }
 
     pub fn as_mut_head(&mut self) -> &mut [u8] {
-        self.state.check_can_write();
-        &mut self.buf[self.state.head_range()]
+        self.buf.resize(HEAD_LEN, 0);
+        //self.state.check_can_write();
+        &mut self.buf[0..HEAD_LEN]
     }
 
     pub fn as_mut_tail(&mut self) -> &mut [u8] {
         self.state.check_can_write();
-        &mut self.buf[self.state.head_range()]
+        &mut self.buf[self.state.tail_range()]
     }
 
     pub fn is_small(&self) -> bool {
@@ -861,6 +877,12 @@ impl TubBuf2 {
     pub fn finalize(&mut self) {
         self.set_size(self.state.object_size);
         self.set_hash(&self.compute_root());
+    }
+}
+
+impl fmt::Display for TubBuf2 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", db32enc_str(&self.hash()))
     }
 }
 

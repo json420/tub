@@ -408,21 +408,23 @@ impl Store {
         self.index.clear();
         self.offset = 0;
         let mut tbuf = TubBuf2::new();
+        let mut i = 0;
         while let Ok(_) = self.file.read_exact_at(tbuf.as_mut_head(), self.offset) {
+            i += 1;
+            tbuf.resize_to_claimed_size();
             if tbuf.is_large() {
                 // Read remaining leaf_hashes into TubBuf
                 self.file.read_exact_at(
                     tbuf.as_mut_tail(), self.offset + HEAD_LEN as u64
                 )?;
             }
-            if tbuf.is_valid_pack_entry() {
-                let size = tbuf.size();
-                let hash = tbuf.hash();
-                let entry = Entry::new(size, self.offset);
-                self.index.insert(hash, entry);
-            }
-            else {
-                panic!("oopsy doopsy");
+            let size = tbuf.size();
+            let hash = tbuf.hash();
+            let entry = Entry::new(size, self.offset);
+            self.index.insert(hash, entry);
+            self.offset += tbuf.preamble_size() as u64;
+            if tbuf.is_small() {
+                self.offset += size;
             }
         }
         Ok(())

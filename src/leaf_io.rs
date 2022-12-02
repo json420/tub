@@ -907,7 +907,67 @@ impl TubBuf2 {
     }
 }
 
+pub struct ReindexBuf {
+    buf: Vec<u8>,
+}
+
+
+impl ReindexBuf {
+    pub fn new() -> Self {
+        let mut buf = Vec::with_capacity(HEAD_LEN);
+        buf.resize(0, HEAD_LEN);
+        Self {
+            buf: Vec::with_capacity(HEAD_LEN),
+        }
+    }
+
+    pub fn is_object(&self) -> bool {
+        true
+    }
+
+    pub fn is_tombstone(&self) -> bool {
+        false
+    }
+
+    pub fn payload_size(&self) -> u64 {
+        8
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8]{
+        &mut self.buf
+    }
+
+    pub fn as_hash(&self) -> &[u8]{
+        &self.buf[0..TUB_HASH_LEN]
+    }
+
+    pub fn size(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+        )
+    }
+
+    pub fn hash(&self) -> TubHash {
+        self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+    }
+    
+    pub fn offset_size(&self) -> u64 {
+        7
+    }
+
+    pub fn reset(&mut self) {
+        self.buf.clear();
+        self.buf.resize(HEAD_LEN, 0);
+    }
+}
+
 impl fmt::Display for TubBuf2 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", db32enc_str(&self.hash()))
+    }
+}
+
+impl fmt::Display for ReindexBuf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", db32enc_str(&self.hash()))
     }

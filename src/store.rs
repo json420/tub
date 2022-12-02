@@ -31,7 +31,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubBuf, TmpObject, get_preamble_size};
-use crate::leaf_io::{TubBuf2, LeafReader2, TmpObject2};
+use crate::leaf_io::{TubBuf2, LeafReader2, TmpObject2, ReindexBuf};
 
 
 macro_rules! other_err {
@@ -354,6 +354,37 @@ impl Store {
         }
         // Was there any leftover?
         let leftover = self.file.read_at(tbuf.as_mut_head(), self.offset)?;
+        if leftover > 0 {
+            // FIXME: should we write dangling bits to a backup file?
+            eprintln!("Trunkcating to {} bytes", self.offset);
+            self.file.set_len(self.offset)?;
+        }
+        Ok(())
+    }
+
+    pub fn reindex2(&mut self) -> io::Result<()>
+    {
+        self.index.clear();
+        self.offset = 0;
+        let mut rbuf = ReindexBuf::new();
+        while let Ok(_) = self.file.read_exact_at(rbuf.as_mut_buf(), self.offset) {
+            if rbuf.is_object() {
+                let entry = Entry::new(rbuf.size(), self.offset);
+                self.index.insert(rbuf.hash(), entry);
+            }
+            else if rbuf.is_tombstone() {
+                if self.index.remove(&rbuf.hash()) == None {
+                    panic!("{} not in index but tombstone found", self.offset);
+                }
+            }
+            else {
+                panic!("should not be reached");
+            }
+            self.offset += rbuf.offset_size();
+            rbuf.reset();
+        }
+        // Was there any leftover?
+        let leftover = self.file.read_at(rbuf.as_mut_buf(), self.offset)?;
         if leftover > 0 {
             // FIXME: should we write dangling bits to a backup file?
             eprintln!("Trunkcating to {} bytes", self.offset);

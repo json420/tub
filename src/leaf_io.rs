@@ -846,6 +846,7 @@ impl TubBuf2 {
 
     pub fn finalize(&mut self) {
         self.set_size(self.state.object_size);
+        self.set_hash(&self.compute_root());
     }
 }
 

@@ -266,13 +266,15 @@ impl Store {
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
         let mut tbuf = TubBuf2::new();
         for src in files.iter() {
+            //println!("{:?}", src.path);
             tbuf.resize(src.size);
             let mut reader = LeafReader2::new(tbuf, src.open()?);
-            let mut tmp = self.allocate_tmp()?;
+            //let mut tmp = self.allocate_tmp()?;
             while let Some(buf) = reader.read_next_leaf()? {
-                tmp.write_leaf(buf)?;
+                
             }
             tbuf = reader.finalize();
+            self.file.write_all(tbuf.as_commit());
             //self.commit_object(&tbuf, NewObj::File(tmp))?;
         }
         Ok(())

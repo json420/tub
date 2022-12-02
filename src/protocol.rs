@@ -22,6 +22,16 @@ pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
     hash
 }
 
+pub fn hash_small_object(data: &[u8]) -> TubHash {
+    assert!(data.len() > 0);
+    let mut h = blake3::Hasher::new();
+    h.update(b"Tub/small_object");  // <-- FIXME: Do more better than this
+    h.update(data);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
+
 
 pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
     assert!(size > 0);
@@ -76,6 +86,32 @@ mod tests {
                     let mut copy = data.clone();
                     copy[i] = v;
                     let newhash = hash_leaf(0, &copy);
+                    set.insert(newhash);
+                    if data[i] == copy[i] {
+                        assert_eq!(hash, newhash);
+                    }
+                    else {
+                        assert_ne!(hash, newhash);
+                    }
+                }
+            }
+            assert_eq!(set.len(), data.len() * 255 + 1);
+        }
+    }
+
+    #[test]
+    fn test_hash_small_object() {
+        for size in [1, 2, 42, 69, 420] {
+            let data = random_object(size);
+
+            // Should be tied every byte in data
+            let mut set: HashSet<TubHash> = HashSet::new();
+            let hash = hash_small_object(&data);
+            for i in 0..data.len() {
+                for v in 0_u8..=255 {
+                    let mut copy = data.clone();
+                    copy[i] = v;
+                    let newhash = hash_small_object(&copy);
                     set.insert(newhash);
                     if data[i] == copy[i] {
                         assert_eq!(hash, newhash);

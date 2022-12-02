@@ -24,12 +24,13 @@ pub fn new_leaf_buf() -> Vec<u8> {
 }
 
 
-pub fn hash_file(file: File) -> io::Result<TubBuf>
+pub fn hash_file(file: File, size: u64) -> io::Result<TubBuf2>
 {
-    let mut reader = LeafReader::new(file, 0);
-    let mut buf = new_leaf_buf();
-    while let Some(_info) = reader.read_next_leaf(&mut buf)? {
-        //eprintln!("leaf {}", info.index);
+    let mut tbuf = TubBuf2::new();
+    tbuf.resize(size);
+    let mut reader = LeafReader2::new(tbuf, file);
+    while let Some(buf) = reader.read_next_leaf()? {
+    
     }
     Ok(reader.finalize())
 }

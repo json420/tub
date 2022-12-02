@@ -214,8 +214,9 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
 fn cmd_hash(path: &Path) -> io::Result<()>
 {
     let pb = path.canonicalize()?;
+    let size = fs::metadata(&pb)?.len();
     let file = fs::File::open(&pb)?;
-    let tt = hash_file(file)?;
+    let tt = hash_file(file, size)?;
     println!("{}", tt);
     Ok(())
 }

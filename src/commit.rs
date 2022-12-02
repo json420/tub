@@ -31,7 +31,7 @@ mod tests {
         let (_tmp, mut store) = Store::new_tmp();
         store.reindex().unwrap();
         for _ in 0..ROUNDS {
-            store.add_object(&random_hash()).unwrap();
+            //store.add_object(&random_hash()).unwrap();
         }
         store
     }

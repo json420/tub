@@ -30,7 +30,7 @@ use crate::importer::Scanner;
 use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
-use crate::leaf_io::{Object, LeafReader, new_leaf_buf, TubBuf, TmpObject, get_preamble_size};
+use crate::leaf_io::{Object, get_preamble_size};
 use crate::leaf_io::{TubBuf2, LeafReader2, TmpObject2, ReindexBuf};
 
 
@@ -39,7 +39,6 @@ macro_rules! other_err {
         Err(io::Error::new(io::ErrorKind::Other, $msg))
     }
 }
-
 
 
 /// An entry in the HashMap index.
@@ -159,11 +158,6 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
 }
 
 
-pub enum NewObj<'a> {
-    File(TmpObject),
-    Mem(&'a [u8]),
-}
-
 
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
@@ -246,13 +240,6 @@ impl Store {
         Ok((pb, file))
     }
 
-    pub fn allocate_tmp(&self) -> io::Result<TmpObject>
-    {
-        let id = random_id();
-        let path = self.tmp_path(&id);
-        TmpObject::new(id, path)
-    }
-
     pub fn allocate_tmp2(&self) -> io::Result<TmpObject2>
     {
         let id = random_id();
@@ -260,16 +247,6 @@ impl Store {
         TmpObject2::new(id, path)
     }
 
-
-    pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
-    {
-        let from = tmp.path;
-        let to = self.object_path(hash);
-        let mut to_parent = to.clone();
-        to_parent.pop();
-        fs::create_dir_all(&to_parent)?;
-        fs::rename(&from, &to)
-    }
 
     pub fn finalize_tmp2(&mut self, tmp: TmpObject2, hash: &TubHash) -> io::Result<()>
     {
@@ -446,50 +423,7 @@ impl Store {
         }
     }
 
-    pub fn commit_object(&mut self, top: &TubBuf, obj: NewObj) -> io::Result<bool>
-    {
-        if let Some(_entry) = self.index.get(&top.hash()) {
-            match obj {
-                NewObj::File(mut tmp) => {
-                    tmp.remove_file()?;
-                }
-                _ => {}
-            }
-            Ok(false)  // Already in object store
-        }
-        else {
-            let entry = Entry::new(top.size(), self.offset);
-            match obj {
-                NewObj::File(tmp) => {
-                    if top.is_small() {
-                        println!("{:?}", tmp.path);
-                        assert!(tmp.is_small());
-                        return self.commit_object(top, NewObj::Mem(&tmp.into_data()));
-                    }
-                    assert!(top.is_large());
-                    self.finalize_tmp(tmp, &top.hash())?;
-                    self.file.write_all(top.as_buf())?;
-                    self.offset += top.len() as u64;
-                }
-                NewObj::Mem(data) => {
-                    if top.is_large() {
-                        let mut tmp = self.allocate_tmp()?;
-                        tmp.write_all(data)?;
-                        return self.commit_object(top, NewObj::File(tmp));
-                    }
-                    assert!(top.is_small());
-                    self.file.write_all_vectored(&mut [
-                        io::IoSlice::new(top.as_buf()),
-                        io::IoSlice::new(data),
-                    ])?;
-                    self.offset += (top.len() + data.len()) as u64;
-                }
-            }
-            self.index.insert(top.hash(), entry);
-            Ok(true)
-        }
-    }
-
+/*  FIXME
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubBuf, bool)> {
         // FIXME: no reason not to handle the large object case as well
         let mut tt = TubBuf::new();
@@ -497,6 +431,7 @@ impl Store {
         let new = self.commit_object(&tt, NewObj::Mem(data))?;
         Ok((tt, new))
     }
+*/
 
     pub fn get_object(&mut self, id: &TubHash, _verify: bool) -> io::Result<Option<Vec<u8>>>
     {
@@ -696,18 +631,5 @@ mod tests {
         assert_eq!(dirs[1023], "YY");
     }
 
-    #[test]
-    fn test_store() {
-
-    }
-
-    #[test]
-    fn test_store_large() {
-        let (_tmp, store) = Store::new_tmp();
-        let id = random_hash();
-        assert!(store.open_large(&id).is_err());
-        assert!(store.remove_large(&id).is_err());
-        //assert!(store.open(&id).is_err());
-    }
 }
 

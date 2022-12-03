@@ -158,6 +158,15 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
 }
 
 
+fn get_newmark(new: bool) -> String {
+    let m = if new {" "} else {"!"};
+    String::from(m)
+}
+
+fn get_largemark(large: bool) -> String {
+    let m = if large {"L"} else {" "};
+    String::from(m)
+}
 
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
@@ -349,6 +358,7 @@ impl Store {
                 panic!("shit is broke, yo");
             }
         }
+        tmp.sync_all();
         fs::rename(self.pack_path(), self.old_pack_path())?;
         fs::rename(&tmp_pb, self.pack_path())?;
         self.file = File::options().read(true).append(true).open(self.pack_path())?;
@@ -374,7 +384,10 @@ impl Store {
                 self.finalize_tmp(tmp, &tbuf.hash())?;
                 tbuf
             };
-            self.commit_object(&tbuf)?;
+            let new = self.commit_object(&tbuf)?;
+            println!("{} {}{} {}   {:?}", tbuf,
+                get_largemark(tbuf.is_large()), get_newmark(new), src.size, src.path
+            );
         }
         Ok(())
     }

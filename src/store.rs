@@ -383,15 +383,13 @@ impl Store {
         }
     }
 
-/*  FIXME
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubBuf, bool)> {
         // FIXME: no reason not to handle the large object case as well
-        let mut tt = TubBuf::new();
-        tt.hash_data(data);
-        let new = self.commit_object(&tt, NewObj::Mem(data))?;
-        Ok((tt, new))
+        let mut tbuf = TubBuf::new();
+        tbuf.hash_data(data);
+        let new = self.commit_object(&tbuf)?;
+        Ok((tbuf, new))
     }
-*/
 
     pub fn get_object(&mut self, id: &TubHash, _verify: bool) -> io::Result<Option<Vec<u8>>>
     {

@@ -497,6 +497,16 @@ impl TubBuf {
         }
     }
 
+    pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
+        if self.is_large() {
+            panic!("FIXME: large objects not yet supported");
+        }
+        self.resize(data.len() as u64);
+        self.buf[self.state.leaf_range()].copy_from_slice(data);
+        self.finalize();
+        self.hash()
+    }
+
     pub fn is_tombstone(&self) -> bool {
         assert_eq!(self.len(), HEAD_LEN); 
         self.size() == 0 && self.as_leaf_hash() == self.compute_tombstone()

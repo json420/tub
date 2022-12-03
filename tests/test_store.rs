@@ -4,10 +4,10 @@ use std::io::prelude::*;
 use std::fs::File;
 use bathtub_db::base::*;
 use bathtub_db::store::Store;
-//use bathtub_db::leaf_io::TubBuf;
+use bathtub_db::leaf_io::TubBuf;
 use bathtub_db::util::{random_hash, random_small_object};
 
-/*
+
 struct RandObj {
     data: Vec<u8>,
     hash: TubHash,
@@ -28,17 +28,15 @@ fn mk_rand_obj_list(count: usize) -> Vec<RandObj> {
     }
     list
 }
-*/
+
 
 
 #[test]
 fn test_get_object() {
-    /*
     let (_tmp, mut store) = Store::new_tmp();
     store.reindex().unwrap();
     let ch = random_hash();
     assert!(store.get_object(&ch, false).is_ok());
-    */
 }
 
 
@@ -93,7 +91,7 @@ fn test_store_roundtrip() {
 
 #[test]
 fn test_store_reindex() {
-/*
+
     let (_tmp, mut store) = Store::new_tmp();
     let count = 999;
     let list = mk_rand_obj_list(count);
@@ -141,6 +139,6 @@ fn test_store_reindex() {
     for hash in del.iter() {
         assert_eq!(store.delete_object(hash).unwrap(), false);
     }
-*/
+
 }
 

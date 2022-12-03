@@ -343,7 +343,7 @@ impl Store {
             }
         }
         fs::rename(self.pack_path(), self.old_pack_path())?;
-        fs::rename(&tmp_pb, self.pack_path());
+        fs::rename(&tmp_pb, self.pack_path())?;
         self.file = File::options().read(true).append(true).open(self.pack_path())?;
         self.reindex()?;
         Ok(())

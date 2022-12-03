@@ -336,15 +336,6 @@ impl LeafState {
         assert!(self.can_write());
     }
 
-    fn head_range(&self) -> ops::Range<usize> {
-        0..HEAD_LEN
-    }
-
-    fn tail_range(&self) -> ops::Range<usize> {
-        assert!(self.is_large());
-        HEAD_LEN..self.leaf_start
-    }
-
     fn hash_range(&self) -> ops::Range<usize> {
         0..TUB_HASH_LEN
     }
@@ -407,20 +398,6 @@ impl TubBuf {
         self.buf.resize(self.state.leaf_stop, 0);
     }
 
-    pub fn resize_to_claimed_size(&mut self) {
-        let size = self.size();
-        self.state = LeafState::new(size);
-        if size == 0 {  // Tombstone
-            eprintln!("tombstone");
-        }
-        else if self.state.is_large() {
-            self.buf.resize(self.state.leaf_start, 0);
-        }
-        else {
-            assert_eq!(self.buf.len(), HEAD_LEN);
-        }
-    }
-
     fn compute_leaf(&self) -> TubHash {
         hash_leaf(self.state.leaf_index, self.as_leaf())
     }
@@ -454,15 +431,6 @@ impl TubBuf {
 
     fn set_size(&mut self, size: u64) {
         self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
-    }
-
-    pub fn preamble_size(&self) -> usize {
-        if self.state.object_size == 0 {
-            HEAD_LEN
-        }
-        else {
-            self.state.leaf_start
-        }
     }
 
     pub fn hash_leaf(&mut self) {
@@ -509,17 +477,6 @@ impl TubBuf {
         else {
             None
         }
-    }
-
-    pub fn as_mut_head(&mut self) -> &mut [u8] {
-        self.buf.resize(HEAD_LEN, 0);
-        //self.state.check_can_write();
-        &mut self.buf[0..HEAD_LEN]
-    }
-
-    pub fn as_mut_tail(&mut self) -> &mut [u8] {
-        self.state.check_can_write();
-        &mut self.buf[self.state.tail_range()]
     }
 
     pub fn is_tombstone(&self) -> bool {

@@ -335,24 +335,11 @@ impl LeafState {
         assert!(self.can_write());
     }
 
-    fn hash_range(&self) -> ops::Range<usize> {
-        0..TUB_HASH_LEN
-    }
-
-    fn size_range(&self) -> ops::Range<usize> {
-        TUB_HASH_LEN..HEADER_LEN
-    }
-
-    fn payload_hash_range(&self) -> ops::Range<usize> {
-        HEADER_LEN..HEAD_LEN
-    }
-
     fn leaf_hash_range(&self) -> ops::Range<usize> {
         self.leaf_hash_start..self.leaf_hash_stop
     }
 
     fn leaf_hashes_range(&self) -> ops::Range<usize> {
-        
         HEAD_LEN..self.leaf_start
     }
 
@@ -413,9 +400,6 @@ impl TubBuf {
     }
 
     fn compute_payload(&self) -> TubHash {
-        if self.as_payload().len() == 0 {
-            panic!("{:?}", self.state);
-        }
         hash_payload(self.state.object_size, self.as_payload())
     }
 
@@ -428,30 +412,30 @@ impl TubBuf {
     }
 
     pub fn hash(&self) -> TubHash {
-        self.buf[self.state.hash_range()].try_into().expect("oops")
+        self.buf[ROOT_HASH_RANGE].try_into().expect("oops")
     }
 
     fn set_hash(&mut self, hash: &TubHash) {
-        self.buf[self.state.hash_range()].copy_from_slice(hash);
+        self.buf[ROOT_HASH_RANGE].copy_from_slice(hash);
     }
 
     pub fn payload_hash(&self) -> TubHash {
-        self.buf[self.state.payload_hash_range()].try_into().expect("oops")
+        self.buf[PAYLOAD_HASH_RANGE].try_into().expect("oops")
     }
 
     fn set_payload_hash(&mut self, hash: &TubHash) {
-        self.buf[self.state.payload_hash_range()].copy_from_slice(hash);
+        self.buf[PAYLOAD_HASH_RANGE].copy_from_slice(hash);
     }
 
     pub fn size(&self) -> u64 {
         u64::from_le_bytes(
-            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+            self.buf[SIZE_RANGE].try_into().expect("oops")
         )
 
     }
 
     fn set_size(&mut self, size: u64) {
-        self.buf[TUB_HASH_LEN..HEADER_LEN].copy_from_slice(&size.to_le_bytes());
+        self.buf[SIZE_RANGE].copy_from_slice(&size.to_le_bytes());
     }
 
     pub fn hash_leaf(&mut self) {
@@ -574,16 +558,16 @@ impl ReindexBuf {
     pub fn size(&self) -> u64 {
         assert_ne!(self.buf.len(), 0);
         u64::from_le_bytes(
-            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+            self.buf[SIZE_RANGE].try_into().expect("oops")
         )
     }
 
     pub fn hash(&self) -> TubHash {
-        self.buf[0..TUB_HASH_LEN].try_into().expect("oops")
+        self.buf[ROOT_HASH_RANGE].try_into().expect("oops")
     }
 
     pub fn payload_hash(&self) -> TubHash {
-        self.buf[HEADER_LEN..HEAD_LEN].try_into().expect("oops")
+        self.buf[PAYLOAD_HASH_RANGE].try_into().expect("oops")
     }
 
     pub fn offset_size(&self) -> u64 {
@@ -783,9 +767,6 @@ mod tests {
             let state = LeafState::new(size);
             assert!(state.is_small());
             assert_eq!(state.leaf_index, 0);
-            assert_eq!(state.hash_range(), 0..30);
-            assert_eq!(state.size_range(), 30..38);
-            assert_eq!(state.payload_hash_range(), 38..68);
             assert_eq!(state.leaf_hashes_range(), 68..68);
             assert_eq!(state.leaf_range(), 68..68 + size as usize);
             assert_eq!(state.payload_range(), state.leaf_range());
@@ -797,9 +778,6 @@ mod tests {
             assert!(state.is_large());
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
             assert_eq!(state.leaf_index, 0);
-            assert_eq!(state.hash_range(), 0..30);
-            assert_eq!(state.size_range(), 30..38);
-            assert_eq!(state.payload_hash_range(), 38..68);
             assert_eq!(state.leaf_hashes_range(), 68..128);
             assert_eq!(state.leaf_range(), 128..128 + LEAF_SIZE as usize);
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
@@ -810,9 +788,6 @@ mod tests {
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
             assert_eq!(state, LeafState::new_raw(size, 1));
             assert_eq!(state.leaf_index, 1);
-            assert_eq!(state.hash_range(), 0..30);
-            assert_eq!(state.size_range(), 30..38);
-            assert_eq!(state.payload_hash_range(), 38..68);
             assert_eq!(state.leaf_hashes_range(), 68..128);
             assert_eq!(state.leaf_range(), 128..128 + (size - LEAF_SIZE) as usize);
             assert_eq!(state.commit_range(), 0..128);

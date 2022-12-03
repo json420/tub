@@ -72,6 +72,13 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
+    #[command(about = "Super scary command to delete 100 random objects")]
+    DelRandom {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
+
     #[command(about = "Delete object from object store")]
     DelObject {
         #[arg(help="Source directory (defaults to current CWD)")]
@@ -118,6 +125,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::ListObjects {tub} => {
             cmd_list_objects(tub)
+        }
+        Commands::DelRandom {tub} => {
+            cmd_del_random(tub)
         }
         Commands::DelObject {tub, hash} => {
             cmd_obj_del(tub, hash)
@@ -227,11 +237,23 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     let mut keys = tub.keys();
     keys.sort();
     for hash in keys {
-        println!("{}", db32enc_str(&hash));
+        //println!("{}", db32enc_str(&hash));
     }
     eprintln!("{} objects in store", tub.len());
     Ok(())
 }
+
+
+fn cmd_del_random(tub: OptPath) -> io::Result<()>
+{
+    let mut tub = get_tub(tub)?;
+    for hash in tub.keys().iter().take(100) {
+        tub.delete_object(hash)?;
+    }
+    eprintln!("{} objects in store", tub.len());
+    Ok(())
+}
+
 
 fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
 {

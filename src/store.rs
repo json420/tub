@@ -260,8 +260,9 @@ impl Store {
     }
 
     fn remove_large(&self, id: &TubHash) -> io::Result<()> {
-        eprintln!("Deleting {}", db32enc_str(id));
-        fs::remove_file(self.object_path(id))
+        let pb = self.object_path(id);
+        eprintln!("Deleting {:?}", pb);
+        fs::remove_file(pb)
     }
 
     pub fn open(&self, hash: &TubHash) -> io::Result<Option<Object>> {
@@ -300,6 +301,7 @@ impl Store {
     {
         self.index.clear();
         self.offset = 0;
+        let mut tombstones = 0_u64;
         let mut rbuf = ReindexBuf::new();
         while let Ok(_) = self.file.read_exact_at(rbuf.as_mut_buf(), self.offset) {
             if rbuf.is_object() {
@@ -307,6 +309,8 @@ impl Store {
                 self.index.insert(rbuf.hash(), entry);
             }
             else if rbuf.is_tombstone() {
+                tombstones += 1;
+                println!("Tombstone: {}", rbuf);
                 if self.index.remove(&rbuf.hash()) == None {
                     panic!("{} not in index but tombstone found", self.offset);
                 }
@@ -316,6 +320,9 @@ impl Store {
             }
             self.offset += rbuf.offset_size();
             rbuf.reset();
+        }
+        if tombstones > 0 {
+            eprintln!("Found {} tombstones", tombstones);
         }
         // Was there any leftover?
         let leftover = self.file.read_at(rbuf.as_mut_buf(), self.offset)?;

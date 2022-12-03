@@ -228,8 +228,8 @@ struct LeafState {
     file_stop: u64,
     leaf_start: usize,
     leaf_stop: usize,
-    leaf_hash_start: usize,
-    leaf_hash_stop: usize,
+    dst_hash_start: usize,
+    dst_hash_stop: usize,
 }
 
 
@@ -244,8 +244,29 @@ impl LeafState {
                 file_stop: 0,
                 leaf_start: 0,
                 leaf_stop: 0,
-                leaf_hash_start: 0,
-                leaf_hash_stop: 0,
+                dst_hash_start: 0,
+                dst_hash_stop: 0,
+            }
+        }
+        else if object_size <= LEAF_SIZE {
+            let closed = leaf_index > 0;
+            let leaf_index = 0;
+            let file_start = 0;
+            let file_stop = object_size;
+            let leaf_start = HEAD_LEN;
+            let leaf_stop = leaf_start + object_size as usize;
+            let dst_hash_start = HEADER_LEN;
+            let dst_hash_stop = HEAD_LEN;
+            Self {
+                closed: closed,
+                object_size: object_size,
+                leaf_index: leaf_index,
+                file_start: file_start,
+                file_stop: file_stop,
+                leaf_start: leaf_start,
+                leaf_stop: leaf_stop,
+                dst_hash_start: dst_hash_start,
+                dst_hash_stop: dst_hash_stop,
             }
         }
         else {
@@ -256,10 +277,10 @@ impl LeafState {
             assert!(leaf_index < count);
             let file_start = leaf_index * LEAF_SIZE;
             let file_stop = cmp::min(file_start + LEAF_SIZE, object_size);
-            let leaf_start = HEADER_LEN + count as usize * TUB_HASH_LEN;
+            let leaf_start = HEAD_LEN + count as usize * TUB_HASH_LEN;
             let leaf_stop = leaf_start + (file_stop - file_start) as usize;
-            let leaf_hash_start = HEADER_LEN + leaf_index as usize * TUB_HASH_LEN;
-            let leaf_hash_stop = leaf_hash_start + TUB_HASH_LEN;
+            let dst_hash_start = HEAD_LEN + leaf_index as usize * TUB_HASH_LEN;
+            let dst_hash_stop = dst_hash_start + TUB_HASH_LEN;
             Self {
                 closed: closed,
                 object_size: object_size,
@@ -268,8 +289,8 @@ impl LeafState {
                 file_stop: file_stop,
                 leaf_start: leaf_start,
                 leaf_stop: leaf_stop,
-                leaf_hash_start: leaf_hash_start,
-                leaf_hash_stop: leaf_hash_stop,
+                dst_hash_start: dst_hash_start,
+                dst_hash_stop: dst_hash_stop,
             }
         }
     }
@@ -337,7 +358,7 @@ impl LeafState {
     }
 
     fn leaf_hash_range(&self) -> ops::Range<usize> {
-        self.leaf_hash_start..self.leaf_hash_stop
+        self.dst_hash_start..self.dst_hash_stop
     }
 
     fn leaf_range(&self) -> ops::Range<usize> {
@@ -688,8 +709,8 @@ mod tests {
                 file_stop: 0,
                 leaf_start: 0,
                 leaf_stop: 0,
-                leaf_hash_start: 0,
-                leaf_hash_stop: 0,
+                dst_hash_start: 0,
+                dst_hash_stop: 0,
             });
             assert!(! state.can_read());
             assert!(! state.can_write());
@@ -705,8 +726,8 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN,
                 leaf_stop: HEAD_LEN + size as usize,
-                leaf_hash_start: HEADER_LEN,
-                leaf_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
+                dst_hash_start: HEADER_LEN,
+                dst_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
@@ -718,8 +739,8 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN,
                 leaf_stop: HEAD_LEN + size as usize,
-                leaf_hash_start: HEADER_LEN,
-                leaf_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
+                dst_hash_start: HEADER_LEN,
+                dst_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
             });
         }
 

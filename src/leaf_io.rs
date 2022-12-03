@@ -515,14 +515,9 @@ impl TubBuf {
     }
 
     pub fn is_valid_for_commit(&self) -> bool {
-        let valid_preamble = self.size() == self.state.object_size
-        && self.hash() == self.compute_root();
-        if self.is_small() {
-            valid_preamble && self.has_valid_data()
-        }
-        else {
-            valid_preamble
-        }
+        self.size() == self.state.object_size
+        && self.payload_hash() == self.compute_payload()
+        && self.hash() == self.compute_root()
     }
 
     pub fn finalize(&mut self) {

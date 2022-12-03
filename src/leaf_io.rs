@@ -413,11 +413,14 @@ impl TubBuf {
     }
 
     fn compute_payload(&self) -> TubHash {
+        if self.as_payload().len() == 0 {
+            panic!("{:?}", self.state);
+        }
         hash_payload(self.state.object_size, self.as_payload())
     }
 
     fn compute_root(&self) -> TubHash {
-        hash_root(self.state.object_size, self.as_leaf_hashes())
+        hash_root2(self.state.object_size, &self.payload_hash())
     }
 
     fn compute_tombstone(&self) -> TubHash {
@@ -432,15 +435,19 @@ impl TubBuf {
         self.buf[self.state.hash_range()].copy_from_slice(hash);
     }
 
+    pub fn payload_hash(&self) -> TubHash {
+        self.buf[self.state.payload_hash_range()].try_into().expect("oops")
+    }
+
+    fn set_payload_hash(&mut self, hash: &TubHash) {
+        self.buf[self.state.payload_hash_range()].copy_from_slice(hash);
+    }
+
     pub fn size(&self) -> u64 {
-        if self.len() == 0 {
-            0
-        }
-        else {
-            u64::from_le_bytes(
-                self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
-            )
-        }
+        u64::from_le_bytes(
+            self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
+        )
+
     }
 
     fn set_size(&mut self, size: u64) {
@@ -455,7 +462,8 @@ impl TubBuf {
     }
 
     pub fn hash_payload(&mut self) {
-
+        let hash = self.compute_payload();
+        self.set_payload_hash(&hash);
     }
 
     pub fn as_commit(&self) -> &[u8] {
@@ -534,6 +542,7 @@ impl TubBuf {
     }
 
     pub fn finalize(&mut self) {
+        self.hash_payload();
         self.set_size(self.state.object_size);
         self.set_hash(&self.compute_root());
     }
@@ -627,7 +636,6 @@ impl LeafReader {
     pub fn read_in_small(&mut self) -> io::Result<()> {
         assert!(self.tbuf.is_small());
         self.file.read_exact(self.tbuf.as_mut_leaf().unwrap())?;
-        self.tbuf.hash_leaf();
         Ok(())
     }
 
@@ -781,6 +789,7 @@ mod tests {
             assert_eq!(state.leaf_hashes_range(), 68..68);
             assert_eq!(state.leaf_range(), 68..68 + size as usize);
             assert_eq!(state.payload_range(), state.leaf_range());
+            assert_eq!(state.commit_range(), 0..68 + size as usize);
         }
 
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
@@ -794,6 +803,7 @@ mod tests {
             assert_eq!(state.leaf_hashes_range(), 68..128);
             assert_eq!(state.leaf_range(), 128..128 + LEAF_SIZE as usize);
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
+            assert_eq!(state.commit_range(), 0..128);
 
             let state = state.next_leaf();
             assert!(state.is_large());
@@ -805,6 +815,7 @@ mod tests {
             assert_eq!(state.payload_hash_range(), 38..68);
             assert_eq!(state.leaf_hashes_range(), 68..128);
             assert_eq!(state.leaf_range(), 128..128 + (size - LEAF_SIZE) as usize);
+            assert_eq!(state.commit_range(), 0..128);
         }
     }
 

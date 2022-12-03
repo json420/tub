@@ -42,7 +42,6 @@ fn test_get_object() {
 
 #[test]
 fn test_get_object_new() {
-    /*
     let (_tmp, mut store) = Store::new_tmp();
     let rch = random_hash();
 
@@ -59,7 +58,6 @@ fn test_get_object_new() {
     assert_eq!(store.get_object_new(&top.hash(), &mut buf).unwrap(), true);
     assert_eq!(buf.len(), obj.len());
     assert_eq!(buf, obj);
-    */
 }
 
 

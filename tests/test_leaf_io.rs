@@ -13,7 +13,8 @@ fn test_tub_buf2() {
 #[test]
 fn test_reindex_buf() {
     let mut rbuf = ReindexBuf::new();
-    //assert!(! rbuf.is_object());
-    //assert!(! rbuf.is_tombstone());
+    assert!(! rbuf.is_object());
+    assert!(! rbuf.is_tombstone());
+    assert_eq!(rbuf.size(), 0);
 }
 

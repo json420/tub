@@ -564,14 +564,8 @@ pub struct ReindexBuf {
 impl ReindexBuf {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(HEAD_LEN);
-        buf.resize(0, HEAD_LEN);
-        Self {
-            buf: Vec::with_capacity(HEAD_LEN),
-        }
-    }
-
-    pub fn is_small(&self) -> bool {
-        self.size() < LEAF_SIZE
+        buf.resize(HEAD_LEN, 0);
+        Self {buf: buf}
     }
 
     pub fn is_object(&self) -> bool {
@@ -587,6 +581,7 @@ impl ReindexBuf {
     }
 
     pub fn size(&self) -> u64 {
+        assert_ne!(self.buf.len(), 0);
         u64::from_le_bytes(
             self.buf[TUB_HASH_LEN..HEADER_LEN].try_into().expect("oops")
         )
@@ -601,10 +596,11 @@ impl ReindexBuf {
     }
 
     pub fn offset_size(&self) -> u64 {
-        HEAD_LEN as u64 + if self.is_small() {
-            self.size()
-        } else {
+        HEAD_LEN as u64 + if self.size() > LEAF_SIZE {
             get_leaf_payload_size(self.size())
+        }
+        else {
+            self.size()
         }
     }
 

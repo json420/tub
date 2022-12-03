@@ -41,6 +41,15 @@ pub fn hash_leaf_hashes(data: &[u8]) -> TubHash {
     hash_with_pers(data, b"Tub/leaf_hash_list")
 }
 
+pub fn hash_payload(size: u64, data: &[u8]) -> TubHash {
+    if size > LEAF_SIZE {
+        hash_leaf_hashes(data)
+    }
+    else {
+        hash_small_object(data)
+    }
+}
+
 pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
     assert!(size > 0);
     assert!(leaf_hashes.len() > 0);

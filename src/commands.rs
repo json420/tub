@@ -227,7 +227,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     let mut keys = tub.keys();
     keys.sort();
     for hash in keys {
-        //println!("{}", db32enc_str(&hash));
+        println!("{}", db32enc_str(&hash));
     }
     eprintln!("{} objects in store", tub.len());
     Ok(())

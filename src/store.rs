@@ -312,7 +312,7 @@ impl Store {
                 }
             }
             else {
-                panic!("should not be reached");
+                panic!("bad entry: {}", rbuf);
             }
             self.offset += rbuf.offset_size();
             rbuf.reset();
@@ -342,6 +342,7 @@ impl Store {
                 panic!("shit is broke, yo");
             }
         }
+        self.file = File::options().read(true).append(true).open(self.pack_path())?;
         self.reindex()?;
         Ok(())
     }

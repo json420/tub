@@ -517,7 +517,6 @@ pub struct ReindexBuf {
     buf: Vec<u8>,
 }
 
-
 impl ReindexBuf {
     pub fn new() -> Self {
         let mut buf = Vec::with_capacity(HEAD_LEN);

@@ -37,6 +37,7 @@ pub fn hash_small_object(data: &[u8]) -> TubHash {
 }
 
 pub fn hash_leaf_hashes(data: &[u8]) -> TubHash {
+    assert!(data.len() >= TUB_HASH_LEN * 2);
     assert!(data.len() % TUB_HASH_LEN == 0);
     hash_with_pers(data, b"Tub/leaf_hash_list")
 }

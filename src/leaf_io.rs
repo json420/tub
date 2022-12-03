@@ -14,7 +14,7 @@ use std::ops;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{hash_leaf, hash_root, hash_tombstone, hash_root2};
+use crate::protocol::{hash_leaf, hash_root, hash_tombstone, hash_root2, hash_payload};
 
 
 pub fn new_leaf_buf() -> Vec<u8> {
@@ -228,10 +228,9 @@ struct LeafState {
     file_stop: u64,
     leaf_start: usize,
     leaf_stop: usize,
-    dst_hash_start: usize,
-    dst_hash_stop: usize,
+    leaf_hash_start: usize,
+    leaf_hash_stop: usize,
 }
-
 
 impl LeafState {
     fn new_raw(object_size: u64, leaf_index: u64) -> Self {
@@ -244,8 +243,8 @@ impl LeafState {
                 file_stop: 0,
                 leaf_start: 0,
                 leaf_stop: 0,
-                dst_hash_start: 0,
-                dst_hash_stop: 0,
+                leaf_hash_start: 0,
+                leaf_hash_stop: 0,
             }
         }
         else if object_size <= LEAF_SIZE {
@@ -255,8 +254,8 @@ impl LeafState {
             let file_stop = object_size;
             let leaf_start = HEAD_LEN;
             let leaf_stop = leaf_start + object_size as usize;
-            let dst_hash_start = HEADER_LEN;
-            let dst_hash_stop = HEAD_LEN;
+            let leaf_hash_start = HEAD_LEN;
+            let leaf_hash_stop = HEAD_LEN;
             Self {
                 closed: closed,
                 object_size: object_size,
@@ -265,13 +264,13 @@ impl LeafState {
                 file_stop: file_stop,
                 leaf_start: leaf_start,
                 leaf_stop: leaf_stop,
-                dst_hash_start: dst_hash_start,
-                dst_hash_stop: dst_hash_stop,
+                leaf_hash_start: leaf_hash_start,
+                leaf_hash_stop: leaf_hash_stop,
             }
         }
         else {
             let count = get_leaf_count(object_size);
-            assert!(count > 0);
+            assert!(count >= 2);
             let closed = if leaf_index < count {false} else {true};
             let leaf_index = if closed {count - 1} else {leaf_index};
             assert!(leaf_index < count);
@@ -279,8 +278,8 @@ impl LeafState {
             let file_stop = cmp::min(file_start + LEAF_SIZE, object_size);
             let leaf_start = HEAD_LEN + TUB_HASH_LEN * count as usize;
             let leaf_stop = leaf_start + (file_stop - file_start) as usize;
-            let dst_hash_start = HEAD_LEN + leaf_index as usize * TUB_HASH_LEN;
-            let dst_hash_stop = dst_hash_start + TUB_HASH_LEN;
+            let leaf_hash_start = HEAD_LEN + leaf_index as usize * TUB_HASH_LEN;
+            let leaf_hash_stop = leaf_hash_start + TUB_HASH_LEN;
             Self {
                 closed: closed,
                 object_size: object_size,
@@ -289,8 +288,8 @@ impl LeafState {
                 file_stop: file_stop,
                 leaf_start: leaf_start,
                 leaf_stop: leaf_stop,
-                dst_hash_start: dst_hash_start,
-                dst_hash_stop: dst_hash_stop,
+                leaf_hash_start: leaf_hash_start,
+                leaf_hash_stop: leaf_hash_stop,
             }
         }
     }
@@ -304,7 +303,7 @@ impl LeafState {
     }
 
     fn is_small(&self) -> bool {
-        self.object_size > 0 && self.object_size < LEAF_SIZE
+        self.object_size > 0 && self.object_size <= LEAF_SIZE
     }
 
     fn is_large(&self) -> bool {
@@ -344,16 +343,27 @@ impl LeafState {
         TUB_HASH_LEN..HEADER_LEN
     }
 
-    fn leaf_hashes_range(&self) -> ops::Range<usize> {
-        HEADER_LEN..self.leaf_start
+    fn payload_hash_range(&self) -> ops::Range<usize> {
+        HEADER_LEN..HEAD_LEN
     }
 
     fn leaf_hash_range(&self) -> ops::Range<usize> {
-        self.dst_hash_start..self.dst_hash_stop
+        self.leaf_hash_start..self.leaf_hash_stop
+    }
+
+    fn leaf_hashes_range(&self) -> ops::Range<usize> {
+        
+        HEAD_LEN..self.leaf_start
     }
 
     fn leaf_range(&self) -> ops::Range<usize> {
         self.leaf_start..self.leaf_stop
+    }
+
+    fn payload_range(&self) -> ops::Range<usize> {
+        let start = HEAD_LEN;
+        let stop = if self.is_small() {self.leaf_stop} else {self.leaf_start};
+        start..stop
     }
 
     fn commit_range(&self) -> ops::Range<usize> {
@@ -402,6 +412,10 @@ impl TubBuf {
         hash_leaf(self.state.leaf_index, self.as_leaf())
     }
 
+    fn compute_payload(&self) -> TubHash {
+        hash_payload(self.state.object_size, self.as_payload())
+    }
+
     fn compute_root(&self) -> TubHash {
         hash_root(self.state.object_size, self.as_leaf_hashes())
     }
@@ -440,9 +454,21 @@ impl TubBuf {
         self.state = self.state.next_leaf();
     }
 
+    pub fn hash_payload(&mut self) {
+
+    }
+
     pub fn as_commit(&self) -> &[u8] {
         self.state.check_can_read();
         &self.buf[self.state.commit_range()]
+    }
+
+    pub fn as_payload(&self) -> &[u8] {
+        if self.state.is_small() {
+            self.as_leaf()
+        } else {
+            self.as_leaf_hashes()
+        }
     }
 
     pub fn as_leaf_hash(&self) -> &[u8] {
@@ -661,8 +687,8 @@ mod tests {
                 file_stop: 0,
                 leaf_start: 0,
                 leaf_stop: 0,
-                dst_hash_start: 0,
-                dst_hash_stop: 0,
+                leaf_hash_start: 0,
+                leaf_hash_stop: 0,
             });
             assert!(! state.can_read());
             assert!(! state.can_write());
@@ -678,8 +704,8 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN,
                 leaf_stop: HEAD_LEN + size as usize,
-                dst_hash_start: HEADER_LEN,
-                dst_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
+                leaf_hash_start: HEAD_LEN,
+                leaf_hash_stop: HEAD_LEN,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
@@ -691,8 +717,8 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN,
                 leaf_stop: HEAD_LEN + size as usize,
-                dst_hash_start: HEADER_LEN,
-                dst_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
+                leaf_hash_start: HEAD_LEN,
+                leaf_hash_stop: HEAD_LEN,
             });
         }
 
@@ -711,8 +737,8 @@ mod tests {
                 file_stop: LEAF_SIZE,
                 leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
                 leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + LEAF_SIZE as usize,
-                dst_hash_start: HEAD_LEN,
-                dst_hash_stop: HEAD_LEN +  TUB_HASH_LEN,
+                leaf_hash_start: HEAD_LEN,
+                leaf_hash_stop: HEAD_LEN +  TUB_HASH_LEN,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
@@ -724,8 +750,8 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
                 leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
-                dst_hash_start: HEAD_LEN + TUB_HASH_LEN,
-                dst_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_hash_start: HEAD_LEN + TUB_HASH_LEN,
+                leaf_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 2));
@@ -737,9 +763,48 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
                 leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
-                dst_hash_start: HEAD_LEN + TUB_HASH_LEN,
-                dst_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_hash_start: HEAD_LEN + TUB_HASH_LEN,
+                leaf_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
             });
+        }
+    }
+
+    #[test]
+    fn test_leafstate_ranges() {
+        for size in [1, 2, 3, LEAF_SIZE - 1, LEAF_SIZE] {
+            let state = LeafState::new(size);
+            assert!(state.is_small());
+            assert_eq!(state.leaf_index, 0);
+            assert_eq!(state.hash_range(), 0..30);
+            assert_eq!(state.size_range(), 30..38);
+            assert_eq!(state.payload_hash_range(), 38..68);
+            assert_eq!(state.leaf_hashes_range(), 68..68);
+            assert_eq!(state.leaf_range(), 68..68 + size as usize);
+            assert_eq!(state.payload_range(), state.leaf_range());
+        }
+
+        for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
+            let state = LeafState::new(size);
+            assert!(state.is_large());
+            assert_eq!(state.payload_range(), state.leaf_hashes_range());
+            assert_eq!(state.leaf_index, 0);
+            assert_eq!(state.hash_range(), 0..30);
+            assert_eq!(state.size_range(), 30..38);
+            assert_eq!(state.payload_hash_range(), 38..68);
+            assert_eq!(state.leaf_hashes_range(), 68..128);
+            assert_eq!(state.leaf_range(), 128..128 + LEAF_SIZE as usize);
+            assert_eq!(state.payload_range(), state.leaf_hashes_range());
+
+            let state = state.next_leaf();
+            assert!(state.is_large());
+            assert_eq!(state.payload_range(), state.leaf_hashes_range());
+            assert_eq!(state, LeafState::new_raw(size, 1));
+            assert_eq!(state.leaf_index, 1);
+            assert_eq!(state.hash_range(), 0..30);
+            assert_eq!(state.size_range(), 30..38);
+            assert_eq!(state.payload_hash_range(), 38..68);
+            assert_eq!(state.leaf_hashes_range(), 68..128);
+            assert_eq!(state.leaf_range(), 128..128 + (size - LEAF_SIZE) as usize);
         }
     }
 

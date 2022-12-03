@@ -277,7 +277,7 @@ impl LeafState {
             assert!(leaf_index < count);
             let file_start = leaf_index * LEAF_SIZE;
             let file_stop = cmp::min(file_start + LEAF_SIZE, object_size);
-            let leaf_start = HEAD_LEN + count as usize * TUB_HASH_LEN;
+            let leaf_start = HEAD_LEN + TUB_HASH_LEN * count as usize;
             let leaf_stop = leaf_start + (file_stop - file_start) as usize;
             let dst_hash_start = HEAD_LEN + leaf_index as usize * TUB_HASH_LEN;
             let dst_hash_stop = dst_hash_start + TUB_HASH_LEN;
@@ -701,34 +701,46 @@ mod tests {
         assert_eq!(state.commit_range(), 0..69);
         assert_eq!(state.is_small(), true);
         assert_eq!(state.is_large(), false);
-        /*
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
             let state = LeafState::new_raw(size, 0);
-            assert_eq!(state, Some(LeafState {
+            assert_eq!(state, LeafState {
+                closed: false,
                 object_size: size,
                 leaf_index: 0,
                 file_start: 0,
                 file_stop: LEAF_SIZE,
-                leaf_start: HEAD_LEN + TUB_HASH_LEN,
-                leaf_stop: HEAD_LEN + TUB_HASH_LEN + LEAF_SIZE as usize,
-            }));
-            let state = state.unwrap().next_leaf();
+                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + LEAF_SIZE as usize,
+                dst_hash_start: HEAD_LEN,
+                dst_hash_stop: HEAD_LEN +  TUB_HASH_LEN,
+            });
+            let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
-            assert_eq!(state.unwrap().next_leaf(), None);
-
-            let state = LeafState::new_raw(size, 1);
-            assert_eq!(state, Some(LeafState {
+            assert_eq!(state, LeafState {
+                closed: false,
                 object_size: size,
                 leaf_index: 1,
                 file_start: LEAF_SIZE,
                 file_stop: size,
-                leaf_start: HEAD_LEN + TUB_HASH_LEN,
-                leaf_stop: HEAD_LEN + TUB_HASH_LEN + (size - LEAF_SIZE) as usize,
-            }));
-            assert_eq!(state.unwrap().next_leaf(), None);
-            assert_eq!(LeafState::new_raw(size, 2), None);
+                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
+                dst_hash_start: HEAD_LEN + TUB_HASH_LEN,
+                dst_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+            });
+            let state = state.next_leaf();
+            assert_eq!(state, LeafState::new_raw(size, 2));
+            assert_eq!(state, LeafState {
+                closed: true,
+                object_size: size,
+                leaf_index: 1,
+                file_start: LEAF_SIZE,
+                file_stop: size,
+                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
+                dst_hash_start: HEAD_LEN + TUB_HASH_LEN,
+                dst_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+            });
         }
-        */
     }
 
     #[test]

@@ -398,7 +398,10 @@ impl Store {
             Ok(false)  // Already in object store
         }
         else {
+            let entry = Entry::new(tbuf.size(), self.offset);
+            self.index.insert(tbuf.hash(), entry);
             self.file.write_all(tbuf.as_commit())?;
+            self.offset += tbuf.as_commit().len() as u64;
             Ok(true)
         }
     }

@@ -65,16 +65,18 @@ fn test_get_object_new() {
 
 #[test]
 fn test_store_roundtrip() {
-/*
     let a = mk_rand_obj();
     let b = mk_rand_obj();
     let c = mk_rand_obj();
 
     // Make sure reindex correctly adjusts offset when tombstones are found
     let (_tmp, mut store) = Store::new_tmp();
+    assert_eq!(store.len(), 0);
     store.add_object(&a.data).unwrap();
     store.add_object(&b.data).unwrap();
+    assert_eq!(store.len(), 2);
     store.delete_object(&a.hash).unwrap();
+    assert_eq!(store.len(), 1);
     store.add_object(&c.data).unwrap();
     store.reindex().unwrap();
     store.delete_object(&b.hash).unwrap();
@@ -85,7 +87,6 @@ fn test_store_roundtrip() {
     let mut file = File::options().append(true).open(&pb).unwrap();
     file.write_all(b"some extra junk").unwrap();
     store.reindex().unwrap();
-*/
 }
 
 

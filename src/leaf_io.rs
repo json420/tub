@@ -60,7 +60,7 @@ pub fn get_leaf_payload_size(size: u64) -> u64 {
 
 /// Returns size of the root hash + u64 + leaf_hashes.
 pub fn get_preamble_size(size: u64) -> u64 {
-    (HEADER_LEN as u64) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
+    (TUB_HASH_LEN as u64 + 8) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
 }
 
 
@@ -457,8 +457,9 @@ impl TubBuf {
     }
 
     pub fn as_leaf_hash(&self) -> &[u8] {
+        // FIXME: This is probably dumb
         if self.state.object_size == 0 {
-            &self.buf[HEADER_LEN..HEAD_LEN]
+            &self.buf[PAYLOAD_HASH_RANGE]
         }
         else {
             &self.buf[self.state.leaf_hash_range()]
@@ -805,7 +806,7 @@ mod tests {
 
     #[test]
     fn test_get_preamble_size() {
-        let head = HEADER_LEN as u64;
+        let head = TUB_HASH_LEN as u64 + 8;
         let tub = TUB_HASH_LEN as u64;
         assert_eq!(get_preamble_size(0), head);
 

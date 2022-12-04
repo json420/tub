@@ -10,10 +10,7 @@ pub type TubId = [u8; TUB_ID_LEN];
 pub type TubHash = [u8; TUB_HASH_LEN];
 pub type TubHashList = Vec<TubHash>;
 
-pub const HEADER_LEN: usize = TUB_HASH_LEN + size_of::<u64>();
-pub type HeaderBuf = [u8; HEADER_LEN];
-
-pub const HEAD_LEN: usize = HEADER_LEN + TUB_HASH_LEN;
+pub const HEAD_LEN: usize = 2 * TUB_HASH_LEN + 8;
 
 //pub const LEAF_SIZE: u64 = 1048576;  // 1 MiB
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB
@@ -48,7 +45,7 @@ mod tests {
         assert_eq!(TUB_HASH_LEN % 5, 0);
         assert_eq!(TUB_HASH_LEN % 5, 0);
         assert!(TUB_HASH_LEN > TUB_ID_LEN);
-        assert_eq!(HEADER_LEN, 38);
+        assert_eq!(HEAD_LEN, 68);
     }
 }
 

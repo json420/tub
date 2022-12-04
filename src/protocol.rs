@@ -51,20 +51,7 @@ pub fn hash_payload(size: u64, data: &[u8]) -> TubHash {
     }
 }
 
-pub fn hash_root(size: u64, leaf_hashes: &[u8]) -> TubHash {
-    assert!(size > 0);
-    assert!(leaf_hashes.len() > 0);
-    assert!(leaf_hashes.len() % TUB_HASH_LEN == 0);
-    let mut h = blake3::Hasher::new();
-    h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
-    h.update(&size.to_le_bytes());
-    h.update(leaf_hashes);
-    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
-    h.finalize_xof().fill(&mut hash);
-    hash
-}
-
-pub fn hash_root2(size: u64, payload_hash: &TubHash) -> TubHash {
+pub fn hash_root(size: u64, payload_hash: &TubHash) -> TubHash {
     assert!(size > 0);
     let mut h = blake3::Hasher::new();
     h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
@@ -154,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn test_hash_root2() {
+    fn test_hash_root() {
         let payload_hash = random_hash();
 
         // Should be tied to size
@@ -174,29 +161,6 @@ mod tests {
             }
         }
         assert_eq!(set.len(), payload_hash.len() * 255 + 1);
-    }
-
-    #[test]
-    fn test_hash_root() {
-        let leaf_hashes = random_hash();
-
-        // Should be tied to size
-        let mut set: HashSet<TubHash> = HashSet::new();
-        for size in 1..COUNT + 1 {
-            set.insert(hash_root(size as u64, &leaf_hashes));
-        }
-        assert_eq!(set.len(), COUNT);
-
-        // Should be tied to every byte in leaf_hashes
-        let mut set: HashSet<TubHash> = HashSet::new();
-        for i in 0..leaf_hashes.len() {
-            for v in 0_u8..=255 {
-                let mut copy = leaf_hashes.clone();
-                copy[i] = v;
-                set.insert(hash_root(1, &copy));
-            }
-        }
-        assert_eq!(set.len(), leaf_hashes.len() * 255 + 1);
     }
 
     #[test]

@@ -5,7 +5,6 @@
 use std::io;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
-use std::fs;
 use std::fs::File;
 use std::cmp;
 use std::fmt;
@@ -17,20 +16,14 @@ use crate::dbase32::db32enc_str;
 use crate::protocol::{hash_leaf, hash_root, hash_tombstone, hash_root2, hash_payload};
 
 
-pub fn new_leaf_buf() -> Vec<u8> {
-    let mut buf = Vec::with_capacity(LEAF_SIZE as usize);
-    buf.resize(LEAF_SIZE as usize, 0);
-    buf
-}
-
 
 pub fn hash_file(file: File, size: u64) -> io::Result<TubBuf>
 {
     let mut tbuf = TubBuf::new();
     tbuf.resize(size);
     let mut reader = LeafReader::new(tbuf, file);
-    while let Some(buf) = reader.read_next_leaf()? {
-    
+    while let Some(_buf) = reader.read_next_leaf()? {
+        // No need to write buf anywhere
     }
     Ok(reader.finalize())
 }
@@ -520,10 +513,6 @@ impl TubBuf {
         self.state.is_large()
     }
 
-    pub fn has_valid_data(&self) -> bool {
-        self.buf[HEADER_LEN..HEADER_LEN + TUB_HASH_LEN] == self.compute_leaf()
-    }
-
     pub fn is_valid_for_commit(&self) -> bool {
         self.size() == self.state.object_size
         && self.payload_hash() == self.compute_payload()
@@ -797,14 +786,6 @@ mod tests {
             assert_eq!(state.leaf_range(), 128..128 + (size - LEAF_SIZE) as usize);
             assert_eq!(state.commit_range(), 0..128);
         }
-    }
-
-    #[test]
-    fn test_new_leaf_buf() {
-        let buf = new_leaf_buf();
-        assert_eq!(buf.len(), LEAF_SIZE as usize);
-        assert_eq!(buf.capacity(), LEAF_SIZE as usize);
-        //let s = &mut buf[0..111];
     }
 
     #[test]

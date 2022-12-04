@@ -6,7 +6,7 @@ use bathtub_db::leaf_io::*;
 
 #[test]
 fn test_tub_buf2() {
-    let mut tbuf = TubBuf::new();
+    let tbuf = TubBuf::new();
     assert_eq!(tbuf.len(), 0);
 }
 

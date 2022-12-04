@@ -249,13 +249,12 @@ impl Store {
         Ok((pb, file))
     }
 
-    pub fn allocate_tmp2(&self) -> io::Result<TmpObject>
+    pub fn allocate_tmp(&self) -> io::Result<TmpObject>
     {
         let id = random_id();
         let path = self.tmp_path(&id);
         TmpObject::new(id, path)
     }
-
 
     pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
@@ -376,7 +375,7 @@ impl Store {
                 reader.finalize()
             }
             else {
-                let mut tmp = self.allocate_tmp2()?;
+                let mut tmp = self.allocate_tmp()?;
                 while let Some(buf) = reader.read_next_leaf()? {
                     tmp.write_all(buf)?;
                 }

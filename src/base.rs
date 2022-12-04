@@ -10,7 +10,7 @@ pub type TubId = [u8; TUB_ID_LEN];
 pub type TubHash = [u8; TUB_HASH_LEN];
 pub type TubHashList = Vec<TubHash>;
 
-pub const HEAD_LEN: usize = 2 * TUB_HASH_LEN + 8;
+pub const HEADER_LEN: usize = 2 * TUB_HASH_LEN + 8;
 
 //pub const LEAF_SIZE: u64 = 1048576;  // 1 MiB
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB
@@ -19,6 +19,8 @@ pub const LEAF_SIZE: u64 = 8388608;  // 8 MiB
 pub const ROOT_HASH_RANGE: ops::Range<usize> = 0..TUB_HASH_LEN;
 pub const SIZE_RANGE: ops::Range<usize> = TUB_HASH_LEN..TUB_HASH_LEN + 8;
 pub const PAYLOAD_HASH_RANGE: ops::Range<usize> = (8 + TUB_HASH_LEN)..(8 + TUB_HASH_LEN * 2);
+
+pub const TAIL_RANGE: ops::Range<usize> = TUB_HASH_LEN..HEADER_LEN - TUB_HASH_LEN;
 
 
 pub const DOTDIR: &str = ".bathtub_db";
@@ -45,7 +47,7 @@ mod tests {
         assert_eq!(TUB_HASH_LEN % 5, 0);
         assert_eq!(TUB_HASH_LEN % 5, 0);
         assert!(TUB_HASH_LEN > TUB_ID_LEN);
-        assert_eq!(HEAD_LEN, 68);
+        assert_eq!(HEADER_LEN, 68);
     }
 }
 

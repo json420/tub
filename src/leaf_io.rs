@@ -245,10 +245,10 @@ impl LeafState {
             let leaf_index = 0;
             let file_start = 0;
             let file_stop = object_size;
-            let leaf_start = HEAD_LEN;
+            let leaf_start = HEADER_LEN;
             let leaf_stop = leaf_start + object_size as usize;
-            let leaf_hash_start = HEAD_LEN;
-            let leaf_hash_stop = HEAD_LEN;
+            let leaf_hash_start = HEADER_LEN;
+            let leaf_hash_stop = HEADER_LEN;
             Self {
                 closed: closed,
                 object_size: object_size,
@@ -269,9 +269,9 @@ impl LeafState {
             assert!(leaf_index < count);
             let file_start = leaf_index * LEAF_SIZE;
             let file_stop = cmp::min(file_start + LEAF_SIZE, object_size);
-            let leaf_start = HEAD_LEN + TUB_HASH_LEN * count as usize;
+            let leaf_start = HEADER_LEN + TUB_HASH_LEN * count as usize;
             let leaf_stop = leaf_start + (file_stop - file_start) as usize;
-            let leaf_hash_start = HEAD_LEN + leaf_index as usize * TUB_HASH_LEN;
+            let leaf_hash_start = HEADER_LEN + leaf_index as usize * TUB_HASH_LEN;
             let leaf_hash_stop = leaf_hash_start + TUB_HASH_LEN;
             Self {
                 closed: closed,
@@ -333,7 +333,7 @@ impl LeafState {
     }
 
     fn leaf_hashes_range(&self) -> ops::Range<usize> {
-        HEAD_LEN..self.leaf_start
+        HEADER_LEN..self.leaf_start
     }
 
     fn leaf_range(&self) -> ops::Range<usize> {
@@ -341,7 +341,7 @@ impl LeafState {
     }
 
     fn payload_range(&self) -> ops::Range<usize> {
-        let start = HEAD_LEN;
+        let start = HEADER_LEN;
         let stop = if self.is_small() {self.leaf_stop} else {self.leaf_start};
         start..stop
     }
@@ -358,7 +358,7 @@ impl LeafState {
 }
 
 const PREALLOC_COUNT: usize = 1024;
-const PREALLOC_LEN: usize = HEAD_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
+const PREALLOC_LEN: usize = HEADER_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
 
 
 #[derive(Debug)]
@@ -502,7 +502,7 @@ impl TubBuf {
     }
 
     pub fn is_tombstone(&self) -> bool {
-        assert_eq!(self.len(), HEAD_LEN); 
+        assert_eq!(self.len(), HEADER_LEN); 
         self.size() == 0 && self.as_leaf_hash() == self.compute_tombstone()
     }
 
@@ -549,18 +549,22 @@ impl<'a> Header<'a>
     pub fn as_payload_hash(&self) -> &[u8] {
         &self.buf[ROOT_HASH_RANGE]
     }
+
+    pub fn as_tail(&self) -> &[u8] {
+        &self.buf[TAIL_RANGE]
+    }
 }
 
 
 pub struct ReindexBuf {
-    buf: [u8; HEAD_LEN],
+    buf: [u8; HEADER_LEN],
 }
 
 impl ReindexBuf {
     pub fn new() -> Self {
-        //let mut buf = Vec::with_capacity(HEAD_LEN);
-        //buf.resize(HEAD_LEN, 0);
-        Self {buf: [0_u8; HEAD_LEN]}
+        //let mut buf = Vec::with_capacity(HEADER_LEN);
+        //buf.resize(HEADER_LEN, 0);
+        Self {buf: [0_u8; HEADER_LEN]}
     }
 
     pub fn is_object(&self) -> bool {
@@ -591,7 +595,7 @@ impl ReindexBuf {
     }
 
     pub fn offset_size(&self) -> u64 {
-        HEAD_LEN as u64 + if self.size() > LEAF_SIZE {
+        HEADER_LEN as u64 + if self.size() > LEAF_SIZE {
             get_leaf_payload_size(self.size())
         }
         else {
@@ -713,10 +717,10 @@ mod tests {
                 leaf_index: 0,
                 file_start: 0,
                 file_stop: size,
-                leaf_start: HEAD_LEN,
-                leaf_stop: HEAD_LEN + size as usize,
-                leaf_hash_start: HEAD_LEN,
-                leaf_hash_stop: HEAD_LEN,
+                leaf_start: HEADER_LEN,
+                leaf_stop: HEADER_LEN + size as usize,
+                leaf_hash_start: HEADER_LEN,
+                leaf_hash_stop: HEADER_LEN,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
@@ -726,10 +730,10 @@ mod tests {
                 leaf_index: 0,
                 file_start: 0,
                 file_stop: size,
-                leaf_start: HEAD_LEN,
-                leaf_stop: HEAD_LEN + size as usize,
-                leaf_hash_start: HEAD_LEN,
-                leaf_hash_stop: HEAD_LEN,
+                leaf_start: HEADER_LEN,
+                leaf_stop: HEADER_LEN + size as usize,
+                leaf_hash_start: HEADER_LEN,
+                leaf_hash_stop: HEADER_LEN,
             });
         }
 
@@ -746,10 +750,10 @@ mod tests {
                 leaf_index: 0,
                 file_start: 0,
                 file_stop: LEAF_SIZE,
-                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
-                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + LEAF_SIZE as usize,
-                leaf_hash_start: HEAD_LEN,
-                leaf_hash_stop: HEAD_LEN +  TUB_HASH_LEN,
+                leaf_start: HEADER_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEADER_LEN + TUB_HASH_LEN * 2 + LEAF_SIZE as usize,
+                leaf_hash_start: HEADER_LEN,
+                leaf_hash_stop: HEADER_LEN +  TUB_HASH_LEN,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 1));
@@ -759,10 +763,10 @@ mod tests {
                 leaf_index: 1,
                 file_start: LEAF_SIZE,
                 file_stop: size,
-                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
-                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
-                leaf_hash_start: HEAD_LEN + TUB_HASH_LEN,
-                leaf_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_start: HEADER_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEADER_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
+                leaf_hash_start: HEADER_LEN + TUB_HASH_LEN,
+                leaf_hash_stop: HEADER_LEN + TUB_HASH_LEN * 2,
             });
             let state = state.next_leaf();
             assert_eq!(state, LeafState::new_raw(size, 2));
@@ -772,10 +776,10 @@ mod tests {
                 leaf_index: 1,
                 file_start: LEAF_SIZE,
                 file_stop: size,
-                leaf_start: HEAD_LEN + TUB_HASH_LEN * 2,
-                leaf_stop: HEAD_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
-                leaf_hash_start: HEAD_LEN + TUB_HASH_LEN,
-                leaf_hash_stop: HEAD_LEN + TUB_HASH_LEN * 2,
+                leaf_start: HEADER_LEN + TUB_HASH_LEN * 2,
+                leaf_stop: HEADER_LEN + TUB_HASH_LEN * 2 + (size - LEAF_SIZE) as usize,
+                leaf_hash_start: HEADER_LEN + TUB_HASH_LEN,
+                leaf_hash_stop: HEADER_LEN + TUB_HASH_LEN * 2,
             });
         }
     }
@@ -850,26 +854,26 @@ mod tests {
 
     #[test]
     fn test_get_full_object_size() {
-        assert_eq!(get_full_object_size(1), (HEAD_LEN + 1) as u64);
-        assert_eq!(get_full_object_size(2), (HEAD_LEN + 2) as u64);
-        assert_eq!(get_full_object_size(3), (HEAD_LEN + 3) as u64);
-        assert_eq!(get_full_object_size(LEAF_SIZE), HEAD_LEN as u64 + LEAF_SIZE);
+        assert_eq!(get_full_object_size(1), (HEADER_LEN + 1) as u64);
+        assert_eq!(get_full_object_size(2), (HEADER_LEN + 2) as u64);
+        assert_eq!(get_full_object_size(3), (HEADER_LEN + 3) as u64);
+        assert_eq!(get_full_object_size(LEAF_SIZE), HEADER_LEN as u64 + LEAF_SIZE);
         assert_eq!(get_full_object_size(LEAF_SIZE + 1),
-            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE + 1
+            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE + 1
         );
     }
 
     #[test]
     fn test_get_buffer_size() {
-        assert_eq!(get_buffer_size(1), (HEAD_LEN + 1) as u64);
-        assert_eq!(get_buffer_size(2), (HEAD_LEN + 2) as u64);
-        assert_eq!(get_buffer_size(3), (HEAD_LEN + 3) as u64);
-        assert_eq!(get_buffer_size(LEAF_SIZE), HEAD_LEN as u64 + LEAF_SIZE);
+        assert_eq!(get_buffer_size(1), (HEADER_LEN + 1) as u64);
+        assert_eq!(get_buffer_size(2), (HEADER_LEN + 2) as u64);
+        assert_eq!(get_buffer_size(3), (HEADER_LEN + 3) as u64);
+        assert_eq!(get_buffer_size(LEAF_SIZE), HEADER_LEN as u64 + LEAF_SIZE);
         assert_eq!(get_buffer_size(LEAF_SIZE + 1),
-            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
+            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
         );
         assert_eq!(get_buffer_size(LEAF_SIZE + 1),
-            HEAD_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
+            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
         );
 
         for size in [42 * LEAF_SIZE, 420 * LEAF_SIZE, u64::MAX - 1, u64::MAX] {

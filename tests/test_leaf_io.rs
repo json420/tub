@@ -16,6 +16,6 @@ fn test_reindex_buf() {
     assert!(! rbuf.is_object());
     assert!(! rbuf.is_tombstone());
     assert_eq!(rbuf.size(), 0);
-    assert_eq!(rbuf.as_mut_buf().len(), HEAD_LEN);
+    assert_eq!(rbuf.as_mut_buf().len(), HEADER_LEN);
 }
 

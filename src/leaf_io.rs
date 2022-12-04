@@ -537,6 +537,18 @@ impl<'a> Header<'a>
     pub fn new(buf: &'a [u8]) ->  Self {
         Self {buf: buf}
     }
+
+    pub fn as_root_hash(&self) -> &[u8] {
+        &self.buf[ROOT_HASH_RANGE]
+    }
+
+    pub fn as_size(&self) -> &[u8] {
+        &self.buf[SIZE_RANGE]
+    }
+
+    pub fn as_payload_hash(&self) -> &[u8] {
+        &self.buf[ROOT_HASH_RANGE]
+    }
 }
 
 

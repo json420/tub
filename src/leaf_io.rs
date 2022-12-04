@@ -553,14 +553,14 @@ impl<'a> Header<'a>
 
 
 pub struct ReindexBuf {
-    buf: Vec<u8>,
+    buf: [u8; HEAD_LEN],
 }
 
 impl ReindexBuf {
     pub fn new() -> Self {
-        let mut buf = Vec::with_capacity(HEAD_LEN);
-        buf.resize(HEAD_LEN, 0);
-        Self {buf: buf}
+        //let mut buf = Vec::with_capacity(HEAD_LEN);
+        //buf.resize(HEAD_LEN, 0);
+        Self {buf: [0_u8; HEAD_LEN]}
     }
 
     pub fn is_object(&self) -> bool {
@@ -600,8 +600,7 @@ impl ReindexBuf {
     }
 
     pub fn reset(&mut self) {
-        self.buf.clear();
-        self.buf.resize(HEAD_LEN, 0);
+        self.buf.fill(0);
     }
 }
 

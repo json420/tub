@@ -453,13 +453,7 @@ impl TubBuf {
     }
 
     pub fn as_leaf_hash(&self) -> &[u8] {
-        // FIXME: This is probably dumb
-        if self.state.object_size == 0 {
-            &self.buf[PAYLOAD_HASH_RANGE]
-        }
-        else {
-            &self.buf[self.state.leaf_hash_range()]
-        }
+        &self.buf[self.state.leaf_hash_range()]
     }
 
     pub fn as_leaf_hashes(&self) -> &[u8] {

@@ -1,6 +1,5 @@
 //! Constants and types.
 
-use std::mem::size_of;
 use std::ops;
 
 pub const TUB_ID_LEN: usize = 15;

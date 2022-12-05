@@ -449,11 +449,7 @@ impl TubBuf {
     }
 
     pub fn as_payload(&self) -> &[u8] {
-        if self.state.is_small() {
-            self.as_leaf()
-        } else {
-            self.as_leaf_hashes()
-        }
+        &self.buf[self.state.payload_range()]
     }
 
     pub fn as_leaf_hash(&self) -> &[u8] {

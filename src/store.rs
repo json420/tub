@@ -494,7 +494,6 @@ impl Store {
 mod tests {
     use super::*;
     use crate::dbase32::Name2Iter;
-    use crate::util::*;
     use crate::helpers::TestTempDir;
 
     #[test]

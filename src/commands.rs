@@ -201,11 +201,6 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn get_newmark(new: bool) -> String {
-    let m = if new {" "} else {"!"};
-    String::from(m)
-}
-
 fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;

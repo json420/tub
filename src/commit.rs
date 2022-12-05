@@ -23,7 +23,6 @@ impl Commit {
 mod tests {
     use super::*;
     use crate::store::*;
-    use crate::util::{random_hash};
 
     fn new_store() -> Store {
         const ROUNDS: u64 = 10_000;

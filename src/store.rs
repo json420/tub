@@ -343,6 +343,17 @@ impl Store {
     }
 
     pub fn repack(&mut self) -> io::Result<()> {
+        // FIXME: Currently we do this in arbitrary order (what HashMap.iter()
+        // gives us), but we'll obviously get better performance if we go
+        // through the file sequentially.  Note that semantically the order
+        // doesn't matter, it's just a performance issue.
+        //
+        // The only time the "order" of the pack file matters is with
+        // tombstones.  A tombstone after the corresponding object means that
+        // object is deleted, whereas a tombstone before the object is invalid.
+        //
+        // We should probably walk through the file again like Store.reindex()
+        // does, it just adds some complexity.
         let id = random_id();
         let mut tbuf = TubBuf::new();
         let (tmp_pb, mut tmp) = self.open_tmp(&id)?;

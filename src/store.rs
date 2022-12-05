@@ -467,7 +467,6 @@ impl Store {
             eprintln!("Deleting {}", db32enc_str(hash));
             let mut buf = [0_u8; HEADER_LEN];
             buf[ROOT_HASH_RANGE].copy_from_slice(hash);
-            buf[SIZE_RANGE].copy_from_slice(&(0_u64).to_le_bytes());
             buf[PAYLOAD_HASH_RANGE].copy_from_slice(&hash_tombstone(hash));
             self.file.write_all(&buf);
             self.offset += buf.len() as u64;

@@ -351,6 +351,8 @@ impl Store {
         // The only time the "order" of the pack file matters is with
         // tombstones.  A tombstone after the corresponding object means that
         // object is deleted, whereas a tombstone before the object is invalid.
+        // Note that tombstones are not copied into the new pack file (which is
+        // why the order doesn't matter).
         //
         // We should probably walk through the file again like Store.reindex()
         // does, it just adds some complexity.

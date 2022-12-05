@@ -72,7 +72,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Super scary command to delete 100 random objects")]
+    #[command(about = "Super scary command to delete 1000 random objects")]
     DelRandom {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -247,7 +247,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
 fn cmd_del_random(tub: OptPath) -> io::Result<()>
 {
     let mut tub = get_tub(tub)?;
-    for hash in tub.keys().iter().take(100) {
+    for hash in tub.keys().iter().take(1000) {
         tub.delete_object(hash)?;
     }
     eprintln!("{} objects in store", tub.len());

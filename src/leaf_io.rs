@@ -60,7 +60,7 @@ pub fn get_leaf_payload_size(size: u64) -> u64 {
 
 /// Returns size of the root hash + u64 + leaf_hashes.
 pub fn get_preamble_size(size: u64) -> u64 {
-    (TUB_HASH_LEN as u64 + 8) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
+    (TUB_HASH_LEN as u64 + 9) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
 }
 
 
@@ -738,8 +738,8 @@ mod tests {
         }
 
         let state = LeafState::new(1);
-        assert_eq!(state.leaf_range(), 68..69);
-        assert_eq!(state.commit_range(), 0..69);
+        assert_eq!(state.leaf_range(), 69..70);
+        assert_eq!(state.commit_range(), 0..70);
         assert_eq!(state.is_small(), true);
         assert_eq!(state.is_large(), false);
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
@@ -790,10 +790,10 @@ mod tests {
             let state = LeafState::new(size);
             assert!(state.is_small());
             assert_eq!(state.leaf_index, 0);
-            assert_eq!(state.leaf_hashes_range(), 68..68);
-            assert_eq!(state.leaf_range(), 68..68 + size as usize);
+            assert_eq!(state.leaf_hashes_range(), 69..69);
+            assert_eq!(state.leaf_range(), 69..69 + size as usize);
             assert_eq!(state.payload_range(), state.leaf_range());
-            assert_eq!(state.commit_range(), 0..68 + size as usize);
+            assert_eq!(state.commit_range(), 0..69 + size as usize);
         }
 
         for size in [LEAF_SIZE + 1, 2 * LEAF_SIZE - 1, 2 * LEAF_SIZE] {
@@ -801,19 +801,19 @@ mod tests {
             assert!(state.is_large());
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
             assert_eq!(state.leaf_index, 0);
-            assert_eq!(state.leaf_hashes_range(), 68..128);
-            assert_eq!(state.leaf_range(), 128..128 + LEAF_SIZE as usize);
+            assert_eq!(state.leaf_hashes_range(), 69..129);
+            assert_eq!(state.leaf_range(), 129..129 + LEAF_SIZE as usize);
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
-            assert_eq!(state.commit_range(), 0..128);
+            assert_eq!(state.commit_range(), 0..129);
 
             let state = state.next_leaf();
             assert!(state.is_large());
             assert_eq!(state.payload_range(), state.leaf_hashes_range());
             assert_eq!(state, LeafState::new_raw(size, 1));
             assert_eq!(state.leaf_index, 1);
-            assert_eq!(state.leaf_hashes_range(), 68..128);
-            assert_eq!(state.leaf_range(), 128..128 + (size - LEAF_SIZE) as usize);
-            assert_eq!(state.commit_range(), 0..128);
+            assert_eq!(state.leaf_hashes_range(), 69..129);
+            assert_eq!(state.leaf_range(), 129..129 + (size - LEAF_SIZE) as usize);
+            assert_eq!(state.commit_range(), 0..129);
         }
     }
 
@@ -834,7 +834,7 @@ mod tests {
 
     #[test]
     fn test_get_preamble_size() {
-        let head = TUB_HASH_LEN as u64 + 8;
+        let head = TUB_HASH_LEN as u64 + 9;
         let tub = TUB_HASH_LEN as u64;
         assert_eq!(get_preamble_size(0), head);
 

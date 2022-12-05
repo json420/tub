@@ -454,9 +454,12 @@ impl Store {
         */
         if let Some(entry) = self.index.get(hash) {
             eprintln!("Deleting {}", db32enc_str(hash));
+            //let mut buf = [0_u8; HEADER_LEN];
+            //buf[HASH_RANGE].copy_from_slice(hash); 
             self.file.write_all_vectored(&mut [
                 io::IoSlice::new(hash),
                 io::IoSlice::new(&(0_u64).to_le_bytes()),
+                io::IoSlice::new(&[0_u8]),
                 // This makes the tombstone verifiable
                 io::IoSlice::new(&hash_tombstone(hash)),
             ])?;

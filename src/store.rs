@@ -491,6 +491,7 @@ mod tests {
     use super::*;
     use crate::dbase32::Name2Iter;
     use crate::helpers::TestTempDir;
+    use crate::util::{random_hash, random_small_object};
 
     #[test]
     fn test_entry() {
@@ -620,5 +621,35 @@ mod tests {
         assert_eq!(dirs[1023], "YY");
     }
 
+    #[test]
+    fn test_store_delete_object() {
+        let (_tmp, mut store) = Store::new_tmp();
+        assert_eq!(store.offset, 0);
+        let hash = random_hash();
+        assert!(! store.delete_object(&hash).unwrap());
+        assert_eq!(store.offset, 0);
+        let obj = random_small_object();
+        let (tbuf, new) = store.add_object(&obj).unwrap();
+        assert_eq!(store.len(), 1);
+        let hash2 = tbuf.hash();
+        assert_ne!(hash, hash2);
+        assert!(new);
+        assert_eq!(store.offset, (HEADER_LEN + obj.len()) as u64);
+
+        // Trying to delete non-existing object should still do nothing
+        assert!(! store.delete_object(&hash).unwrap());
+        assert_eq!(store.offset, (HEADER_LEN + obj.len()) as u64);
+
+        // Delete obj
+        assert!(store.delete_object(&hash2).unwrap());
+        assert_eq!(store.offset, (2 * HEADER_LEN + obj.len()) as u64);
+        assert_eq!(store.len(), 0);
+
+        // Try to delete both again, should do nothing
+        assert!(! store.delete_object(&hash).unwrap());
+        assert!(! store.delete_object(&hash2).unwrap());
+        assert_eq!(store.offset, (2 * HEADER_LEN + obj.len()) as u64);
+        assert_eq!(store.len(), 0);
+    }
 }
 

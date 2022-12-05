@@ -50,5 +50,14 @@ mod tests {
         assert!(TUB_HASH_LEN > TUB_ID_LEN);
         assert_eq!(HEADER_LEN, 69);
     }
+
+    #[test]
+    fn test_ranges() {
+         // Yes, these break if TUB_HASH_LEN changes, but just to see them clearly:
+         assert_eq!(ROOT_HASH_RANGE, 0..30);
+         assert_eq!(SIZE_RANGE, 30..38);
+         assert_eq!(TYPE_RANGE, 38..39);
+         assert_eq!(PAYLOAD_HASH_RANGE, 39..69);
+    }
 }
 

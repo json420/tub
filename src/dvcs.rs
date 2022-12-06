@@ -121,14 +121,16 @@ pub fn deserialize(buf: &[u8]) -> TreeMap {
     let mut map: TreeMap = HashMap::new();
     let mut offset = 0;
     while offset < buf.len() {
-        let sbuf = buf[offset..offset + 2].try_into().unwrap();
-        let size = u16::from_le_bytes(sbuf) as usize;
-        offset += 2;
-        let s = OsStr::from_bytes(&buf[offset..offset+size]);
+        let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
+        offset += h.len();
+
+        let size = buf[offset] as usize;
+        offset += 1;
+
+        let s = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
         let pb = PathBuf::from(s);
         offset += size;
-        let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
-        offset += TUB_HASH_LEN;
+
         map.insert(pb, h);
     }
     assert_eq!(offset, buf.len());
@@ -143,10 +145,10 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
     for (p, h) in items.iter() {
         println!("{:?} {}", p, db32enc_str(*h));
         let path = p.to_str().unwrap().as_bytes();
-        let size = path.len() as u16;
-        buf.extend_from_slice(&size.to_le_bytes());
-        buf.extend_from_slice(path);
+        let size = path.len() as u8;
         buf.extend_from_slice(&h[..]);
+        buf.push(size);
+        buf.extend_from_slice(path);
     }
     buf
 }
@@ -172,5 +174,35 @@ impl Tree {
 
     pub fn add(&mut self, key: PathBuf, hash: TubHash) {
         self.map.insert(key, hash);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::random_hash;
+
+    #[test]
+    fn test_serialize_deserialize() {
+        let mut map: TreeMap = HashMap::new();
+        let pb = PathBuf::from("foo");
+        let hash = [11_u8; TUB_HASH_LEN];
+        map.insert(pb, hash);
+        let buf = serialize(&map);
+        assert_eq!(buf, [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+                         11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+                         11, 11, 3, 102, 111, 111]
+        );
+        let map2 = deserialize(&buf);
+        assert_eq!(map2, map);
+
+        let mut map: TreeMap = HashMap::new();
+        map.insert(PathBuf::from("as"), random_hash());
+        map.insert(PathBuf::from("the"), random_hash());
+        map.insert(PathBuf::from("world"), random_hash());
+        let buf = serialize(&map);
+        let map2 = deserialize(&buf);
+        assert_eq!(map2, map);
     }
 }

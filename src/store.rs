@@ -32,6 +32,7 @@ use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
 use crate::leaf_io::{TubBuf, LeafReader, TmpObject, ReindexBuf};
+use crate::dvcs;
 
 
 macro_rules! other_err {
@@ -379,6 +380,7 @@ impl Store {
     }
 
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
+        let mut tree = dvcs::Tree::new();
         let mut tbuf = TubBuf::new();
         for src in files.iter() {
             tbuf.resize(src.size);
@@ -400,7 +402,10 @@ impl Store {
             println!("{} {}{} {}   {:?}", tbuf,
                 get_largemark(tbuf.is_large()), get_newmark(new), src.size, src.path
             );
+            tree.add(src.path.clone(), tbuf.hash());
         }
+        let buf = tree.serialize();
+        let map = dvcs::Tree::deserialize(&buf);
         Ok(())
     }
 

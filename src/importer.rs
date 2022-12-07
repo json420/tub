@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::fs::{read_dir, metadata, File};
 use std::io;
+use crate::base::LEAF_SIZE;
 
 
 const MAX_DEPTH: usize = 32;
@@ -18,6 +19,10 @@ impl SrcFile {
             path: path,
             size: size,
         }
+    }
+
+    pub fn is_large(&self) -> bool {
+        self.size > LEAF_SIZE
     }
 
     pub fn open(&self) -> io::Result<File> {

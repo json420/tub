@@ -201,18 +201,32 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     Ok(())
 }
 
+
+fn get_newmark(new: bool) -> String {
+    let m = if new {" "} else {"!"};
+    String::from(m)
+}
+
+fn get_largemark(large: bool) -> String {
+    let m = if large {"L"} else {" "};
+    String::from(m)
+}
+
 fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
-    /*
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?, src.size)?;
-        println!("{} {} {:?}", root, get_newmark(new), src.path);
+        println!("{} {}{} {:?}",
+            db32enc_str(&root),
+            get_largemark(src.is_large()),
+            get_newmark(new),
+            src.path
+        );
     }
-    */
-    tub.import_files(files)?;
+    //tub.import_files(files)?;
     Ok(())
 }
 

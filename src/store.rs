@@ -26,7 +26,6 @@ use std::collections::HashMap;
 use tempfile::TempDir;
 
 use crate::base::*;
-use crate::importer::Scanner;
 use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
@@ -157,16 +156,6 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
     pb.push(db32enc_str(key));
 }
 
-
-fn get_newmark(new: bool) -> String {
-    let m = if new {" "} else {"!"};
-    String::from(m)
-}
-
-fn get_largemark(large: bool) -> String {
-    let m = if large {"L"} else {" "};
-    String::from(m)
-}
 
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
@@ -380,16 +369,6 @@ impl Store {
         Ok(())
     }
 
-    pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        for src in files.iter() {
-            let (hash, new) = self.import_file(src.open()?, src.size)?;
-            println!("{} {}{} {}   {:?}", self.tbuf,
-                get_largemark(self.tbuf.is_large()), get_newmark(new), src.size, src.path
-            );
-        }
-        Ok(())
-    }
-
     pub fn commit_object(&mut self, tbuf: &TubBuf) -> io::Result<bool>
     {
         if let Some(_entry) = self.index.get(&tbuf.hash()) {
@@ -418,6 +397,7 @@ impl Store {
                 tmp.write_all(self.tbuf.as_leaf());
             }
             self.finalize_tmp(tmp, &self.tbuf.hash())?;
+            self.tbuf.finalize();
         }
         self.commit_object2()
     }

@@ -417,12 +417,9 @@ impl Store {
         }
     }
 
-    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubBuf, bool)> {
-        // FIXME: no reason not to handle the large object case as well
-        let mut tbuf = TubBuf::new();
-        tbuf.hash_data(data);
-        let new = self.commit_object(&tbuf)?;
-        Ok((tbuf, new))
+    pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
+        self.tbuf.hash_data(data);
+        self.commit_object2()
     }
 
     pub fn get_object(&mut self, id: &TubHash, _verify: bool) -> io::Result<Option<Vec<u8>>>
@@ -630,9 +627,8 @@ mod tests {
         assert!(! store.delete_object(&hash).unwrap());
         assert_eq!(store.offset, 0);
         let obj = random_small_object();
-        let (tbuf, new) = store.add_object(&obj).unwrap();
+        let (hash2, new) = store.add_object(&obj).unwrap();
         assert_eq!(store.len(), 1);
-        let hash2 = tbuf.hash();
         assert_ne!(hash, hash2);
         assert!(new);
         assert_eq!(store.offset, (HEADER_LEN + obj.len()) as u64);

@@ -51,11 +51,10 @@ fn test_get_object_new() {
     assert_eq!(buf.len(), 0);
 
     let obj = random_small_object();
-    let (top, new) = store.add_object(&obj).unwrap();
+    let (hash, new) = store.add_object(&obj).unwrap();
     assert!(new);
-    assert_eq!(top.size(), obj.len() as u64);
 
-    assert_eq!(store.get_object_new(&top.hash(), &mut buf).unwrap(), true);
+    assert_eq!(store.get_object_new(&hash, &mut buf).unwrap(), true);
     assert_eq!(buf.len(), obj.len());
     assert_eq!(buf, obj);
 }

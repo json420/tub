@@ -48,37 +48,16 @@ impl TreeEntry {
         Self {kind: kind, hash: hash}
     }
 
+    pub fn new_dir(hash: TubHash) -> Self {
+        Self {kind: Kind::Dir, hash: hash}
+    }
+
     pub fn new_file(hash: TubHash) -> Self {
         Self {kind: Kind::File, hash: hash}
     }
 }
 
 pub type TreeMap = HashMap<PathBuf, TreeEntry>;
-
-
-
-pub fn build_tree_state(dir: &Path, depth: usize) -> io::Result<()> {
-    if depth < MAX_DEPTH {
-        println!("Yo");
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let ft = entry.file_type()?;
-            let path = entry.path();
-            let name = path.file_name().unwrap();
-            if name.to_str().unwrap().starts_with(".") {
-                eprintln!("Skipping hiddin: {:?}", path);
-            }
-            else if ft.is_file() {
-                println!("F {:?}", name);
-            }
-            else if ft.is_dir() {
-                println!("D {:?}", name);
-                build_tree_state(&path, depth + 1)?;
-            }
-        }
-    }
-    Ok(())
-}
 
 
 pub fn deserialize(buf: &[u8]) -> TreeMap {
@@ -124,7 +103,6 @@ pub struct Tree {
     map: TreeMap,
 }
 
-
 impl Tree {
     pub fn new() -> Self {
         Self {map: HashMap::new()}
@@ -138,8 +116,53 @@ impl Tree {
         serialize(&self.map)
     }
 
-    pub fn add(&mut self, key: PathBuf, hash: TubHash) {
-        self.map.insert(key, TreeEntry::new(Kind::File, hash));
+    pub fn add_dir(&mut self, key: PathBuf, hash: TubHash) {
+        self.map.insert(key, TreeEntry::new_dir(hash));
+    }
+
+    pub fn add_file(&mut self, key: PathBuf, hash: TubHash) {
+        self.map.insert(key, TreeEntry::new_file(hash));
+    }
+}
+
+pub struct TreeState {
+    store: Store,
+}
+
+impl TreeState {
+    pub fn new(store: Store) -> Self {
+        Self {store: store}
+    }
+
+    pub fn into_store(self) -> Store {
+        self.store
+    }
+
+    fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<TubHash> {
+        let mut tree = Tree::new();
+        if depth < MAX_DEPTH {
+            for entry in fs::read_dir(dir)? {
+                let entry = entry?;
+                let ft = entry.file_type()?;
+                let path = entry.path();
+                let name = path.file_name().unwrap();
+                if name.to_str().unwrap().starts_with(".") {
+                    eprintln!("Skipping hiddin: {:?}", path);
+                }
+                else if ft.is_file() {
+                    println!("F {:?}", name);
+                }
+                else if ft.is_dir() {
+                    println!("D {:?}", name);
+                    self.build_recursive(&path, depth + 1)?;
+                }
+            }
+        }
+        Ok([0_u8; TUB_HASH_LEN])
+    }
+
+    pub fn build_tree_state(&self, dir: &Path) -> io::Result<(TubHash)> {
+        self.build_recursive(dir, 0)
     }
 }
 
@@ -166,7 +189,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected = "Unknown Kind: 5")]
+    #[should_panic(expected = "Unknown Kind: 5")]
     fn test_kind_panic() {
         let kind: Kind = 5.into();
     }

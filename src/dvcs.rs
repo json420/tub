@@ -153,10 +153,7 @@ impl TreeState {
                 else if ft.is_file() {
                     let size = fs::metadata(&path)?.len();
                     let mut file = fs::File::open(&path)?;
-                    //let (hash, new) = self.store.import_file(file, size)?;
-
-                        //let (hash, _new) = self.store.add_object(&buf)?;
-                        println!("F {:?}", name);
+                    println!("F {:?}", name);
                 }
                 else if ft.is_dir() {
                     println!("D {:?}", name);

@@ -348,14 +348,13 @@ impl Store {
         // We should probably walk through the file again like Store.reindex()
         // does, it just adds some complexity.
         let id = random_id();
-        let mut tbuf = TubBuf::new();
         let (tmp_pb, mut tmp) = self.open_tmp(&id)?;
         for (_hash, entry) in self.index.iter() {
             assert!(entry.size > 0);
-            tbuf.resize(entry.size);
-            self.file.read_exact_at(tbuf.as_mut_commit(), entry.offset)?;
-            if tbuf.is_valid_for_commit() {
-                tmp.write_all(tbuf.as_commit())?;
+            self.tbuf.resize(entry.size);
+            self.file.read_exact_at(self.tbuf.as_mut_commit(), entry.offset)?;
+            if self.tbuf.is_valid_for_commit() {
+                tmp.write_all(self.tbuf.as_commit())?;
             }
             else {
                 panic!("shit is broke, yo");
@@ -367,20 +366,6 @@ impl Store {
         self.file = File::options().read(true).append(true).open(self.pack_path())?;
         self.reindex()?;
         Ok(())
-    }
-
-    pub fn commit_object(&mut self, tbuf: &TubBuf) -> io::Result<bool>
-    {
-        if let Some(_entry) = self.index.get(&tbuf.hash()) {
-            Ok(false)  // Already in object store
-        }
-        else {
-            let entry = Entry::new(tbuf.size(), self.offset);
-            self.index.insert(tbuf.hash(), entry);
-            self.file.write_all(tbuf.as_commit())?;
-            self.offset += tbuf.as_commit().len() as u64;
-            Ok(true)
-        }
     }
 
     pub fn import_file(&mut self, mut file: File, size: u64) -> io::Result<(TubHash, bool)> {
@@ -399,10 +384,10 @@ impl Store {
             self.finalize_tmp(tmp, &self.tbuf.hash())?;
             self.tbuf.finalize();
         }
-        self.commit_object2()
+        self.commit_object()
     }
 
-    pub fn commit_object2(&mut self) -> io::Result<(TubHash, bool)>
+    pub fn commit_object(&mut self) -> io::Result<(TubHash, bool)>
     {
         let hash = self.tbuf.hash();
         if let Some(_entry) = self.index.get(&hash) {
@@ -419,7 +404,7 @@ impl Store {
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
         self.tbuf.hash_data(data);
-        self.commit_object2()
+        self.commit_object()
     }
 
     pub fn get_object(&mut self, id: &TubHash, _verify: bool) -> io::Result<Option<Vec<u8>>>

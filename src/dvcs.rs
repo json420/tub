@@ -11,8 +11,8 @@ use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
 
 use crate::dbase32::db32enc_str;
-use crate::store::Store;
 use crate::leaf_io::TubBuf;
+use crate::store::Store;
 use crate::base::*;
 
 
@@ -100,6 +100,7 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
     }
     buf
 }
+
 
 
 pub struct Tree {
@@ -202,7 +203,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
                 if size > 0 {
                     let mut file = fs::File::open(&path)?;
                     let hash = tbuf.hash_file(file, size)?;
-                    tree.add_file(path.to_path_buf(), hash);
+                    tree.add_file(PathBuf::from(name), hash);
                     accum.files.push(
                         TreeFile::new(path.to_path_buf(), size, hash)
                     );
@@ -210,7 +211,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
             }
             else if ft.is_dir() {
                 if let Some(hash) = scan_tree_inner(accum, &path, depth + 1)? {
-                    tree.add_dir(path.to_path_buf(), hash);
+                    tree.add_dir(PathBuf::from(name), hash);
                 }
             }
         }
@@ -231,12 +232,49 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
     }
 }
 
-pub fn scan_tree(dir: &Path) -> io::Result<TreeAccum> {
+pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
     let mut accum = TreeAccum::new();
     if let Some(root_hash) = scan_tree_inner(&mut accum, dir, 0)? {
-
+        Ok((root_hash, accum))
     }
-    Ok(accum)
+    else {
+        panic!("FIXME: handle this more better");
+    }
+}
+
+
+fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usize) -> io::Result<()> {
+    if depth < MAX_DEPTH {
+        if let Some(data) = store.get_object(root, false)? {
+            let map = deserialize(&data);
+            for (name, entry) in map.iter() {
+                let mut pb = path.to_path_buf();
+                pb.push(name);
+                match entry.kind {
+                    Kind::Dir => {
+                        println!("D {:?}", pb);
+                        fs::create_dir_all(&pb)?;
+                        restore_tree_inner(&entry.hash, store, &pb, depth + 1)?;
+                    },
+                    Kind::File => {
+                        if let Some(mut object) = store.open(root)? {
+                            let mut file = fs::File::create(&pb)?;
+                            object.write_to_file(&mut file)?;
+                            println!("F {:?}", pb);
+                        }
+                    }
+                    _ => {
+                        panic!("implement more stuff");
+                    },
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub fn restore_tree(root: &TubHash, store: &mut Store, path: &Path) -> io::Result<()> {
+    restore_tree_inner(root, store, path, 0)
 }
 
 

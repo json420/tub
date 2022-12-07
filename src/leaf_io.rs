@@ -482,11 +482,20 @@ impl TubBuf {
     }
 
     pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
-        if self.is_large() {
-            panic!("FIXME: large objects not yet supported");
-        }
+        // FIXME: reimplement without icky copying
         self.resize(data.len() as u64);
-        self.buf[self.state.leaf_range()].copy_from_slice(data);
+        if self.state.is_small() {
+            self.buf[self.state.leaf_range()].copy_from_slice(data);
+        }
+        else {
+            let mut start = 0_usize;
+            while start < data.len() {
+                let stop = cmp::min(start + LEAF_SIZE as usize, data.len());
+                self.buf[self.state.leaf_range()].copy_from_slice(&data[start..stop]);
+                self.hash_leaf();
+                start += LEAF_SIZE as usize;
+            }
+        }
         self.finalize();
         self.hash()
     }
@@ -805,6 +814,18 @@ mod tests {
             assert_eq!(state.leaf_range(), 129..129 + (size - LEAF_SIZE) as usize);
             assert_eq!(state.commit_range(), 0..129);
         }
+    }
+
+    #[test]
+    fn test_tubbuf() {
+        let mut tbuf = TubBuf::new();
+        let mut data: Vec<u8> = Vec::new();
+        data.resize(1,69);
+        let h1 = tbuf.hash_data(&data);
+
+        data.resize(LEAF_SIZE as usize + 1, 42);
+        let h2 = tbuf.hash_data(&data);
+        assert_ne!(h1, h2);
     }
 
     #[test]

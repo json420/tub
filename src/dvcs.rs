@@ -141,7 +141,6 @@ impl TreeState {
 
     fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<TubHash> {
         let mut tree = Tree::new();
-        let mut buf: Vec<u8> = Vec::new();
         if depth < MAX_DEPTH {
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
@@ -153,13 +152,11 @@ impl TreeState {
                 }
                 else if ft.is_file() {
                     let size = fs::metadata(&path)?.len();
-                    if size < LEAF_SIZE {
-                        buf.resize(size as usize, 0);
-                        let mut file = fs::File::open(&path)?;
-                        file.read_exact(&mut buf)?;
+                    let mut file = fs::File::open(&path)?;
+                    //let (hash, new) = self.store.import_file(file, size)?;
+
                         //let (hash, _new) = self.store.add_object(&buf)?;
                         println!("F {:?}", name);
-                    }
                 }
                 else if ft.is_dir() {
                     println!("D {:?}", name);

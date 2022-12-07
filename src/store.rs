@@ -171,6 +171,7 @@ fn get_largemark(large: bool) -> String {
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
 pub struct Store {
+    tbuf: TubBuf,  // FIXME this wont work for multi-threaded
     path: PathBuf,
     file: fs::File,
     index: Index,
@@ -181,6 +182,7 @@ pub struct Store {
 impl Store {
     pub fn new(path: &Path) -> io::Result<Self>
     {
+        let tbuf = TubBuf::new();
         let pb = PathBuf::from(path);
 
         let mut pb_copy = pb.clone();
@@ -190,7 +192,7 @@ impl Store {
                         .append(true)
                         .create(true).open(pb_copy)?;
         Ok(
-            Store {path: pb, file: file, index: HashMap::new(), offset: 0}
+            Store {tbuf: tbuf, path: pb, file: file, index: HashMap::new(), offset: 0}
         )
     }
 
@@ -379,26 +381,10 @@ impl Store {
     }
 
     pub fn import_files(&mut self, files: Scanner) -> io::Result<()> {
-        let mut tbuf = TubBuf::new();
         for src in files.iter() {
-            tbuf.resize(src.size);
-            let mut reader = LeafReader::new(tbuf, src.open()?);
-            tbuf = if reader.is_small() {
-                reader.read_in_small()?;
-                reader.finalize()
-            }
-            else {
-                let mut tmp = self.allocate_tmp()?;
-                while let Some(buf) = reader.read_next_leaf()? {
-                    tmp.write_all(buf)?;
-                }
-                let tbuf = reader.finalize();
-                self.finalize_tmp(tmp, &tbuf.hash())?;
-                tbuf
-            };
-            let new = self.commit_object(&tbuf)?;
-            println!("{} {}{} {}   {:?}", tbuf,
-                get_largemark(tbuf.is_large()), get_newmark(new), src.size, src.path
+            let (hash, new) = self.import_file(src.open()?, src.size)?;
+            println!("{} {}{} {}   {:?}", self.tbuf,
+                get_largemark(self.tbuf.is_large()), get_newmark(new), src.size, src.path
             );
         }
         Ok(())
@@ -415,6 +401,39 @@ impl Store {
             self.file.write_all(tbuf.as_commit())?;
             self.offset += tbuf.as_commit().len() as u64;
             Ok(true)
+        }
+    }
+
+    pub fn import_file(&mut self, mut file: File, size: u64) -> io::Result<(TubHash, bool)> {
+        self.tbuf.resize(size);
+        if self.tbuf.is_small() {
+            file.read_exact(self.tbuf.as_mut_leaf().unwrap())?;
+            self.tbuf.finalize();
+        }
+        else {
+            let mut tmp = self.allocate_tmp()?;
+            while let Some(buf) = self.tbuf.as_mut_leaf() {
+                file.read_exact(buf)?;
+                self.tbuf.hash_leaf();
+                tmp.write_all(self.tbuf.as_leaf());
+            }
+            self.finalize_tmp(tmp, &self.tbuf.hash())?;
+        }
+        self.commit_object2()
+    }
+
+    pub fn commit_object2(&mut self) -> io::Result<(TubHash, bool)>
+    {
+        let hash = self.tbuf.hash();
+        if let Some(_entry) = self.index.get(&hash) {
+            Ok((hash, false))  // Already in object store
+        }
+        else {
+            let entry = Entry::new(self.tbuf.size(), self.offset);
+            self.index.insert(hash, entry);
+            self.file.write_all(self.tbuf.as_commit())?;
+            self.offset += self.tbuf.as_commit().len() as u64;
+            Ok((hash, true))
         }
     }
 

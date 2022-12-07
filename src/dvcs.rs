@@ -7,6 +7,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::fs;
 use std::io;
 use std::convert::Into;
+use std::io::prelude::*;
 
 use crate::dbase32::db32enc_str;
 use crate::store::Store;
@@ -140,6 +141,7 @@ impl TreeState {
 
     fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<TubHash> {
         let mut tree = Tree::new();
+        let mut buf: Vec<u8> = Vec::new();
         if depth < MAX_DEPTH {
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
@@ -150,7 +152,14 @@ impl TreeState {
                     eprintln!("Skipping hiddin: {:?}", path);
                 }
                 else if ft.is_file() {
-                    println!("F {:?}", name);
+                    let size = fs::metadata(&path)?.len();
+                    if size < LEAF_SIZE {
+                        buf.resize(size as usize, 0);
+                        let mut file = fs::File::open(&path)?;
+                        file.read_exact(&mut buf)?;
+                        //let (hash, _new) = self.store.add_object(&buf)?;
+                        println!("F {:?}", name);
+                    }
                 }
                 else if ft.is_dir() {
                     println!("D {:?}", name);
@@ -161,7 +170,7 @@ impl TreeState {
         Ok([0_u8; TUB_HASH_LEN])
     }
 
-    pub fn build_tree_state(&self, dir: &Path) -> io::Result<(TubHash)> {
+    pub fn build_tree_state(&self, dir: &Path) -> io::Result<TubHash> {
         self.build_recursive(dir, 0)
     }
 }
@@ -191,7 +200,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Unknown Kind: 5")]
     fn test_kind_panic() {
-        let kind: Kind = 5.into();
+        let _kind: Kind = 5.into();
     }
 
     #[test]

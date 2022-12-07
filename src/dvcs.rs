@@ -8,6 +8,7 @@ use std::fs;
 use std::io;
 use std::convert::Into;
 use std::io::prelude::*;
+use std::os::unix::fs::PermissionsExt;
 
 use crate::dbase32::db32enc_str;
 use crate::store::Store;
@@ -15,7 +16,7 @@ use crate::leaf_io::TubBuf;
 use crate::base::*;
 
 
-const MAX_DEPTH: usize = 4;
+const MAX_DEPTH: usize = 32;
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -89,7 +90,7 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
     let mut items = Vec::from_iter(map.iter());
     items.sort_by(|a, b| b.0.cmp(a.0));
     for (p, entry) in items.iter() {
-        println!("{:?} {}", p, db32enc_str(&entry.hash));
+        //println!("{:?} {}", p, db32enc_str(&entry.hash));
         let path = p.to_str().unwrap().as_bytes();
         let size = path.len() as u8;
         buf.extend_from_slice(&entry.hash);
@@ -131,61 +132,100 @@ impl Tree {
     }
 }
 
-pub struct TreeState {
-    store: Store,
+
+pub struct TreeFile {
+    pub path: PathBuf,
+    pub size: u64,
+    pub hash: TubHash,
 }
 
-impl TreeState {
-    pub fn new(store: Store) -> Self {
-        Self {store: store}
+impl TreeFile {
+    pub fn new(path: PathBuf, size: u64, hash: TubHash) -> Self {
+        Self {path: path, size: size, hash: hash}
     }
 
-    pub fn into_store(self) -> Store {
-        self.store
+    pub fn is_large(&self) -> bool {
+        self.size > LEAF_SIZE
     }
 
-    fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<Option<TubHash>> {
-        println!("{:?} {}", dir, depth);
-        if depth < MAX_DEPTH {
-            let mut tree = Tree::new();
-            let mut tbuf = TubBuf::new();
-            for entry in fs::read_dir(dir)? {
-                let entry = entry?;
-                let ft = entry.file_type()?;
-                let path = entry.path();
-                let name = path.file_name().unwrap();
-                if name.to_str().unwrap().starts_with(".") {
-                    eprintln!("Skipping hiddin: {:?}", path);
-                }
-                else if ft.is_file() {
-                    let size = fs::metadata(&path)?.len();
-                    if size > 0 {
-                        let mut file = fs::File::open(&path)?;
-                        let hash = tbuf.hash_file(file, size)?;
-                        tree.add_file(path.to_path_buf(), hash);
-                    }
-                }
-                else if ft.is_dir() {
-                    if let Some(hash) = self.build_recursive(&path, depth + 1)? {
-                        tree.add_dir(path.to_path_buf(), hash);
-                    }
+    pub fn open(&self) -> io::Result<fs::File> {
+        fs::File::open(&self.path)
+    }
+}
+
+
+pub struct TreeAccum {
+    pub tree_objects: Vec<Vec<u8>>,
+    pub files_info: Vec<TreeFile>,
+}
+
+impl TreeAccum {
+    pub fn new() -> Self {
+        Self {
+            tree_objects: Vec::new(),
+            files_info: Vec::new(),
+        }
+    }
+}
+
+
+fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
+{
+    if depth < MAX_DEPTH {
+        let mut tree = Tree::new();
+        let mut tbuf = TubBuf::new();
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let ft = entry.file_type()?;
+            let path = entry.path();
+            let name = path.file_name().unwrap();
+            if name.to_str().unwrap().starts_with(".") {
+                eprintln!("Skipping hiddin: {:?}", path);
+            }
+            else if ft.is_symlink() {
+                eprintln!("Skipping symlink: {:?}", path);
+            }
+            else if ft.is_file() {
+                let meta = fs::metadata(&path)?;
+                let size = meta.len();
+                if size > 0 {
+                    let mut file = fs::File::open(&path)?;
+                    let hash = tbuf.hash_file(file, size)?;
+                    tree.add_file(path.to_path_buf(), hash);
+                    accum.files_info.push(
+                        TreeFile::new(path.to_path_buf(), size, hash)
+                    );
                 }
             }
-            if tree.len() > 0 {
-                Ok(Some(tbuf.hash_data(&tree.serialize())))
+            else if ft.is_dir() {
+                if let Some(hash) = scan_tree_inner(accum, &path, depth + 1)? {
+                    tree.add_dir(path.to_path_buf(), hash);
+                }
             }
-            else {
-                Ok(None)
-            }
+        }
+        if tree.len() > 0 {
+            let obj = tree.serialize();
+            let hash = tbuf.hash_data(&obj);
+            accum.tree_objects.push(obj);
+            eprintln!("{} {:?}", db32enc_str(&hash), dir);
+            Ok(Some(hash))
         }
         else {
             Ok(None)
         }
     }
-
-    pub fn build_tree_state(&self, dir: &Path) -> io::Result<Option<TubHash>> {
-        self.build_recursive(dir, 0)
+    else {
+        panic!("max depth reached");
+        Ok(None)
     }
+}
+
+pub fn scan_tree(dir: &Path) -> io::Result<TreeAccum> {
+    let mut accum = TreeAccum::new();
+    if let Some(root_hash) = scan_tree_inner(&mut accum, dir, 0)? {
+
+    }
+    Ok(accum)
 }
 
 

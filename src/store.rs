@@ -330,6 +330,7 @@ impl Store {
             eprintln!("Trunkcating to {} bytes", self.offset);
             self.file.set_len(self.offset)?;
         }
+        eprintln!("Indexed {} objects", self.len());
         Ok(())
     }
 

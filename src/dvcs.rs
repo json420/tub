@@ -6,115 +6,79 @@ use std::ffi::OsStr;
 use std::os::unix::ffi::OsStrExt;
 use std::fs;
 use std::io;
-
+use std::convert::Into;
 
 use crate::dbase32::db32enc_str;
+use crate::store::Store;
 use crate::base::*;
-
-
-pub type TreeMap = HashMap<PathBuf, TubHash>;
 
 
 const MAX_DEPTH: usize = 32;
 
 
-pub enum EntryType {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Kind {
     Dir,
     File,
     ExFile,
-    SymLink,
+    Symlink,
 }
 
-
-pub struct SrcFile {
-    pub path: PathBuf,
-    pub size: u64,
-}
-
-impl SrcFile {
-    pub fn new(path: PathBuf, size: u64) -> Self {
-        Self {
-            path: path,
-            size: size,
+impl From<u8> for Kind {
+    fn from(item: u8) -> Self {
+        match item {
+            0 => Self::Dir,
+            1 => Self::File,
+            2 => Self::ExFile,
+            3 => Self::Symlink,
+            _ => panic!("Unknown Kind: {}", item),
         }
     }
-
-    pub fn open(&self) -> io::Result<fs::File> {
-        fs::File::open(&self.path)
-    }
 }
 
 
-
-pub fn build_tree_state(dir: &Path) -> io::Result<()> {
-    println!("Yo");
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let ft = entry.file_type()?;
-        let path = entry.path();
-        println!("{:?}", path.file_name().unwrap());
-    }
-    Ok(())
+#[derive(Debug, PartialEq)]
+pub struct TreeEntry {
+    kind: Kind,
+    hash: TubHash,
 }
 
+impl TreeEntry {
+    pub fn new(kind: Kind, hash: TubHash) -> Self {
+        Self {kind: kind, hash: hash}
+    }
 
-fn scan_files(dir: &Path, accum: &mut Vec<SrcFile>, depth: usize) -> io::Result<u64> {
-    let mut total: u64 = 0;
+    pub fn new_file(hash: TubHash) -> Self {
+        Self {kind: Kind::File, hash: hash}
+    }
+}
+
+pub type TreeMap = HashMap<PathBuf, TreeEntry>;
+
+
+
+pub fn build_tree_state(dir: &Path, depth: usize) -> io::Result<()> {
     if depth < MAX_DEPTH {
+        println!("Yo");
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
-            if path.file_name().unwrap().to_str().unwrap().starts_with(".") {
+            let name = path.file_name().unwrap();
+            if name.to_str().unwrap().starts_with(".") {
                 eprintln!("Skipping hiddin: {:?}", path);
             }
-            else if ft.is_symlink() {
-                eprintln!("Skipping symlink: {:?}", path);
-            }
             else if ft.is_file() {
-                let size = fs::metadata(&path)?.len();
-                if size > 0 {
-                    accum.push(SrcFile::new(path, size));
-                    total += size;
-                }
-                else {
-                    eprintln!("Skipping empty file: {:?}", path);
-                }
+                println!("F {:?}", name);
             }
             else if ft.is_dir() {
-                total += scan_files(&path, accum, depth + 1)?;
+                println!("D {:?}", name);
+                build_tree_state(&path, depth + 1)?;
             }
         }
     }
-    Ok(total)
+    Ok(())
 }
-
-
-pub struct Scanner {
-    accum: Vec<SrcFile>,
-    total: u64,
-}
-
-impl Scanner {
-    pub fn scan_dir(dir: &Path) -> io::Result<Scanner> {
-        let mut accum: Vec<SrcFile> = Vec::new();
-        let total = scan_files(dir, &mut accum, 0)?;
-        Ok(Scanner {accum: accum, total: total})
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<SrcFile> {
-        self.accum.iter()
-    }
-
-    pub fn count(&self) -> usize {
-        self.accum.len()
-    }
-
-    pub fn total(&self) -> u64 {
-        self.total
-    }
-}
-
 
 
 pub fn deserialize(buf: &[u8]) -> TreeMap {
@@ -124,14 +88,15 @@ pub fn deserialize(buf: &[u8]) -> TreeMap {
         let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
         offset += h.len();
 
-        let size = buf[offset] as usize;
-        offset += 1;
+        let kind: Kind = buf[offset].into();
+        let size = buf[offset + 1] as usize;
+        offset += 2;
 
         let s = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
         let pb = PathBuf::from(s);
         offset += size;
 
-        map.insert(pb, h);
+        map.insert(pb, TreeEntry::new(kind, h));
     }
     assert_eq!(offset, buf.len());
     map
@@ -142,11 +107,12 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
     let mut buf: Vec<u8> = Vec::new();
     let mut items = Vec::from_iter(map.iter());
     items.sort_by(|a, b| b.0.cmp(a.0));
-    for (p, h) in items.iter() {
-        println!("{:?} {}", p, db32enc_str(*h));
+    for (p, entry) in items.iter() {
+        println!("{:?} {}", p, db32enc_str(&entry.hash));
         let path = p.to_str().unwrap().as_bytes();
         let size = path.len() as u8;
-        buf.extend_from_slice(&h[..]);
+        buf.extend_from_slice(&entry.hash);
+        buf.push(entry.kind as u8);
         buf.push(size);
         buf.extend_from_slice(path);
     }
@@ -155,7 +121,7 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
 
 
 pub struct Tree {
-    map: HashMap<PathBuf, TubHash>,
+    map: TreeMap,
 }
 
 
@@ -173,7 +139,7 @@ impl Tree {
     }
 
     pub fn add(&mut self, key: PathBuf, hash: TubHash) {
-        self.map.insert(key, hash);
+        self.map.insert(key, TreeEntry::new(Kind::File, hash));
     }
 }
 
@@ -184,23 +150,45 @@ mod tests {
     use crate::util::random_hash;
 
     #[test]
+    fn test_kind() {
+        for k in 0..4 {
+            let kind: Kind = k.into();
+            assert_eq!(kind as u8, k);
+        }
+        assert_eq!(Kind::Dir as u8, 0);
+        assert_eq!(Kind::Dir, 0.into());
+        assert_eq!(Kind::File as u8, 1);
+        assert_eq!(Kind::File, 1.into());
+        assert_eq!(Kind::ExFile as u8, 2);
+        assert_eq!(Kind::ExFile, 2.into());
+        assert_eq!(Kind::Symlink as u8, 3);
+        assert_eq!(Kind::Symlink, 3.into());
+    }
+
+    #[test]
+    #[should_panic (expected = "Unknown Kind: 5")]
+    fn test_kind_panic() {
+        let kind: Kind = 5.into();
+    }
+
+    #[test]
     fn test_serialize_deserialize() {
         let mut map: TreeMap = HashMap::new();
         let pb = PathBuf::from("foo");
         let hash = [11_u8; TUB_HASH_LEN];
-        map.insert(pb, hash);
+        map.insert(pb, TreeEntry::new_file(hash));
         let buf = serialize(&map);
         assert_eq!(buf, [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
                          11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-                         11, 11, 3, 102, 111, 111]
+                         11, 11, 1, 3, 102, 111, 111]
         );
         let map2 = deserialize(&buf);
         assert_eq!(map2, map);
 
         let mut map: TreeMap = HashMap::new();
-        map.insert(PathBuf::from("as"), random_hash());
-        map.insert(PathBuf::from("the"), random_hash());
-        map.insert(PathBuf::from("world"), random_hash());
+        map.insert(PathBuf::from("as"), TreeEntry::new_file(random_hash()));
+        map.insert(PathBuf::from("the"), TreeEntry::new_file(random_hash()));
+        map.insert(PathBuf::from("world"), TreeEntry::new_file(random_hash()));
         let buf = serialize(&map);
         let map2 = deserialize(&buf);
         assert_eq!(map2, map);

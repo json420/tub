@@ -500,6 +500,20 @@ impl TubBuf {
         self.hash()
     }
 
+    pub fn hash_file(&mut self, mut file: File, size: u64) -> io::Result<TubHash> {
+        self.resize(size);
+        if self.state.is_small() {
+            file.read_exact(self.as_mut_leaf().unwrap())?;
+        }
+        else if self.state.is_large() {
+            while let Some(buf) = self.as_mut_leaf() {
+                file.read_exact(buf)?;
+                self.hash_leaf();
+            }
+        }
+        Ok(self.finalize())
+    }
+
     pub fn is_tombstone(&self) -> bool {
         assert_eq!(self.len(), HEADER_LEN); 
         self.size() == 0 && self.as_leaf_hash() == self.compute_tombstone()
@@ -519,10 +533,11 @@ impl TubBuf {
         && self.hash() == self.compute_root()
     }
 
-    pub fn finalize(&mut self) {
+    pub fn finalize(&mut self) -> TubHash {
         self.hash_payload();
         self.set_size(self.state.object_size);
         self.set_hash(&self.compute_root());
+        self.hash()
     }
 }
 

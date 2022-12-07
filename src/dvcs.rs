@@ -11,10 +11,11 @@ use std::io::prelude::*;
 
 use crate::dbase32::db32enc_str;
 use crate::store::Store;
+use crate::leaf_io::TubBuf;
 use crate::base::*;
 
 
-const MAX_DEPTH: usize = 32;
+const MAX_DEPTH: usize = 4;
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -109,6 +110,10 @@ impl Tree {
         Self {map: HashMap::new()}
     }
 
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
     pub fn deserialize(buf: &[u8]) -> Self {
         Self {map: deserialize(buf)}
     }
@@ -139,9 +144,11 @@ impl TreeState {
         self.store
     }
 
-    fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<TubHash> {
-        let mut tree = Tree::new();
+    fn build_recursive(&self, dir: &Path, depth: usize) -> io::Result<Option<TubHash>> {
+        println!("{:?} {}", dir, depth);
         if depth < MAX_DEPTH {
+            let mut tree = Tree::new();
+            let mut tbuf = TubBuf::new();
             for entry in fs::read_dir(dir)? {
                 let entry = entry?;
                 let ft = entry.file_type()?;
@@ -152,19 +159,31 @@ impl TreeState {
                 }
                 else if ft.is_file() {
                     let size = fs::metadata(&path)?.len();
-                    let mut file = fs::File::open(&path)?;
-                    println!("F {:?}", name);
+                    if size > 0 {
+                        let mut file = fs::File::open(&path)?;
+                        let hash = tbuf.hash_file(file, size)?;
+                        tree.add_file(path.to_path_buf(), hash);
+                    }
                 }
                 else if ft.is_dir() {
-                    println!("D {:?}", name);
-                    self.build_recursive(&path, depth + 1)?;
+                    if let Some(hash) = self.build_recursive(&path, depth + 1)? {
+                        tree.add_dir(path.to_path_buf(), hash);
+                    }
                 }
             }
+            if tree.len() > 0 {
+                Ok(Some(tbuf.hash_data(&tree.serialize())))
+            }
+            else {
+                Ok(None)
+            }
         }
-        Ok([0_u8; TUB_HASH_LEN])
+        else {
+            Ok(None)
+        }
     }
 
-    pub fn build_tree_state(&self, dir: &Path) -> io::Result<TubHash> {
+    pub fn build_tree_state(&self, dir: &Path) -> io::Result<Option<TubHash>> {
         self.build_recursive(dir, 0)
     }
 }

@@ -153,17 +153,28 @@ impl TreeFile {
     }
 }
 
+pub struct TreeDir {
+    pub data: Vec<u8>,
+    pub hash: TubHash,
+}
+
+impl TreeDir {
+    pub fn new(data: Vec<u8>, hash: TubHash) -> Self {
+        Self {data: data, hash: hash}
+    }
+}
+
 
 pub struct TreeAccum {
-    pub tree_objects: Vec<Vec<u8>>,
-    pub files_info: Vec<TreeFile>,
+    pub trees: Vec<TreeDir>,
+    pub files: Vec<TreeFile>,
 }
 
 impl TreeAccum {
     pub fn new() -> Self {
         Self {
-            tree_objects: Vec::new(),
-            files_info: Vec::new(),
+            trees: Vec::new(),
+            files: Vec::new(),
         }
     }
 }
@@ -192,7 +203,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
                     let mut file = fs::File::open(&path)?;
                     let hash = tbuf.hash_file(file, size)?;
                     tree.add_file(path.to_path_buf(), hash);
-                    accum.files_info.push(
+                    accum.files.push(
                         TreeFile::new(path.to_path_buf(), size, hash)
                     );
                 }
@@ -206,7 +217,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
         if tree.len() > 0 {
             let obj = tree.serialize();
             let hash = tbuf.hash_data(&obj);
-            accum.tree_objects.push(obj);
+            accum.trees.push(TreeDir::new(obj, hash));
             eprintln!("{} {:?}", db32enc_str(&hash), dir);
             Ok(Some(hash))
         }

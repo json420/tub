@@ -9,15 +9,16 @@ fn main() -> io::Result<()> {
     let (_tmp, mut store) = Store::new_tmp();
     let accum = scan_tree(&PathBuf::from("."))?;
     //let store = ts.into_store();
-    println!("{}", accum.tree_objects.len());
-    println!("{}", accum.files_info.len());
+    println!("{}", accum.trees.len());
+    println!("{}", accum.files.len());
 
-    for f in accum.files_info.iter() {
+    for f in accum.files.iter() {
         let (hash, new) = store.import_file(f.open()?, f.size)?;
         assert_eq!(hash, f.hash);
     }
-    for obj in accum.tree_objects.iter() {
-        let (hash, new) = store.add_object(&obj)?;
+    for t in accum.trees.iter() {
+        let (hash, new) = store.add_object(&t.data)?;
+        assert_eq!(hash, t.hash);
     }
     store.reindex();
     Ok(())

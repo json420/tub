@@ -217,6 +217,9 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
+
+    let mut new_cnt = 0_u64;
+    let mut dup_cnt = 0_u64;
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?, src.size)?;
         println!("{} {}{} {:?}",
@@ -225,8 +228,13 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
             get_newmark(new),
             src.path
         );
+        if new {
+            new_cnt += 1;
+        } else {
+            dup_cnt += 1;
+        }
     }
-    //tub.import_files(files)?;
+    eprintln!("Imported {} new files and {} duplicates", new_cnt, dup_cnt);
     Ok(())
 }
 

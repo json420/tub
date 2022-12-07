@@ -394,7 +394,7 @@ impl Store {
             while let Some(buf) = self.tbuf.as_mut_leaf() {
                 file.read_exact(buf)?;
                 self.tbuf.hash_leaf();
-                tmp.write_all(self.tbuf.as_leaf());
+                tmp.write_all(self.tbuf.as_leaf())?;
             }
             self.finalize_tmp(tmp, &self.tbuf.hash())?;
             self.tbuf.finalize();
@@ -469,7 +469,7 @@ impl Store {
             let mut buf = [0_u8; HEADER_LEN];
             buf[ROOT_HASH_RANGE].copy_from_slice(hash);
             buf[PAYLOAD_HASH_RANGE].copy_from_slice(&hash_tombstone(hash));
-            self.file.write_all(&buf);
+            self.file.write_all(&buf)?;
             self.offset += buf.len() as u64;
             if entry.is_large() {
                 self.remove_large(hash)?;

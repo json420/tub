@@ -94,6 +94,7 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
         //println!("{:?} {}", p, db32enc_str(&entry.hash));
         let path = p.to_str().unwrap().as_bytes();
         let size = path.len() as u8;
+        assert!(size > 0);
         buf.extend_from_slice(&entry.hash);
         buf.push(entry.kind as u8);
         buf.push(size);
@@ -262,6 +263,8 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
                             println!("F {:?}", pb);
                             let mut file = fs::File::create(&pb)?;
                             object.write_to_file(&mut file)?;
+                        } else {
+                            panic!("could not find object {}", db32enc_str(&entry.hash));
                         }
                     }
                     _ => {
@@ -269,6 +272,8 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
                     },
                 }
             }
+        } else {
+            panic!("could not find tree {}", db32enc_str(root));
         }
     }
     Ok(())

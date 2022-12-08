@@ -158,6 +158,56 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
 }
 
 
+pub struct Summary {
+    count: u64,
+    total: u64,
+}
+impl Summary {
+    pub fn new() -> Self {
+        Self {count: 0, total: 0}
+    }
+
+    pub fn increment(&mut self, entry: &Entry) {
+        self.count += 1;
+        self.total += entry.size;
+    }
+}
+
+pub struct Stats {
+    large: Summary,
+    small: Summary,
+    data: Summary,
+    tree: Summary,
+}
+impl Stats {
+    pub fn new() -> Self {
+        Self {
+            large: Summary::new(),
+            small: Summary::new(),
+            data: Summary::new(),
+            tree: Summary::new(),
+        }
+    }
+
+    pub fn increment(&mut self, entry: &Entry) {
+        if entry.is_large() {
+            self.large.increment(entry);
+        }
+        else {
+            self.small.increment(entry);
+        }
+        match entry.kind {
+            ObjectType::Data => {
+                self.data.increment(entry);
+            },
+            ObjectType::Tree => {
+                self.tree.increment(entry);
+            },
+        }
+    }
+}
+
+
 /// Layout of large and small objects on the filesystem.
 #[derive(Debug)]
 pub struct Store {
@@ -318,6 +368,7 @@ impl Store {
             else {
                 panic!("bad entry: {}", rbuf);
             }
+            assert_eq!(rbuf.object_type(), ObjectType::Data);
             self.offset += rbuf.offset_size();
             rbuf.reset();
         }
@@ -368,6 +419,14 @@ impl Store {
         self.file = File::options().read(true).append(true).open(self.pack_path())?;
         self.reindex()?;
         Ok(())
+    }
+
+    pub fn stats(&self) -> Stats {
+        let mut stats = Stats::new();
+        for entry in self.index.values() {
+            stats.increment(entry);
+        }
+        stats
     }
 
     pub fn import_file(&mut self, mut file: File, size: u64) -> io::Result<(TubHash, bool)> {

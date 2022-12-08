@@ -9,7 +9,8 @@ pub type TubId = [u8; TUB_ID_LEN];
 pub type TubHash = [u8; TUB_HASH_LEN];
 pub type TubHashList = Vec<TubHash>;
 
-pub const HEADER_LEN: usize = 2 * TUB_HASH_LEN + 9;
+pub const TAIL_LEN: usize = 9 + TUB_HASH_LEN;  // Size + Type + Payload Hash
+pub const HEADER_LEN: usize = TUB_HASH_LEN + TAIL_LEN;
 
 //pub const LEAF_SIZE: u64 = 1048576;  // 1 MiB
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB

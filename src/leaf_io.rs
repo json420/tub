@@ -13,7 +13,7 @@ use std::ops;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{hash_leaf, hash_root, hash_tombstone,  hash_payload};
+use crate::protocol::{hash_leaf, hash_root, hash_root2, hash_tombstone,  hash_payload};
 
 
 
@@ -394,7 +394,8 @@ impl TubBuf {
     }
 
     fn compute_root(&self) -> TubHash {
-        hash_root(self.state.object_size, &self.payload_hash())
+        hash_root2(self.as_tail())
+        //hash_root(self.state.object_size, &self.payload_hash())
     }
 
     fn compute_tombstone(&self) -> TubHash {
@@ -442,6 +443,11 @@ impl TubBuf {
     pub fn hash_payload(&mut self) {
         let hash = self.compute_payload();
         self.set_payload_hash(&hash);
+    }
+
+    pub fn as_tail(&self) -> &[u8] {
+        self.state.check_can_read();
+        &self.buf[TAIL_RANGE]
     }
 
     pub fn as_commit(&self) -> &[u8] {
@@ -583,11 +589,15 @@ impl ReindexBuf {
     }
 
     pub fn is_object(&self) -> bool {
-        self.size() != 0 && self.hash() == hash_root(self.size(), &self.payload_hash())
+        self.size() != 0 && self.hash() == hash_root2(self.as_tail())
     }
 
     pub fn is_tombstone(&self) -> bool {
         self.size() == 0 && self.payload_hash() == hash_tombstone(&self.hash())
+    }
+
+    pub fn as_tail(&self) -> &[u8]{
+        &self.buf[TAIL_RANGE]
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8]{

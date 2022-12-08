@@ -49,8 +49,8 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new(size: u64, offset: u64) -> Self {
-        Self {kind: ObjectType::Data, size: size, offset: offset}
+    pub fn new(kind: ObjectType, size: u64, offset: u64) -> Self {
+        Self {kind: kind, size: size, offset: offset}
     }
 
     pub fn data_offset(&self) -> u64 {
@@ -360,7 +360,7 @@ impl Store {
         let mut rbuf = ReindexBuf::new();
         while let Ok(_) = self.file.read_exact_at(rbuf.as_mut_buf(), self.offset) {
             if rbuf.is_object() {
-                let entry = Entry::new(rbuf.size(), self.offset);
+                let entry = Entry::new(rbuf.object_type(), rbuf.size(), self.offset);
                 self.index.insert(rbuf.hash(), entry);
             }
             else if rbuf.is_tombstone() {
@@ -461,7 +461,7 @@ impl Store {
             Ok((hash, false))  // Already in object store
         }
         else {
-            let entry = Entry::new(self.tbuf.size(), self.offset);
+            let entry = Entry::new(self.tbuf.object_type(), self.tbuf.size(), self.offset);
             self.index.insert(hash, entry);
             self.file.write_all(self.tbuf.as_commit())?;
             self.offset += self.tbuf.as_commit().len() as u64;
@@ -545,14 +545,15 @@ mod tests {
 
     #[test]
     fn test_entry() {
-        let entry = Entry::new(1, 7);
+        let kind = ObjectType::Data;
+        let entry = Entry::new(kind, 1, 7);
         assert_eq!(entry.size, 1);
         assert_eq!(entry.offset, 7);
         assert_eq!(entry.data_offset(), 7 + get_preamble_size(1));
         assert_eq!(entry.is_large(), false);
         assert_eq!(entry.is_small(), true);
 
-        let entry = Entry::new(LEAF_SIZE + 1, 11);
+        let entry = Entry::new(kind, LEAF_SIZE + 1, 11);
         assert_eq!(entry.size, LEAF_SIZE + 1);
         assert_eq!(entry.offset, 11);
         assert_eq!(entry.data_offset(), 11 + get_preamble_size(LEAF_SIZE + 1));

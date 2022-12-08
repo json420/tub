@@ -274,13 +274,13 @@ fn cmd_stats(tub: OptPath) -> io::Result<()>
 {
     let tub = get_tub(tub)?;
     let stats = tub.stats();
-    eprintln!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
-    eprintln!("By size:");
-    eprintln!("  {} Large objects ({} bytes)", stats.large.count, stats.large.total);
-    eprintln!("  {} Small objects ({} bytes)", stats.small.count, stats.small.total);
-    eprintln!("By type:");
-    eprintln!("  {} Data objects ({} bytes)", stats.data.count, stats.data.total);
-    eprintln!("  {} Tree objects ({} bytes)", stats.tree.count, stats.tree.total);
+    println!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
+    println!("Objects by size:");
+    println!("  {} Large ({} bytes)", stats.large.count, stats.large.total);
+    println!("  {} Small ({} bytes)", stats.small.count, stats.small.total);
+    println!("Objects by type:");
+    println!("  {} Data ({} bytes)", stats.data.count, stats.data.total);
+    println!("  {} Tree ({} bytes)", stats.tree.count, stats.tree.total);
     Ok(())
 }
 

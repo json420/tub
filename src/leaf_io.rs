@@ -417,6 +417,10 @@ impl TubBuf {
         self.buf[PAYLOAD_HASH_RANGE].copy_from_slice(hash);
     }
 
+    pub fn object_type(&self) -> ObjectType {
+        self.buf[TYPE_INDEX].into()
+    }
+
     pub fn size(&self) -> u64 {
         u64::from_le_bytes(
             self.buf[SIZE_RANGE].try_into().expect("oops")

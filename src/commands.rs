@@ -65,8 +65,15 @@ enum Commands {
         path: PathBuf,
     },
 
-    #[command(about = "Print hash of each object specified Tub.")]
+    #[command(about = "Print hash of each object specified Tub")]
     ListObjects {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
+
+    #[command(about = "Print summary about objets in Tub")]
+    Stats {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
@@ -125,6 +132,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::ListObjects {tub} => {
             cmd_list_objects(tub)
+        }
+        Commands::Stats {tub} => {
+            cmd_stats(tub)
         }
         Commands::DelRandom {tub} => {
             cmd_del_random(tub)
@@ -260,6 +270,19 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_stats(tub: OptPath) -> io::Result<()>
+{
+    let tub = get_tub(tub)?;
+    let stats = tub.stats();
+    eprintln!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
+    eprintln!("By size:");
+    eprintln!("  {} Large objects ({} bytes)", stats.large.count, stats.large.total);
+    eprintln!("  {} Small objects ({} bytes)", stats.small.count, stats.small.total);
+    eprintln!("By type:");
+    eprintln!("  {} Data objects ({} bytes)", stats.data.count, stats.data.total);
+    eprintln!("  {} Tree objects ({} bytes)", stats.tree.count, stats.tree.total);
+    Ok(())
+}
 
 fn cmd_del_random(tub: OptPath) -> io::Result<()>
 {

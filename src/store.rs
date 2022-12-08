@@ -158,9 +158,10 @@ fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
 }
 
 
+#[derive(Debug, PartialEq)]
 pub struct Summary {
-    count: u64,
-    total: u64,
+    pub count: u128,
+    pub total: u128,
 }
 impl Summary {
     pub fn new() -> Self {
@@ -169,19 +170,22 @@ impl Summary {
 
     pub fn increment(&mut self, entry: &Entry) {
         self.count += 1;
-        self.total += entry.size;
+        self.total += entry.size as u128;
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Stats {
-    large: Summary,
-    small: Summary,
-    data: Summary,
-    tree: Summary,
+    pub total: u128,
+    pub large: Summary,
+    pub small: Summary,
+    pub data: Summary,
+    pub tree: Summary,
 }
 impl Stats {
     pub fn new() -> Self {
         Self {
+            total: 0,
             large: Summary::new(),
             small: Summary::new(),
             data: Summary::new(),
@@ -190,6 +194,7 @@ impl Stats {
     }
 
     pub fn increment(&mut self, entry: &Entry) {
+        self.total += entry.size as u128;
         if entry.is_large() {
             self.large.increment(entry);
         }

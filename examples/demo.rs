@@ -24,5 +24,9 @@ fn main() -> io::Result<()> {
     }
     store.reindex()?;
     restore_tree(&root, &mut store, &PathBuf::from("/tmp/foo"))?;
+
+    let (root2, accum2) = scan_tree(&PathBuf::from("/tmp/foo"))?;
+    assert_eq!(root2, root);
+
     Ok(())
 }

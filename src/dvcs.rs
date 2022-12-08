@@ -306,9 +306,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Unknown Kind: 5")]
-    fn test_kind_panic() {
-        let _kind: Kind = 5.into();
+    #[should_panic(expected = "Unknown Kind: 4")]
+    fn test_kind_panic1() {
+        let _kind: Kind = 4.into();
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown Kind: 255")]
+    fn test_kind_panic2() {
+        let _kind: Kind = 255.into();
     }
 
     #[test]

@@ -249,7 +249,6 @@ impl Store {
 
     pub fn finalize_tmp(&mut self, mut tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
-        tmp.flush()?;
         let from = tmp.pb;
         let to = self.object_path(hash);
         fs::rename(&from, &to)

@@ -177,7 +177,6 @@ pub struct Object {
 
 impl Object {
     pub fn new(file: File, size: u64, offset: u64) -> Self {
-        println!("new obj {} {}", size, offset);
         Self {
             file: file,
             loi: LeafOffsetIter::new(size, offset),
@@ -188,7 +187,6 @@ impl Object {
     {
         if let Some(lo) = self.loi.next() {
             buf.resize(lo.size as usize, 0);
-            println!("trying to read {:?}", lo);
             self.file.read_exact_at(buf, lo.offset)?;
             Ok(Some(lo))
         }
@@ -204,7 +202,6 @@ impl Object {
             file.write_all(&buf)?;
             total += buf.len();
         }
-        println!("wrote to file {}", total);
         assert_eq!(total as u64, self.loi.size);
         Ok(())
     }
@@ -697,12 +694,6 @@ impl TmpObject {
     pub fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.total += buf.len() as u64;
         self.file.write_all(buf)
-    }
-
-    pub fn flush(&mut self) -> io::Result<()> {
-        self.file.flush()?;
-        self.file.sync_all()?;
-        Ok(())
     }
 }
 

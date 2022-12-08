@@ -72,6 +72,7 @@ pub fn deserialize(buf: &[u8]) -> TreeMap {
 
         let kind: Kind = buf[offset].into();
         let size = buf[offset + 1] as usize;
+        assert!(size > 0);
         offset += 2;
 
         let s = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
@@ -253,7 +254,7 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
                 pb.push(name);
                 match entry.kind {
                     Kind::Dir => {
-                        println!("D {:?}", pb);
+                        //println!("D {:?}", pb);
                         restore_tree_inner(&entry.hash, store, &pb, depth + 1)?;
                     },
                     Kind::File => {

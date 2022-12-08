@@ -60,18 +60,12 @@ pub fn get_leaf_payload_size(size: u64) -> u64 {
 
 /// Returns size of the root hash + u64 + leaf_hashes.
 pub fn get_preamble_size(size: u64) -> u64 {
-    (TUB_HASH_LEN as u64 + 9) + get_leaf_count(size) * (TUB_HASH_LEN as u64)
-}
-
-
-/// Returns size of header + leaf_hashes + data.
-pub fn get_full_object_size(size: u64) -> u64 {
-    get_preamble_size(size) + size
-}
-
-
-pub fn get_buffer_size(size: u64) -> u64 {
-    get_preamble_size(size) + cmp::min(size, LEAF_SIZE as u64)
+    if size > LEAF_SIZE {
+        HEADER_LEN as u64 + get_leaf_count(size) * TUB_HASH_LEN as u64
+    }
+    else {
+        HEADER_LEN as u64
+    }
 }
 
 pub fn get_leaf_range(index: u64, size: u64) -> Option<(u64, u64)> {
@@ -204,6 +198,7 @@ impl Object {
     pub fn write_to_file(&mut self, file: &mut File) -> io::Result<()> {
         let mut buf: Vec<u8> = Vec::new();
         while let Some(_) = self.read_next_leaf(&mut buf)? {
+            println!("writing to file");
             file.write_all(&buf)?;
         }
         Ok(())
@@ -860,54 +855,21 @@ mod tests {
 
     #[test]
     fn test_get_preamble_size() {
-        let head = TUB_HASH_LEN as u64 + 9;
+        let header = HEADER_LEN as u64;
         let tub = TUB_HASH_LEN as u64;
-        assert_eq!(get_preamble_size(0), head);
 
-        assert_eq!(get_preamble_size(1), head + tub);
-        assert_eq!(get_preamble_size(2), head + tub);
-        assert_eq!(get_preamble_size(LEAF_SIZE - 1), head + tub);
-        assert_eq!(get_preamble_size(LEAF_SIZE), head + tub);
+        assert_eq!(get_preamble_size(1), header);
+        assert_eq!(get_preamble_size(2), header);
+        assert_eq!(get_preamble_size(LEAF_SIZE - 1), header);
+        assert_eq!(get_preamble_size(LEAF_SIZE), header);
 
-        assert_eq!(get_preamble_size(LEAF_SIZE + 1), head + tub * 2);
-        assert_eq!(get_preamble_size(2 * LEAF_SIZE - 1), head + tub * 2);
-        assert_eq!(get_preamble_size(2 * LEAF_SIZE), head + tub * 2);
+        assert_eq!(get_preamble_size(LEAF_SIZE + 1), header + tub * 2);
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE - 1), header + tub * 2);
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE), header + tub * 2);
 
-        assert_eq!(get_preamble_size(2 * LEAF_SIZE + 1), head + tub * 3);
-        assert_eq!(get_preamble_size(3 * LEAF_SIZE - 1), head + tub * 3);
-        assert_eq!(get_preamble_size(3 * LEAF_SIZE), head + tub * 3);
-    }
-
-    #[test]
-    fn test_get_full_object_size() {
-        assert_eq!(get_full_object_size(1), (HEADER_LEN + 1) as u64);
-        assert_eq!(get_full_object_size(2), (HEADER_LEN + 2) as u64);
-        assert_eq!(get_full_object_size(3), (HEADER_LEN + 3) as u64);
-        assert_eq!(get_full_object_size(LEAF_SIZE), HEADER_LEN as u64 + LEAF_SIZE);
-        assert_eq!(get_full_object_size(LEAF_SIZE + 1),
-            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE + 1
-        );
-    }
-
-    #[test]
-    fn test_get_buffer_size() {
-        assert_eq!(get_buffer_size(1), (HEADER_LEN + 1) as u64);
-        assert_eq!(get_buffer_size(2), (HEADER_LEN + 2) as u64);
-        assert_eq!(get_buffer_size(3), (HEADER_LEN + 3) as u64);
-        assert_eq!(get_buffer_size(LEAF_SIZE), HEADER_LEN as u64 + LEAF_SIZE);
-        assert_eq!(get_buffer_size(LEAF_SIZE + 1),
-            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
-        );
-        assert_eq!(get_buffer_size(LEAF_SIZE + 1),
-            HEADER_LEN as u64 + TUB_HASH_LEN as u64 + LEAF_SIZE
-        );
-
-        for size in [42 * LEAF_SIZE, 420 * LEAF_SIZE, u64::MAX - 1, u64::MAX] {
-            assert_eq!(
-                get_buffer_size(size),
-                get_preamble_size(size) + LEAF_SIZE
-            );
-        }
+        assert_eq!(get_preamble_size(2 * LEAF_SIZE + 1), header + tub * 3);
+        assert_eq!(get_preamble_size(3 * LEAF_SIZE - 1), header + tub * 3);
+        assert_eq!(get_preamble_size(3 * LEAF_SIZE), header + tub * 3);
     }
 
     #[test]

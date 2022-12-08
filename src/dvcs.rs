@@ -247,13 +247,13 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
     if depth < MAX_DEPTH {
         if let Some(data) = store.get_object(root, false)? {
             let map = deserialize(&data);
+            fs::create_dir_all(&path)?;
             for (name, entry) in map.iter() {
                 let mut pb = path.to_path_buf();
                 pb.push(name);
                 match entry.kind {
                     Kind::Dir => {
                         println!("D {:?}", pb);
-                        fs::create_dir_all(&pb)?;
                         restore_tree_inner(&entry.hash, store, &pb, depth + 1)?;
                     },
                     Kind::File => {

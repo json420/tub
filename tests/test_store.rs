@@ -16,7 +16,7 @@ struct RandObj {
 fn mk_rand_obj() -> RandObj {
     let data = random_small_object();
     let mut tt = TubBuf::new();
-    let hash = tt.hash_data(&data);
+    let hash = tt.hash_data(ObjectType::Data, &data);
     RandObj {data: data, hash: hash}
 }
 

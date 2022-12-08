@@ -63,8 +63,10 @@ pub fn hash_root(size: u64, payload_hash: &TubHash) -> TubHash {
 }
 
 pub fn hash_root2(tail: &[u8]) -> TubHash {
+    if tail.len() != TAIL_LEN {
+        panic!("Need buffer {} bytes long, got {}", TAIL_LEN, tail.len());
+    }
     let kind: ObjectType = tail[8].into();
-    assert!(tail.len() == TAIL_LEN);
     let mut h = blake3::Hasher::new();
     h.update(tail);
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];

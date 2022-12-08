@@ -13,7 +13,7 @@ use std::ops;
 
 use crate::base::*;
 use crate::dbase32::db32enc_str;
-use crate::protocol::{hash_leaf, hash_root, hash_root2, hash_tombstone,  hash_payload};
+use crate::protocol::{hash_leaf, hash_root2, hash_tombstone,  hash_payload};
 
 
 
@@ -355,8 +355,8 @@ impl LeafState {
 }
 
 const PREALLOC_COUNT: usize = 1024;
-const PREALLOC_LEN: usize = HEADER_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
-
+//const PREALLOC_LEN: usize = HEADER_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
+const PREALLOC_LEN: usize = HEADER_LEN;
 
 #[derive(Debug)]
 pub struct TubBuf {
@@ -383,6 +383,11 @@ impl TubBuf {
         self.state = LeafState::new(size);
         self.buf.clear();
         self.buf.resize(self.state.leaf_stop, 0);
+    }
+
+    pub fn reset(&mut self, kind: ObjectType, size: u64) {
+        self.resize(size);
+        self.set_object_type(kind);
     }
 
     fn compute_leaf(&self) -> TubHash {
@@ -420,6 +425,10 @@ impl TubBuf {
 
     pub fn object_type(&self) -> ObjectType {
         self.buf[TYPE_INDEX].into()
+    }
+
+    fn set_object_type(&mut self, kind: ObjectType) {
+        self.buf[TYPE_INDEX] = kind as u8;
     }
 
     pub fn size(&self) -> u64 {
@@ -488,9 +497,9 @@ impl TubBuf {
         }
     }
 
-    pub fn hash_data(&mut self, data: &[u8]) -> TubHash {
+    pub fn hash_data(&mut self, kind: ObjectType, data: &[u8]) -> TubHash {
         // FIXME: reimplement without icky copying
-        self.resize(data.len() as u64);
+        self.reset(kind, data.len() as u64);
         if self.state.is_small() {
             self.buf[self.state.leaf_range()].copy_from_slice(data);
         }
@@ -852,11 +861,12 @@ mod tests {
     fn test_tubbuf() {
         let mut tbuf = TubBuf::new();
         let mut data: Vec<u8> = Vec::new();
+        let kind = ObjectType::Data;
         data.resize(1,69);
-        let h1 = tbuf.hash_data(&data);
+        let h1 = tbuf.hash_data(kind, &data);
 
         data.resize(LEAF_SIZE as usize + 1, 42);
-        let h2 = tbuf.hash_data(&data);
+        let h2 = tbuf.hash_data(kind, &data);
         assert_ne!(h1, h2);
     }
 

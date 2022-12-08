@@ -219,7 +219,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
         }
         if tree.len() > 0 {
             let obj = tree.serialize();
-            let hash = tbuf.hash_data(&obj);
+            let hash = tbuf.hash_data(ObjectType::Tree, &obj);
             accum.trees.push(TreeDir::new(obj, hash));
             eprintln!("{} {:?}", db32enc_str(&hash), dir);
             Ok(Some(hash))

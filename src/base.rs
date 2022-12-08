@@ -17,8 +17,8 @@ pub const HEADER_LEN: usize = TUB_HASH_LEN + TAIL_LEN;
 pub const LEAF_SIZE: u64 = 8388608;  // 8 MiB
 
 pub const ROOT_HASH_RANGE: ops::Range<usize> = 0..TUB_HASH_LEN;
-pub const SIZE_RANGE: ops::Range<usize> = TUB_HASH_LEN..TUB_HASH_LEN + 8;
-pub const TYPE_INDEX: usize = TUB_HASH_LEN + 8;
+pub const TYPE_INDEX: usize = TUB_HASH_LEN;
+pub const SIZE_RANGE: ops::Range<usize> = TUB_HASH_LEN + 1..TUB_HASH_LEN + 9;
 pub const PAYLOAD_HASH_RANGE: ops::Range<usize> = TUB_HASH_LEN + 9..2 * TUB_HASH_LEN + 9;
 
 pub const TAIL_RANGE: ops::Range<usize> = TUB_HASH_LEN..HEADER_LEN;
@@ -72,8 +72,8 @@ mod tests {
     fn test_ranges() {
          // Yes, these break if TUB_HASH_LEN changes, but just to see them clearly:
          assert_eq!(ROOT_HASH_RANGE, 0..30);
-         assert_eq!(SIZE_RANGE, 30..38);
-         assert_eq!(TYPE_INDEX, 38);
+         assert_eq!(TYPE_INDEX, 30);
+         assert_eq!(SIZE_RANGE, 31..39);
          assert_eq!(PAYLOAD_HASH_RANGE, 39..69);
     }
 

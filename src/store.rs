@@ -373,7 +373,6 @@ impl Store {
             else {
                 panic!("bad entry: {}", rbuf);
             }
-            assert_eq!(rbuf.object_type(), ObjectType::Data);
             self.offset += rbuf.offset_size();
             rbuf.reset();
         }
@@ -470,7 +469,12 @@ impl Store {
     }
 
     pub fn add_object(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
-        self.tbuf.hash_data(data);
+        self.tbuf.hash_data(ObjectType::Data, data);
+        self.commit_object()
+    }
+
+    pub fn add_tree(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
+        self.tbuf.hash_data(ObjectType::Tree, data);
         self.commit_object()
     }
 

@@ -19,7 +19,7 @@ fn main() -> io::Result<()> {
         assert_eq!(hash, f.hash);
     }
     for t in accum.trees.iter() {
-        let (hash, new) = store.add_object(&t.data)?;
+        let (hash, new) = store.add_tree(&t.data)?;
         assert_eq!(hash, t.hash);
     }
     //

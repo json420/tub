@@ -36,6 +36,23 @@ What's even more relaxing than a Couch?  A Bathtub!
 ";
 
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ObjectType {
+    Data,
+    Tree,
+}
+
+impl From<u8> for ObjectType {
+    fn from(item: u8) -> Self {
+        match item {
+            0 => Self::Data,
+            1 => Self::Tree,
+            _ => panic!("Unknown ObjectType: {}", item),
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -57,6 +74,30 @@ mod tests {
          assert_eq!(SIZE_RANGE, 30..38);
          assert_eq!(TYPE_RANGE, 38..39);
          assert_eq!(PAYLOAD_HASH_RANGE, 39..69);
+    }
+
+    #[test]
+    fn test_objtype() {
+        for k in 0..2 {
+            let ot: ObjectType = k.into();
+            assert_eq!(ot as u8, k);
+        }
+        assert_eq!(ObjectType::Data as u8, 0);
+        assert_eq!(ObjectType::Data, 0.into());
+        assert_eq!(ObjectType::Tree as u8, 1);
+        assert_eq!(ObjectType::Tree, 1.into());
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown ObjectType: 2")]
+    fn test_objtype_panic1() {
+        let _kind: ObjectType = 2.into();
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown ObjectType: 255")]
+    fn test_objtype_panic2() {
+        let _kind: ObjectType = 255.into();
     }
 }
 

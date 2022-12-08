@@ -40,34 +40,17 @@ macro_rules! other_err {
 }
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum ObjType {
-    Data,
-    Tree,
-}
-
-impl From<u8> for ObjType {
-    fn from(item: u8) -> Self {
-        match item {
-            0 => Self::Data,
-            1 => Self::Tree,
-            _ => panic!("Unknown ObjType: {}", item),
-        }
-    }
-}
-
-
 /// An entry in the HashMap index.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Entry {
-    kind: ObjType,
+    kind: ObjectType,
     size: u64,
     offset: u64,
 }
 
 impl Entry {
     pub fn new(size: u64, offset: u64) -> Self {
-        Self {kind: ObjType::Data, size: size, offset: offset}
+        Self {kind: ObjectType::Data, size: size, offset: offset}
     }
 
     pub fn data_offset(&self) -> u64 {
@@ -495,30 +478,6 @@ mod tests {
     use crate::dbase32::Name2Iter;
     use crate::helpers::TestTempDir;
     use crate::util::{random_hash, random_small_object};
-
-    #[test]
-    fn test_objtype() {
-        for k in 0..2 {
-            let ot: ObjType = k.into();
-            assert_eq!(ot as u8, k);
-        }
-        assert_eq!(ObjType::Data as u8, 0);
-        assert_eq!(ObjType::Data, 0.into());
-        assert_eq!(ObjType::Tree as u8, 1);
-        assert_eq!(ObjType::Tree, 1.into());
-    }
-
-    #[test]
-    #[should_panic(expected = "Unknown ObjType: 2")]
-    fn test_objtype_panic1() {
-        let _kind: ObjType = 2.into();
-    }
-
-    #[test]
-    #[should_panic(expected = "Unknown ObjType: 255")]
-    fn test_objtype_panic2() {
-        let _kind: ObjType = 255.into();
-    }
 
     #[test]
     fn test_entry() {

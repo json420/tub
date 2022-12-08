@@ -597,6 +597,10 @@ impl ReindexBuf {
         )
     }
 
+    pub fn object_type(&self) -> ObjectType {
+        self.buf[TYPE_INDEX].into()
+    }
+
     pub fn hash(&self) -> TubHash {
         self.buf[ROOT_HASH_RANGE].try_into().expect("oops")
     }

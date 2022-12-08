@@ -177,6 +177,7 @@ pub struct Object {
 
 impl Object {
     pub fn new(file: File, size: u64, offset: u64) -> Self {
+        println!("new obj {} {}", size, offset);
         Self {
             file: file,
             loi: LeafOffsetIter::new(size, offset),
@@ -187,6 +188,7 @@ impl Object {
     {
         if let Some(lo) = self.loi.next() {
             buf.resize(lo.size as usize, 0);
+            println!("trying to read {:?}", lo);
             self.file.read_exact_at(buf, lo.offset)?;
             Ok(Some(lo))
         }
@@ -196,11 +198,14 @@ impl Object {
     }
 
     pub fn write_to_file(&mut self, file: &mut File) -> io::Result<()> {
+        let mut total = 0;
         let mut buf: Vec<u8> = Vec::new();
         while let Some(_) = self.read_next_leaf(&mut buf)? {
-            println!("writing to file");
             file.write_all(&buf)?;
+            total += buf.len();
         }
+        println!("wrote to file {}", total);
+        assert_eq!(total as u64, self.loi.size);
         Ok(())
     }
 
@@ -259,8 +264,8 @@ impl LeafState {
         else {
             let count = get_leaf_count(object_size);
             assert!(count >= 2);
-            let closed = if leaf_index < count {false} else {true};
-            let leaf_index = if closed {count - 1} else {leaf_index};
+            let closed = leaf_index >= count;
+            let leaf_index = cmp::min(count - 1, leaf_index);
             assert!(leaf_index < count);
             let file_start = leaf_index * LEAF_SIZE;
             let file_stop = cmp::min(file_start + LEAF_SIZE, object_size);
@@ -679,17 +684,25 @@ pub struct TmpObject {
     pub id: TubId,
     pub pb: PathBuf,
     file: File,
+    pub total: u64,
 }
 
 impl TmpObject {
     pub fn new(id: TubId, pb: PathBuf) -> io::Result<Self>
     {
         let file = File::options().append(true).create_new(true).open(&pb)?;
-        Ok(TmpObject {id: id, pb: pb, file: file})
+        Ok(TmpObject {id: id, pb: pb, file: file, total: 0})
     }
 
     pub fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.total += buf.len() as u64;
         self.file.write_all(buf)
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        self.file.flush()?;
+        self.file.sync_all()?;
+        Ok(())
     }
 }
 

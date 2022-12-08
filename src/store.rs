@@ -247,8 +247,9 @@ impl Store {
         TmpObject::new(id, path)
     }
 
-    pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
+    pub fn finalize_tmp(&mut self, mut tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
+        tmp.flush()?;
         let from = tmp.pb;
         let to = self.object_path(hash);
         fs::rename(&from, &to)
@@ -379,11 +380,12 @@ impl Store {
             let mut tmp = self.allocate_tmp()?;
             while let Some(buf) = self.tbuf.as_mut_leaf() {
                 file.read_exact(buf)?;
-                self.tbuf.hash_leaf();
                 tmp.write_all(self.tbuf.as_leaf())?;
+                self.tbuf.hash_leaf();
             }
-            self.finalize_tmp(tmp, &self.tbuf.hash())?;
+            assert_eq!(tmp.total, size);
             self.tbuf.finalize();
+            self.finalize_tmp(tmp, &self.tbuf.hash())?;
         }
         self.commit_object()
     }

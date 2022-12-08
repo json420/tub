@@ -6,7 +6,9 @@ use bathtub_db::dbase32::db32enc_str;
 
 
 fn main() -> io::Result<()> {
-    let (_tmp, mut store) = Store::new_tmp();
+    let mut store = Store::new(&PathBuf::from("/tmp/bar/.bathtub_db"))?;
+    //let (_tmp, mut store) = Store::new_tmp();
+    store.reindex();
     let (root, accum) = scan_tree(&PathBuf::from("."))?;
     //let store = ts.into_store();
     println!("{}", accum.trees.len());
@@ -21,6 +23,6 @@ fn main() -> io::Result<()> {
         assert_eq!(hash, t.hash);
     }
     store.reindex()?;
-    restore_tree(&root, &mut store, &PathBuf::from("/tmp/foo"));
+    restore_tree(&root, &mut store, &PathBuf::from("/tmp/foo"))?;
     Ok(())
 }

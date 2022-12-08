@@ -257,10 +257,10 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
                         restore_tree_inner(&entry.hash, store, &pb, depth + 1)?;
                     },
                     Kind::File => {
-                        if let Some(mut object) = store.open(root)? {
+                        if let Some(mut object) = store.open(&entry.hash)? {
+                            println!("F {:?}", pb);
                             let mut file = fs::File::create(&pb)?;
                             object.write_to_file(&mut file)?;
-                            println!("F {:?}", pb);
                         }
                     }
                     _ => {

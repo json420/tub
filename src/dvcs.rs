@@ -133,6 +133,10 @@ impl Tree {
     pub fn add_file(&mut self, key: PathBuf, hash: TubHash) {
         self.map.insert(key, TreeEntry::new_file(hash));
     }
+
+    pub fn add(&mut self, key: PathBuf, kind: Kind, hash: TubHash) {
+        self.map.insert(key, TreeEntry::new(kind, hash));
+    }
 }
 
 
@@ -266,7 +270,9 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 if size > 0 {
                     let mut file = fs::File::open(&path)?;
                     let (hash, _new) = tub.import_file(file, size)?;
-                    tree.add_file(PathBuf::from(name), hash);
+                    let is_executable = meta.permissions().mode() & 0o111 != 0;
+                    let kind = if is_executable {Kind::ExFile} else {Kind::File};
+                    tree.add(PathBuf::from(name), kind, hash);
                 }
             }
             else if ft.is_dir() {
@@ -318,6 +324,16 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         if let Some(mut object) = store.open(&entry.hash)? {
                             println!("F {:?}", pb);
                             let mut file = fs::File::create(&pb)?;
+                            object.write_to_file(&mut file)?;
+                        } else {
+                            panic!("could not find object {}", db32enc_str(&entry.hash));
+                        }
+                    }
+                    Kind::ExFile => {
+                        if let Some(mut object) = store.open(&entry.hash)? {
+                            println!("X {:?}", pb);
+                            let mut file = fs::File::create(&pb)?;
+                            file.set_permissions(fs::Permissions::from_mode(0o755));
                             object.write_to_file(&mut file)?;
                         } else {
                             panic!("could not find object {}", db32enc_str(&entry.hash));

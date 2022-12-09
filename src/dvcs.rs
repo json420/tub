@@ -245,6 +245,62 @@ pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
 }
 
 
+fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
+{
+    if depth < MAX_DEPTH {
+        let mut tree = Tree::new();
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let ft = entry.file_type()?;
+            let path = entry.path();
+            let name = path.file_name().unwrap();
+            if name.to_str().unwrap().starts_with(".") {
+                eprintln!("Skipping hiddin: {:?}", path);
+            }
+            else if ft.is_symlink() {
+                eprintln!("Skipping symlink: {:?}", path);
+            }
+            else if ft.is_file() {
+                let meta = fs::metadata(&path)?;
+                let size = meta.len();
+                if size > 0 {
+                    let mut file = fs::File::open(&path)?;
+                    let (hash, _new) = tub.import_file(file, size)?;
+                    tree.add_file(PathBuf::from(name), hash);
+                }
+            }
+            else if ft.is_dir() {
+                if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
+                    tree.add_dir(PathBuf::from(name), hash);
+                }
+            }
+        }
+        if tree.len() > 0 {
+            let obj = tree.serialize();
+            let (hash, _new) = tub.add_tree(&obj)?;
+            eprintln!("{} {:?}", db32enc_str(&hash), dir);
+            Ok(Some(hash))
+        }
+        else {
+            Ok(None)
+        }
+    }
+    else {
+        panic!("max depth reached");
+        Ok(None)
+    }
+}
+
+pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
+    if let Some(root_hash) = commit_tree_inner(tub, dir, 0)? {
+        Ok(root_hash)
+    }
+    else {
+        panic!("FIXME: handle this more better");
+    }
+}
+
+
 fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usize) -> io::Result<()> {
     if depth < MAX_DEPTH {
         if let Some(data) = store.get_object(root, false)? {

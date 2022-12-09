@@ -70,6 +70,19 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
+    #[command(about = "Restore tree from root tree hash")]
+    RestoreTree {
+        #[arg(help="Dbase32-encoded hash")]
+        hash: String,
+
+        #[arg(help="Target directory (defaults to current CWD)")]
+        dst: Option<PathBuf>,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
+    },
+
     #[command(about = "Calculate the Tub-Hash of a file")]
     HashObject {
         #[arg(help="Path of input file")]
@@ -109,7 +122,7 @@ enum Commands {
 
     #[command(about = "Cat object data to file or stdout")]
     CatFile {
-        #[arg(help="Source directory (defaults to current CWD)")]
+        #[arg(help="Dbase32-encoded hash")]
         hash: String,
 
         #[arg(short, long, value_name="DIR")]
@@ -140,6 +153,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::CommitTree {source, tub} => {
             cmd_commit_tree(source, tub)
+        }
+        Commands::RestoreTree {hash, dst, tub} => {
+            cmd_restore_tree(hash, dst, tub)
         }
         Commands::HashObject {path} => {
             cmd_hash(&path)
@@ -179,9 +195,7 @@ fn decode_hash(txt: &String) -> Option<TubHash>
     else {
         None
     }
-    
 }
-
 
 
 fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
@@ -271,6 +285,17 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+fn cmd_restore_tree(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()>
+{
+    if let Some(hash) = decode_hash(&txt) {
+        let dst = dir_or_cwd(dst)?;
+        let mut tub = get_tub(tub)?;
+        dvcs::restore_tree(&mut tub, &hash, &dst);
+        println!("Yo from restore tree");
+    }
+    Ok(())
+}
+
 fn cmd_hash(path: &Path) -> io::Result<()>
 {
     let pb = path.canonicalize()?;
@@ -316,7 +341,6 @@ fn cmd_del_random(tub: OptPath) -> io::Result<()>
     eprintln!("{} objects in store", tub.len());
     Ok(())
 }
-
 
 fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
 {

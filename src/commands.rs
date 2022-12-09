@@ -11,6 +11,7 @@ use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
 use crate::dbase32::{db32enc_str, db32dec_into};
 use crate::leaf_io::hash_file;
+use crate::dvcs;
 
 
 type OptPath = Option<PathBuf>;
@@ -52,6 +53,16 @@ enum Commands {
     #[command(about = "Recursively import files from directory")]
     Import {
         #[arg(help="Source directory (defaults to current CWD)")]
+        source: Option<PathBuf>,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
+    },
+
+    #[command(about = "Recursively commit directory")]
+    CommitTree {
+        #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
 
         #[arg(short, long, value_name="DIR")]
@@ -126,6 +137,9 @@ pub fn run() -> io::Result<()> {
         }
         Commands::Import {source, tub} => {
             cmd_import(source, tub)
+        }
+        Commands::CommitTree {source, tub} => {
+            cmd_commit_tree(source, tub)
         }
         Commands::HashObject {path} => {
             cmd_hash(&path)
@@ -245,6 +259,15 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
         }
     }
     eprintln!("Imported {} new files and {} duplicates", new_cnt, dup_cnt);
+    Ok(())
+}
+
+fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
+{
+    let source = dir_or_cwd(source)?;
+    let mut tub = get_tub(tub)?;
+    let root = dvcs::commit_tree(&mut tub, &source)?;
+    println!("{}", db32enc_str(&root));
     Ok(())
 }
 

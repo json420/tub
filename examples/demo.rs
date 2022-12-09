@@ -11,11 +11,13 @@ fn main() -> io::Result<()> {
     store.reindex();
     let root = commit_tree(&mut store, &PathBuf::from("/usr/share/doc"))?;
     restore_tree(&root, &mut store, &PathBuf::from("/tmp/foo"))?;
+    /*
     let (root2, accum) = scan_tree(&PathBuf::from("/tmp/foo"))?;
     assert_eq!(root2, root);
     println!("{}", accum.trees.len());
     println!("{}", accum.files.len());
     store.reindex()?;
+    */
 
     Ok(())
 }

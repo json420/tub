@@ -301,7 +301,7 @@ pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
 }
 
 
-fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usize) -> io::Result<()> {
+fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usize) -> io::Result<()> {
     if depth < MAX_DEPTH {
         if let Some(data) = store.get_object(root, false)? {
             let map = deserialize(&data);
@@ -312,7 +312,7 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
                 match entry.kind {
                     Kind::Dir => {
                         //println!("D {:?}", pb);
-                        restore_tree_inner(&entry.hash, store, &pb, depth + 1)?;
+                        restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
                     },
                     Kind::File => {
                         if let Some(mut object) = store.open(&entry.hash)? {
@@ -335,8 +335,8 @@ fn restore_tree_inner(root: &TubHash, store: &mut Store, path: &Path, depth: usi
     Ok(())
 }
 
-pub fn restore_tree(root: &TubHash, store: &mut Store, path: &Path) -> io::Result<()> {
-    restore_tree_inner(root, store, path, 0)
+pub fn restore_tree(store: &mut Store, root: &TubHash, path: &Path) -> io::Result<()> {
+    restore_tree_inner(store, root, path, 0)
 }
 
 

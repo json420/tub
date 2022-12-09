@@ -371,7 +371,7 @@ impl Store {
                 }
             }
             else {
-                panic!("bad entry: {}", rbuf);
+                panic!("Bad entry: {}; size={}, offset={}", rbuf, rbuf.size(), self.offset);
             }
             self.offset += rbuf.offset_size();
             rbuf.reset();

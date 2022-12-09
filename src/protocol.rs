@@ -51,23 +51,12 @@ pub fn hash_payload(size: u64, data: &[u8]) -> TubHash {
     }
 }
 
-pub fn hash_root(size: u64, payload_hash: &TubHash) -> TubHash {
-    assert!(size > 0);
-    let mut h = blake3::Hasher::new();
-    h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than this
-    h.update(&size.to_le_bytes());
-    h.update(payload_hash);
-    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
-    h.finalize_xof().fill(&mut hash);
-    hash
-}
-
-pub fn hash_root2(tail: &[u8]) -> TubHash {
+pub fn hash_root(tail: &[u8]) -> TubHash {
     if tail.len() != TAIL_LEN {
         panic!("Need buffer {} bytes long, got {}", TAIL_LEN, tail.len());
     }
-    let kind: ObjectType = tail[0].into();
     let mut h = blake3::Hasher::new();
+    h.update(b"Tub/root_hash");  // <-- FIXME: Do more better than thiss
     h.update(tail);
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
     h.finalize_xof().fill(&mut hash);
@@ -89,7 +78,7 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 mod tests {
     use std::collections::HashSet;
     use super::*;
-    use crate::util::{random_object, random_hash};
+    use crate::util::{getrandom, random_object, random_hash};
 
     const COUNT: usize = 1000;
 
@@ -153,26 +142,34 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Need buffer 39 bytes long, got 38")]
+    fn test_hashroot2_panic1() {
+        let buf = [0_u8; TAIL_LEN - 1];
+        hash_root(&buf);
+    }
+
+    #[test]
+    #[should_panic(expected = "Need buffer 39 bytes long, got 40")]
+    fn test_hashroot2_panic2() {
+        let buf = [0_u8; TAIL_LEN + 1];
+        hash_root(&buf);
+    }
+
+    #[test]
     fn test_hash_root() {
-        let payload_hash = random_hash();
-
-        // Should be tied to size
+        let mut buf = [0_u8; TAIL_LEN];
+        getrandom(&mut buf);
+        let hash = hash_root(&buf);
         let mut set: HashSet<TubHash> = HashSet::new();
-        for size in 1..COUNT + 1 {
-            set.insert(hash_root(size as u64, &payload_hash));
-        }
-        assert_eq!(set.len(), COUNT);
-
-        // Should be tied to every byte in payload_hash
-        let mut set: HashSet<TubHash> = HashSet::new();
-        for i in 0..payload_hash.len() {
+        for i in 0..buf.len() {
             for v in 0_u8..=255 {
-                let mut copy = payload_hash.clone();
+                let mut copy = buf.clone();
                 copy[i] = v;
-                set.insert(hash_root(1, &copy));
+                let newhash = hash_root(&copy);
+                set.insert(newhash);
             }
         }
-        assert_eq!(set.len(), payload_hash.len() * 255 + 1);
+        assert_eq!(set.len(), TAIL_LEN * 255 + 1);
     }
 
     #[test]

@@ -92,7 +92,6 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
     let mut items = Vec::from_iter(map.iter());
     items.sort_by(|a, b| b.0.cmp(a.0));
     for (p, entry) in items.iter() {
-        //println!("{:?} {}", p, db32enc_str(&entry.hash));
         let path = p.to_str().unwrap().as_bytes();
         let size = path.len() as u8;
         assert!(size > 0);

@@ -1,8 +1,18 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use blake3;
 use bathtub_db::util::*;
-use bathtub_db::protocol::hash;
 use bathtub_db::dbase32::{db32enc, isdb32, db32enc_into, db32dec_into};
 use bathtub_db::base::*;
+
+
+pub fn hash(data: &[u8]) -> TubHash {
+    let mut h = blake3::Hasher::new();
+    h.update(data);
+    let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
+    h.finalize_xof().fill(&mut hash);
+    hash
+}
+
 
 
 fn bm_random_id(c: &mut Criterion) {

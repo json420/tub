@@ -30,7 +30,7 @@ use crate::protocol::{hash_tombstone};
 use crate::dbase32::{db32enc_str, Name2Iter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
-use crate::leaf_io::{TubBuf, LeafReader, TmpObject, ReindexBuf};
+use crate::leaf_io::{TubBuf, TmpObject, ReindexBuf};
 
 
 macro_rules! other_err {
@@ -303,7 +303,7 @@ impl Store {
         TmpObject::new(id, path)
     }
 
-    pub fn finalize_tmp(&mut self, mut tmp: TmpObject, hash: &TubHash) -> io::Result<()>
+    pub fn finalize_tmp(&mut self, tmp: TmpObject, hash: &TubHash) -> io::Result<()>
     {
         let from = tmp.pb;
         let to = self.object_path(hash);

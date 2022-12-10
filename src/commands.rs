@@ -290,8 +290,7 @@ fn cmd_restore_tree(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()>
     if let Some(hash) = decode_hash(&txt) {
         let dst = dir_or_cwd(dst)?;
         let mut tub = get_tub(tub)?;
-        dvcs::restore_tree(&mut tub, &hash, &dst);
-        println!("Yo from restore tree");
+        dvcs::restore_tree(&mut tub, &hash, &dst)?;
     }
     Ok(())
 }

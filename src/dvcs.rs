@@ -207,7 +207,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
                 let meta = fs::metadata(&path)?;
                 let size = meta.len();
                 if size > 0 {
-                    let mut file = fs::File::open(&path)?;
+                    let file = fs::File::open(&path)?;
                     let hash = tbuf.hash_file(file, size)?;
                     tree.add_file(PathBuf::from(name), hash);
                     accum.files.push(
@@ -272,7 +272,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 let meta = fs::metadata(&path)?;
                 let size = meta.len();
                 if size > 0 {
-                    let mut file = fs::File::open(&path)?;
+                    let file = fs::File::open(&path)?;
                     let (hash, _new) = tub.import_file(file, size)?;
                     let is_executable = meta.permissions().mode() & 0o111 != 0;
                     let kind = if is_executable {Kind::ExFile} else {Kind::File};

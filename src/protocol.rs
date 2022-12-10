@@ -159,7 +159,6 @@ mod tests {
     fn test_hash_root() {
         let mut buf = [0_u8; TAIL_LEN];
         getrandom(&mut buf);
-        let hash = hash_root(&buf);
         let mut set: HashSet<TubHash> = HashSet::new();
         for i in 0..buf.len() {
             for v in 0_u8..=255 {

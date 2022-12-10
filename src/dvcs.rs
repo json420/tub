@@ -9,6 +9,7 @@ use std::io;
 use std::convert::Into;
 use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix;
 
 use crate::dbase32::db32enc_str;
 use crate::leaf_io::TubBuf;
@@ -262,7 +263,11 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 eprintln!("Skipping hiddin: {:?}", path);
             }
             else if ft.is_symlink() {
-                eprintln!("Skipping symlink: {:?}", path);
+                eprintln!("S: {:?}", path);
+                let value = fs::read_link(&path)?;
+                let data = value.to_str().unwrap().as_bytes();
+                let (hash, _new) = tub.add_object(data)?;
+                tree.add(PathBuf::from(name), Kind::Symlink, hash);
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
@@ -284,7 +289,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
         if tree.len() > 0 {
             let obj = tree.serialize();
             let (hash, _new) = tub.add_tree(&obj)?;
-            eprintln!("{} {:?}", db32enc_str(&hash), dir);
+            eprintln!("Tree: {} {:?}", db32enc_str(&hash), dir);
             Ok(Some(hash))
         }
         else {
@@ -333,14 +338,21 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         if let Some(mut object) = store.open(&entry.hash)? {
                             println!("X {:?}", pb);
                             let mut file = fs::File::create(&pb)?;
-                            file.set_permissions(fs::Permissions::from_mode(0o755));
+                            file.set_permissions(fs::Permissions::from_mode(0o755))?;
                             object.write_to_file(&mut file)?;
                         } else {
                             panic!("could not find object {}", db32enc_str(&entry.hash));
                         }
                     }
-                    _ => {
-                        panic!("implement more stuff");
+                    Kind::Symlink => {
+                        if let Some(buf) = store.get_object(&entry.hash, false)? {
+                            println!("S {:?}", pb);
+                            let s = String::from_utf8(buf).unwrap();
+                            let target = PathBuf::from(s);
+                            unix::fs::symlink(&target, &pb)?;
+                        } else {
+                            panic!("could not find symlink object {}", db32enc_str(&entry.hash));
+                        }
                     },
                 }
             }

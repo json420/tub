@@ -11,6 +11,7 @@ pub type TubHashList = Vec<TubHash>;
 
 pub const TAIL_LEN: usize = 9 + TUB_HASH_LEN;  // Size + Type + Payload Hash
 pub const HEADER_LEN: usize = TUB_HASH_LEN + TAIL_LEN;
+pub const BLOCK_LEN: usize = TUB_HASH_LEN * 3;
 
 //pub const LEAF_SIZE: u64 = 1048576;  // 1 MiB
 //pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB
@@ -22,6 +23,8 @@ pub const SIZE_RANGE: ops::Range<usize> = TUB_HASH_LEN + 1..TUB_HASH_LEN + 9;
 pub const PAYLOAD_HASH_RANGE: ops::Range<usize> = TUB_HASH_LEN + 9..2 * TUB_HASH_LEN + 9;
 
 pub const TAIL_RANGE: ops::Range<usize> = TUB_HASH_LEN..HEADER_LEN;
+
+pub const BLOCK_PAYLOAD_HASH_RANGE: ops::Range<usize> = 2 * TUB_HASH_LEN..3 * TUB_HASH_LEN;
 
 
 pub const DOTDIR: &str = ".bathtub_db";

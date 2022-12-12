@@ -1,22 +1,26 @@
 use std::path::PathBuf;
+use std::fs;
 use std::io;
-use bathtub_db::dvcs::{restore_tree, commit_tree};
-use bathtub_db::store::Store;
+use bathtub_db::util::random_hash;
+use bathtub_db::blockchain::{Block, Chain};
 
 
 fn main() -> io::Result<()> {
-    let mut store = Store::new(&PathBuf::from("/home/jderose/src/bathtub_db/.bathtub_db"))?;
-    //let (_tmp, mut store) = Store::new_tmp();
-    store.reindex()?;
-    let root = commit_tree(&mut store, &PathBuf::from("/usr/share/doc"))?;
-    restore_tree(&mut store, &root, &PathBuf::from("/tmp/foo"))?;
-    /*
-    let (root2, accum) = scan_tree(&PathBuf::from("/tmp/foo"))?;
-    assert_eq!(root2, root);
-    println!("{}", accum.trees.len());
-    println!("{}", accum.files.len());
-    store.reindex()?;
-    */
+    let pb = PathBuf::from("demo.bc");
+    let file = fs::File::options()
+                        .read(true)
+                        .append(true)
+                        .create(true).open(&pb)?;
+    let mut chain = Chain::new(file);
+    let mut block = Block::new();
 
+    for i in 0..100 {
+        let h = random_hash();
+        block.set_payload_hash(&h);
+    }
+
+    println!("demotastic");
+    //chain.read_next_block(&mut block)?;
+    chain.verify_chain()?;
     Ok(())
 }

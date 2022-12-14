@@ -9,7 +9,7 @@ use crate::base::*;
 
 
 pub fn hash_block(data: &[u8]) -> TubHash {
-    assert!(data.len() > 0);
+    //assert!(data.len() > 0);
     let mut h = blake3::Hasher::new();
     h.update(b"Tub/block");  // <-- FIXME: Do more better than this
     h.update(data);
@@ -21,7 +21,7 @@ pub fn hash_block(data: &[u8]) -> TubHash {
 
 /*
 
-ROOT, PREVIOUS, PAYLOAD_HASH
+ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 
 */
 
@@ -76,42 +76,97 @@ impl Block
     }
 }
 
-
-pub struct Chain {
-    file: fs::File,
-    index: u64,
+pub struct BlockChain {
+    pk: sign::PublicKey,
+    sk: sign::SecretKey,
+    cnt: u64,
+    current_hash: TubHash,
+    buf: [u8; BLOCK_LEN],
 }
 
-impl Chain {
-    pub fn new(file: fs::File) -> Self {
-        Self {file: file, index: 0}
-    }
-
-    pub fn add_block(&mut self, refhash: &TubHash) -> TubHash {
-        [0_u8; TUB_HASH_LEN]
-    }
-
-    pub fn read_next_block(&mut self, block: &mut Block) -> io::Result<()> {
-        let offset = self.index * BLOCK_LEN as u64;
-        self.index += 1;
-        self.file.read_exact_at(block.as_mut_buf(), offset)?;
-        Ok(())
-    }
-
-    pub fn write_next_block(&mut self, block: &Block) -> io::Result<()> {
-        self.file.write_all(block.as_buf());
-        self.index += 1;
-        Ok(())
-    }
-
-    pub fn verify_chain(&mut self) -> io::Result<bool> {
-        self.index = 0;
-        let mut block = Block::new();
-        while let Ok(_) = self.read_next_block(&mut block) {
+impl BlockChain {
+    pub fn generate() -> Self {
+        let (pk, sk) = sign::gen_keypair();
+        Self {
+            pk: pk,
+            sk: sk,
+            cnt: 0,
+            current_hash: [0_u8; TUB_HASH_LEN],
+            buf: [0_u8; BLOCK_LEN],
         }
-        Ok(true)
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
+    }
+
+    pub fn as_signable(&self) -> &[u8] {
+        &self.buf[BLOCK_SIGNABLE_RANGE]
+    }
+
+    pub fn as_signature(&self) -> &[u8] {
+        &self.buf[BLOCK_SIGNATURE_RANGE]
+    }
+
+    pub fn as_pubkey(&self) -> &[u8] {
+        &self.buf[BLOCK_PUBKEY_RANGE]
+    }
+
+    fn set_previous(&mut self, hash: &TubHash) {
+        self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(hash);
+    }
+
+    pub fn as_previous(&self) -> &[u8] {
+        &self.buf[BLOCK_PREVIOUS_RANGE]
+    }
+
+    fn set_counter(&mut self, counter: u64) {
+        self.buf[BLOCK_COUNTER_RANGE].copy_from_slice(&counter.to_le_bytes());
+    }
+
+    pub fn counter(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[BLOCK_COUNTER_RANGE].try_into().expect("oops")
+        )
+    }
+
+    fn set_timestamp(&mut self, timestamp: u64) {
+        self.buf[BLOCK_TIMESTAMP_RANGE].copy_from_slice(&timestamp.to_le_bytes());
+    }
+
+    pub fn timestamp(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[BLOCK_TIMESTAMP_RANGE].try_into().expect("oops")
+        )
+    }
+
+    fn set_payload(&mut self, hash: &TubHash) {
+        self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(hash);
+    }
+
+    pub fn as_payload(&self) -> &[u8] {
+        &self.buf[BLOCK_PAYLOAD_RANGE]
+    }
+
+    pub fn append(&mut self, payload_hash: &TubHash) {
+        let cur = self.current_hash;
+        self.set_previous(&cur);
+        self.set_counter(self.cnt);
+        self.cnt += 1; 
+        // self.set_timestamp() FIXME
+        self.set_payload(payload_hash);
+
+        let sig = sign::sign_detached(self.as_signable(), &self.sk);
+        self.buf[BLOCK_SIGNATURE_RANGE].copy_from_slice(&sig.to_bytes());
+
+        self.current_hash = hash_block(self.as_buf());
     }
 }
+
 
 
 #[cfg(test)]

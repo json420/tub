@@ -124,6 +124,14 @@ impl BlockChain {
         &self.buf[BLOCK_PREVIOUS_RANGE]
     }
 
+    fn set_block_type(&mut self, kind: ObjectType) {
+        self.buf[BLOCK_TYPE_INDEX] = kind as u8;
+    }
+
+    pub fn block_type(&self) -> BlockType {
+        self.buf[BLOCK_TYPE_INDEX].into()
+    }
+
     fn set_counter(&mut self, counter: u64) {
         self.buf[BLOCK_COUNTER_RANGE].copy_from_slice(&counter.to_le_bytes());
     }
@@ -157,10 +165,12 @@ impl BlockChain {
         self.set_previous(&cur);
         self.set_counter(self.cnt);
         self.cnt += 1; 
+
         // self.set_timestamp() FIXME
         self.set_payload(payload_hash);
 
         let sig = sign::sign_detached(self.as_signable(), &self.sk);
+        assert!(sign::verify_detached(&sig, self.as_signable(), &self.pk));
         self.buf[BLOCK_SIGNATURE_RANGE].copy_from_slice(&sig.to_bytes());
 
         self.current_hash = hash_block(self.as_buf());

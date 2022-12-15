@@ -28,16 +28,15 @@ pub const BLOCK_PAYLOAD_HASH_RANGE: ops::Range<usize> = 2 * TUB_HASH_LEN..3 * TU
 
 
 pub const BLOCK_SIGNATURE_RANGE: ops::Range<usize> = 0..64;
-pub const BLOCK_SIGNABLE_RANGE: ops::Range<usize> = 64..0;
+pub const BLOCK_SIGNABLE_RANGE: ops::Range<usize> = 64..172;
 
 pub const BLOCK_PUBKEY_RANGE: ops::Range<usize> = 64..96;
 pub const BLOCK_PREVIOUS_RANGE: ops::Range<usize> = 96..126;
-pub const BLOCK_COUNTER_RANGE: ops::Range<usize> = 126..134;
-pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 134..142;
-pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 142..172;
-pub const BLOCK_LEN: usize = 172;
-
-
+pub const BLOCK_TYPE_INDEX: usize = 126;  // 126..127
+pub const BLOCK_COUNTER_RANGE: ops::Range<usize> = 127..135;
+pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 135..143;
+pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 143..173;
+pub const BLOCK_LEN: usize = 173;
 
 pub const DOTDIR: &str = ".bathtub_db";
 pub const PACKFILE: &str = "bathtub.db";
@@ -64,6 +63,23 @@ impl From<u8> for ObjectType {
             0 => Self::Data,
             1 => Self::Tree,
             _ => panic!("Unknown ObjectType: {}", item),
+        }
+    }
+}
+
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum BlockType {
+    Configure,
+    Commit,
+}
+
+impl From<u8> for BlockType {
+    fn from(item: u8) -> Self {
+        match item {
+            0 => Self::Configure,
+            1 => Self::Commit,
+            _ => panic!("Unknown BlockType: {}", item),
         }
     }
 }
@@ -114,6 +130,30 @@ mod tests {
     #[should_panic(expected = "Unknown ObjectType: 255")]
     fn test_objtype_panic2() {
         let _kind: ObjectType = 255.into();
+    }
+
+    #[test]
+    fn test_blocktype() {
+        for k in 0..2 {
+            let ot: BlockType = k.into();
+            assert_eq!(ot as u8, k);
+        }
+        assert_eq!(BlockType::Configure as u8, 0);
+        assert_eq!(BlockType::Configure, 0.into());
+        assert_eq!(BlockType::Commit as u8, 1);
+        assert_eq!(BlockType::Commit, 1.into());
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown BlockType: 2")]
+    fn test_blockype_panic1() {
+        let _kind: BlockType = 2.into();
+    }
+
+    #[test]
+    #[should_panic(expected = "Unknown BlockType: 255")]
+    fn test_block_type_panic2() {
+        let _kind: BlockType = 255.into();
     }
 }
 

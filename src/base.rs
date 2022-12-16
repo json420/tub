@@ -55,6 +55,7 @@ What's even more relaxing than a Couch?  A Bathtub!
 pub enum ObjectType {
     Data,
     Tree,
+    Block,
 }
 
 impl From<u8> for ObjectType {
@@ -62,6 +63,7 @@ impl From<u8> for ObjectType {
         match item {
             0 => Self::Data,
             1 => Self::Tree,
+            2 => Self::Block,
             _ => panic!("Unknown ObjectType: {}", item),
         }
     }
@@ -110,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_objtype() {
-        for k in 0..2 {
+        for k in 0..3 {
             let ot: ObjectType = k.into();
             assert_eq!(ot as u8, k);
         }
@@ -118,12 +120,14 @@ mod tests {
         assert_eq!(ObjectType::Data, 0.into());
         assert_eq!(ObjectType::Tree as u8, 1);
         assert_eq!(ObjectType::Tree, 1.into());
+        assert_eq!(ObjectType::Block as u8, 2);
+        assert_eq!(ObjectType::Block, 2.into());
     }
 
     #[test]
-    #[should_panic(expected = "Unknown ObjectType: 2")]
+    #[should_panic(expected = "Unknown ObjectType: 3")]
     fn test_objtype_panic1() {
-        let _kind: ObjectType = 2.into();
+        let _kind: ObjectType = 3.into();
     }
 
     #[test]

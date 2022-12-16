@@ -181,6 +181,7 @@ pub struct Stats {
     pub small: Summary,
     pub data: Summary,
     pub tree: Summary,
+    pub block: Summary,
 }
 impl Stats {
     pub fn new() -> Self {
@@ -190,6 +191,7 @@ impl Stats {
             small: Summary::new(),
             data: Summary::new(),
             tree: Summary::new(),
+            block: Summary::new(),
         }
     }
 
@@ -207,6 +209,9 @@ impl Stats {
             },
             ObjectType::Tree => {
                 self.tree.increment(entry);
+            },
+            ObjectType::Block => {
+                self.block.increment(entry);
             },
         }
     }

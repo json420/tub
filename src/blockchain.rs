@@ -112,6 +112,10 @@ impl BlockChain {
         &self.buf[BLOCK_SIGNATURE_RANGE]
     }
 
+    fn set_pubkey(&mut self, hash: &TubHash) {
+        self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(hash);
+    }
+
     pub fn as_pubkey(&self) -> &[u8] {
         &self.buf[BLOCK_PUBKEY_RANGE]
     }
@@ -160,7 +164,7 @@ impl BlockChain {
         &self.buf[BLOCK_PAYLOAD_RANGE]
     }
 
-    pub fn append(&mut self, payload_hash: &TubHash) {
+    pub fn append(&mut self, kind: BlockType, payload_hash: &TubHash) {
         let cur = self.current_hash;
         self.set_previous(&cur);
         self.set_counter(self.cnt);

@@ -28,10 +28,18 @@ equal to `LEAF_SIZE` is a small object and its payload hash is a hash of the
 object content itself.  Anything larger than `LEAF_SIZE` is a large object and
 its payload hash is a hash of the leaf hashes.
 
+Small objects are stored in something similar to Git's packfile (an append-only
+file).  Large objects are stored separately in a file named using the Dbase32
+encoded `TubHash`.  This is in, e.g., DOTDIR/objects/33/333333....
+
+The large object protocol is very similar to what Jason developed for Dmedia:
+
+    https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
+
 Some key differences between Tub and Git (developers should have these in mind):
 
     *   Tub is an actual database, not just database like.  This means there are
-        performance demands on Tub's storage layer that Git doesn' necessarily
+        performance demands on Tub's storage layer that Git doesn't necessarily
         have.  In particular, Tub's small object read performance needs to be
         as fast as possible.  We have a budget of 1 syscall per small object
         read.  In order to do this, we use an in-memory index.  Worth it!
@@ -39,9 +47,15 @@ Some key differences between Tub and Git (developers should have these in mind):
     *   Like above, we want to keep space requirements as small as possible,
         minimize CPU time spent encoding/decoding.  In places where Git uses a
         "friendly" human readable encoding (as it does in tree and commit
-        objects), Tub using a compact binary format.  Remember that when used as
+        objects), Tub uses a compact binary format.  Remember that when used as
         a document oriented database, these tree-like and commit-like objects
         are rather high-frequency objects (as opposed to use as a DVCS).
+
+    *   Typically there will be a Tub process running that the Tub DVCS CLI
+        talks to over an AF_UNIX socket (not implement yet!) so things like
+        `Store.reindex()` wont be runing at each CLI command invocation.
+        The current plan is that this Tub server process will automatically do
+        the equivalent of git push when network connectivity is available.
 
 
 Tub is best understood as three layers.
@@ -61,11 +75,25 @@ In the code, that key is represented with the `TubHash` type (currently a
 Layer 1: Object Versioning
 --------------------------
 
+You can't pick your `TubHash`, but you can pick your `TubId` (well, with some
+exacting constraints).
 
+A `TubId` is a random 120-bit value that points to a `TubHash`.  Think of it
+like a non-human-readable Git tag.
+
+The document oriented database (below) takes a lot of inspiration from CouchDB,
+and these are semantically equivalent:
+
+    Tub          CouchDB
+    ==========================
+    `TubId`   => `doc["_id]`
+    `TubHash` => `doc["_rev"]`
 
 
 Layer 3: Application Layer
 --------------------------
+
+
 
 
 

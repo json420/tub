@@ -1,0 +1,124 @@
+Understanding (and hacking on) Bathtub DB
+=========================================
+
+Tub (or Bathtub DB, your pick) is a lot like Git, so if you understand how Git
+works under the hood, you're a long way toward understanding Tub.  Basically
+this is the aspect of Git you need to understand:
+
+    https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+
+Like Git, Tub is built on a content addressable object store.  Everything goes
+in the object store:
+
+    (1) Data objects containing the actual data you want to store
+    (2) Tree objects that reference data objects and organize them in
+        whatever way the specific application needs
+    (3) Commit objects that reference top-level tree objects plus contain
+        metadata about the state (e.g., a commit message)
+    (4) Block objects that reference commit objects and organize them into a
+        sequence of changes over time (note in that in Tub, the Git equivalent
+        of a Commit object is split into a Commit plus Block object)
+
+In the code, the object store is implemented in the `leaf_io` and `store`
+modules.
+
+Tub has built-in "large object support" (up to 16 EiB).  Large objects can
+be incrementally verified in `LEAF_SIZE` increments.  Anything less than or
+equal to `LEAF_SIZE` is a small object and its payload hash is a hash of the
+object content itself.  Anything larger than `LEAF_SIZE` is a large object and
+its payload hash is a hash of the leaf hashes.
+
+Some key differences between Tub and Git (developers should have these in mind):
+
+    *   Tub is an actual database, not just database like.  This means there are
+        performance demands on Tub's storage layer that Git doesn' necessarily
+        have.  In particular, Tub's small object read performance needs to be
+        as fast as possible.  We have a budget of 1 syscall per small object
+        read.  In order to do this, we use an in-memory index.  Worth it!
+
+    *   Like above, we want to keep space requirements as small as possible,
+        minimize CPU time spent encoding/decoding.  In places where Git uses a
+        "friendly" human readable encoding (as it does in tree and commit
+        objects), Tub using a compact binary format.  Remember that when used as
+        a document oriented database, these tree-like and commit-like objects
+        are rather high-frequency objects (as opposed to use as a DVCS).
+
+
+Tub is best understood as three layers.
+
+
+Layer 0: Object Storage
+-----------------------
+
+Like Git, Tub is built on a content addressable object store.  The key used to
+look up an object is the hash of that object's content.  You can't pick the key,
+the object's content plus the protocol picks it for you.
+
+In the code, that key is represented with the `TubHash` type (currently a
+`[u8; 30]`, but the length might change).
+
+
+Layer 1: Object Versioning
+--------------------------
+
+
+
+
+Layer 3: Application Layer
+--------------------------
+
+
+
+OLD Brain Dump on Bathtub DB.
+
+Object Storage
+==============
+
+At it's core, BTDB is content addressable object store.  There are two somewhat
+conflicting goals for this layer of BTDB:
+
+    1.  We want to aggressively delta compress sequences of changes to small
+        objects (source control, document updates, etc).  Small objects are
+        appended to the bathtub.db file and then will be periodically repacked
+
+    2.  We want to store very large objects, including large objects that
+        generally don't change and can't be delta compressed (video files)
+
+Performance goals:
+
+    *   Small object reads need to be very fast
+
+    *   Reading the latest state needs to be fast (ie, delta compressed
+        documents, source code)
+
+    *   Hash algorithm needs to be as fast as possible while still being
+        cryptographically robust
+
+
+Object Versioning
+=================
+
+Versioning is a mapping of Abstract IDs (random) to Concrete IDs (derived from
+content):
+
+    abstract_id => concrete_id
+
+A given Abstract ID can only point to a single Concrete IDs at a time, but
+the same Concrete ID can be pointed to by multiple Abstract IDs.
+
+
+Branches
+========
+
+A branch is a history of changes to the state.  Branches are stored as a signed
+block chain.  Signed use used for access control (you can write to a branch if
+you have the private key).  The hash chain is used for long term preservation
+of history.
+
+Branches are identified by an Abstract ID.  It's tempting to use the content
+hash of the public key to identify a branch (since each branch has a unique
+one).  But this breaks re-keying.
+
+However, the hash chain this allows of to validate the history chain as long
+as we know the current history entry.
+

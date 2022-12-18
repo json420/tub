@@ -19,19 +19,23 @@ const MAX_DEPTH: usize = 32;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
+    EmptyDir,
     Dir,
+    EmptyFile,
     File,
-    ExFile,
-    Symlink,
+    ExeFile,
+    SymLink,
 }
 
 impl From<u8> for Kind {
     fn from(item: u8) -> Self {
         match item {
-            0 => Self::Dir,
-            1 => Self::File,
-            2 => Self::ExFile,
-            3 => Self::Symlink,
+            0 => Self::EmptyDir,
+            1 => Self::Dir,
+            2 => Self::EmptyFile,
+            3 => Self::File,
+            4 => Self::ExeFile,
+            5 => Self::SymLink,
             _ => panic!("Unknown Kind: {}", item),
         }
     }
@@ -287,7 +291,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 let value = fs::read_link(&path)?;
                 let data = value.to_str().unwrap().as_bytes();
                 let (hash, _new) = tub.add_object(data)?;
-                tree.add(PathBuf::from(name), Kind::Symlink, hash);
+                tree.add(PathBuf::from(name), Kind::SymLink, hash);
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
@@ -296,7 +300,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                     let file = fs::File::open(&path)?;
                     let (hash, _new) = tub.import_file(file, size)?;
                     let is_executable = meta.permissions().mode() & 0o111 != 0;
-                    let kind = if is_executable {Kind::ExFile} else {Kind::File};
+                    let kind = if is_executable {Kind::ExeFile} else {Kind::File};
                     tree.add(PathBuf::from(name), kind, hash);
                 }
             }
@@ -353,7 +357,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                             panic!("could not find object {}", db32enc_str(&entry.hash));
                         }
                     }
-                    Kind::ExFile => {
+                    Kind::ExeFile => {
                         if let Some(mut object) = store.open(&entry.hash)? {
                             println!("X {:?}", pb);
                             let mut file = fs::File::create(&pb)?;
@@ -363,7 +367,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                             panic!("could not find object {}", db32enc_str(&entry.hash));
                         }
                     }
-                    Kind::Symlink => {
+                    Kind::SymLink => {
                         if let Some(buf) = store.get_object(&entry.hash, false)? {
                             println!("S {:?}", pb);
                             let s = String::from_utf8(buf).unwrap();
@@ -373,6 +377,9 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                             panic!("could not find symlink object {}", db32enc_str(&entry.hash));
                         }
                     },
+                    _ => {
+                        panic!("implement more stuff");
+                    }
                 }
             }
         } else {
@@ -398,20 +405,24 @@ mod tests {
             let kind: Kind = k.into();
             assert_eq!(kind as u8, k);
         }
-        assert_eq!(Kind::Dir as u8, 0);
-        assert_eq!(Kind::Dir, 0.into());
-        assert_eq!(Kind::File as u8, 1);
-        assert_eq!(Kind::File, 1.into());
-        assert_eq!(Kind::ExFile as u8, 2);
-        assert_eq!(Kind::ExFile, 2.into());
-        assert_eq!(Kind::Symlink as u8, 3);
-        assert_eq!(Kind::Symlink, 3.into());
+        assert_eq!(Kind::EmptyDir as u8, 0);
+        assert_eq!(Kind::EmptyDir, 0.into());
+        assert_eq!(Kind::Dir as u8, 1);
+        assert_eq!(Kind::Dir, 1.into());
+        assert_eq!(Kind::EmptyFile as u8, 2);
+        assert_eq!(Kind::EmptyFile, 2.into());
+        assert_eq!(Kind::File as u8, 3);
+        assert_eq!(Kind::File, 3.into());
+        assert_eq!(Kind::ExeFile as u8, 4);
+        assert_eq!(Kind::ExeFile, 4.into());
+        assert_eq!(Kind::SymLink as u8, 5);
+        assert_eq!(Kind::SymLink, 5.into());
     }
 
     #[test]
-    #[should_panic(expected = "Unknown Kind: 4")]
+    #[should_panic(expected = "Unknown Kind: 6")]
     fn test_kind_panic1() {
-        let _kind: Kind = 4.into();
+        let _kind: Kind = 6.into();
     }
 
     #[test]
@@ -427,7 +438,7 @@ mod tests {
         let hash = [11_u8; TUB_HASH_LEN];
         map.insert(pb, TreeEntry::new_file(hash));
         let buf = serialize(&map);
-        assert_eq!(buf, [1,  3, 98, 97, 114,
+        assert_eq!(buf, [3,  3, 98, 97, 114,
                         11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
                         11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
                         11, 11]

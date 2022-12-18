@@ -65,9 +65,6 @@ pub fn deserialize(buf: &[u8]) -> TreeMap {
     let mut map: TreeMap = HashMap::new();
     let mut offset = 0;
     while offset < buf.len() {
-        let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
-        offset += h.len();
-
         let kind: Kind = buf[offset].into();
         let size = buf[offset + 1] as usize;
         assert!(size > 0);
@@ -76,6 +73,9 @@ pub fn deserialize(buf: &[u8]) -> TreeMap {
         let s = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
         let pb = PathBuf::from(s);
         offset += size;
+
+        let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
+        offset += h.len();
 
         map.insert(pb, TreeEntry::new(kind, h));
     }
@@ -92,10 +92,10 @@ pub fn serialize(map: &TreeMap) -> Vec<u8> {
         let path = p.to_str().unwrap().as_bytes();
         let size = path.len() as u8;
         assert!(size > 0);
-        buf.extend_from_slice(&entry.hash);
         buf.push(entry.kind as u8);
         buf.push(size);
         buf.extend_from_slice(path);
+        buf.extend_from_slice(&entry.hash);
     }
     buf
 }
@@ -423,13 +423,14 @@ mod tests {
     #[test]
     fn test_serialize_deserialize() {
         let mut map: TreeMap = HashMap::new();
-        let pb = PathBuf::from("foo");
+        let pb = PathBuf::from("bar");
         let hash = [11_u8; TUB_HASH_LEN];
         map.insert(pb, TreeEntry::new_file(hash));
         let buf = serialize(&map);
-        assert_eq!(buf, [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-                         11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-                         11, 11, 1, 3, 102, 111, 111]
+        assert_eq!(buf, [1,  3, 98, 97, 114,
+                        11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+                        11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
+                        11, 11]
         );
         let map2 = deserialize(&buf);
         assert_eq!(map2, map);

@@ -140,6 +140,31 @@ impl Tree {
 }
 
 
+pub struct Commit {
+    tree: TubHash,
+    msg: String,
+}
+
+impl Commit {
+    pub fn new(tree: TubHash, msg: String) -> Self {
+        Self {tree: tree, msg: msg}
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&self.tree);
+        buf.extend_from_slice(&self.msg.as_bytes());
+        buf
+    }
+
+    pub fn deserialize(buf: &Vec<u8>) -> Self {
+        let tree: TubHash = buf[0..TUB_HASH_LEN].try_into().expect("oops");
+        let msg = String::from_utf8(buf[TUB_HASH_LEN..].to_vec()).unwrap();
+        Self {tree: tree, msg: msg}
+    }
+}
+
+
 pub struct TreeFile {
     pub path: PathBuf,
     pub size: u64,

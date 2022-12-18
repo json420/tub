@@ -282,6 +282,8 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let mut tub = get_tub(tub)?;
     let root = dvcs::commit_tree(&mut tub, &source)?;
     println!("{}", db32enc_str(&root));
+    let commit = dvcs::Commit::new(root, String::from("test commit"));
+    tub.add_commit(&commit.serialize());
     Ok(())
 }
 
@@ -328,6 +330,8 @@ fn cmd_stats(tub: OptPath) -> io::Result<()>
     println!("Objects by type:");
     println!("  {} Data ({} bytes)", stats.data.count, stats.data.total);
     println!("  {} Tree ({} bytes)", stats.tree.count, stats.tree.total);
+    println!("  {} Block ({} bytes)", stats.block.count, stats.block.total);
+    println!("  {} Commit ({} bytes)", stats.commit.count, stats.commit.total);
     Ok(())
 }
 

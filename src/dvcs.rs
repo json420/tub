@@ -276,58 +276,55 @@ pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
 
 fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
 {
-    if depth < MAX_DEPTH {
-        let mut tree = Tree::new();
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let ft = entry.file_type()?;
-            let path = entry.path();
-            let name = path.file_name().unwrap();
-            if name.to_str().unwrap().starts_with(".") {
-                eprintln!("Skipping hiddin: {:?}", path);
+    if depth >= MAX_DEPTH {
+        panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+    }
+    let mut tree = Tree::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let ft = entry.file_type()?;
+        let path = entry.path();
+        let name = path.file_name().unwrap();
+        if name.to_str().unwrap().starts_with(".") {
+            eprintln!("Skipping hiddin: {:?}", path);
+        }
+        else if ft.is_symlink() {
+            let value = fs::read_link(&path)?;
+            let data = value.to_str().unwrap().as_bytes();
+            let (hash, _new) = tub.add_object(data)?;
+            tree.add(PathBuf::from(name), Kind::SymLink, hash);
+        }
+        else if ft.is_file() {
+            let meta = fs::metadata(&path)?;
+            let size = meta.len();
+            if size > 0 {
+                let file = fs::File::open(&path)?;
+                let (hash, _new) = tub.import_file(file, size)?;
+                let is_executable = meta.permissions().mode() & 0o111 != 0;
+                let kind = if is_executable {Kind::ExeFile} else {Kind::File};
+                tree.add(PathBuf::from(name), kind, hash);
             }
-            else if ft.is_symlink() {
-                eprintln!("S: {:?}", path);
-                let value = fs::read_link(&path)?;
-                let data = value.to_str().unwrap().as_bytes();
-                let (hash, _new) = tub.add_object(data)?;
-                tree.add(PathBuf::from(name), Kind::SymLink, hash);
-            }
-            else if ft.is_file() {
-                let meta = fs::metadata(&path)?;
-                let size = meta.len();
-                if size > 0 {
-                    let file = fs::File::open(&path)?;
-                    let (hash, _new) = tub.import_file(file, size)?;
-                    let is_executable = meta.permissions().mode() & 0o111 != 0;
-                    let kind = if is_executable {Kind::ExeFile} else {Kind::File};
-                    tree.add(PathBuf::from(name), kind, hash);
-                }
-                else {
-                    tree.add(PathBuf::from(name), Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
-                }
-            }
-            else if ft.is_dir() {
-                if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
-                    tree.add_dir(PathBuf::from(name), hash);
-                }
-                else {
-                    tree.add(PathBuf::from(name), Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
-                }
+            else {
+                tree.add(PathBuf::from(name), Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
             }
         }
-        if tree.len() > 0 {
-            let obj = tree.serialize();
-            let (hash, _new) = tub.add_tree(&obj)?;
-            eprintln!("Tree: {} {:?}", db32enc_str(&hash), dir);
-            Ok(Some(hash))
-        }
-        else {
-            Ok(None)
+        else if ft.is_dir() {
+            if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
+                tree.add_dir(PathBuf::from(name), hash);
+            }
+            else {
+                tree.add(PathBuf::from(name), Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
+            }
         }
     }
+    if tree.len() > 0 {
+        let obj = tree.serialize();
+        let (hash, _new) = tub.add_tree(&obj)?;
+        eprintln!("Tree: {} {:?}", db32enc_str(&hash), dir);
+        Ok(Some(hash))
+    }
     else {
-        panic!("max depth reached");
+        Ok(None)
     }
 }
 
@@ -343,7 +340,7 @@ pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
 
 fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usize) -> io::Result<()> {
     if depth >= MAX_DEPTH {
-        panic!("max depth {} reached", depth);
+        panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
     }
     if let Some(data) = store.get_object(root, false)? {
         let map = deserialize(&data);
@@ -403,6 +400,7 @@ pub fn restore_tree(store: &mut Store, root: &TubHash, path: &Path) -> io::Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::Store;
     use crate::util::random_hash;
 
     #[test]
@@ -435,6 +433,23 @@ mod tests {
     #[should_panic(expected = "Unknown Kind: 255")]
     fn test_kind_panic2() {
         let _kind: Kind = 255.into();
+    }
+
+    #[test]
+    #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
+    fn test_commit_tree_depth_panic() {
+        let (_tmp, mut store) = Store::new_tmp();
+        let pb = PathBuf::from("word");
+        commit_tree_inner(&mut store, &pb, MAX_DEPTH);
+    }
+
+    #[test]
+    #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
+    fn test_restore_tree_depth_panic() {
+        let (_tmp, mut store) = Store::new_tmp();
+        let root = random_hash();
+        let pb = PathBuf::from("word");
+        restore_tree_inner(&mut store, &root, &pb, MAX_DEPTH);
     }
 
     #[test]

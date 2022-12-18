@@ -127,16 +127,24 @@ impl Tree {
         serialize(&self.map)
     }
 
+    pub fn add(&mut self, key: PathBuf, kind: Kind, hash: TubHash) {
+        self.map.insert(key, TreeEntry::new(kind, hash));
+    }
+
+    pub fn add_empty_dir(&mut self, key: PathBuf) {
+        self.add(key, Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
+    }
+
+    pub fn add_empty_file(&mut self, key: PathBuf) {
+        self.add(key, Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
+    }
+
     pub fn add_dir(&mut self, key: PathBuf, hash: TubHash) {
         self.map.insert(key, TreeEntry::new_dir(hash));
     }
 
     pub fn add_file(&mut self, key: PathBuf, hash: TubHash) {
         self.map.insert(key, TreeEntry::new_file(hash));
-    }
-
-    pub fn add(&mut self, key: PathBuf, kind: Kind, hash: TubHash) {
-        self.map.insert(key, TreeEntry::new(kind, hash));
     }
 }
 
@@ -305,7 +313,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 tree.add(PathBuf::from(name), kind, hash);
             }
             else {
-                tree.add(PathBuf::from(name), Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
+                tree.add_empty_file(PathBuf::from(name));
             }
         }
         else if ft.is_dir() {
@@ -313,7 +321,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                 tree.add_dir(PathBuf::from(name), hash);
             }
             else {
-                tree.add(PathBuf::from(name), Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
+                tree.add_empty_dir(PathBuf::from(name));
             }
         }
     }
@@ -353,7 +361,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                     fs::create_dir_all(&pb)?;
                 },
                 Kind::Dir => {
-                    println!("D {:?}", pb);
+                    eprintln!("D {:?}", pb);
                     restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
                 },
                 Kind::EmptyFile => {
@@ -376,7 +384,11 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                 }
                 Kind::SymLink => {
                     if let Some(buf) = store.get_object(&entry.hash, false)? {
-                        println!("S {:?}", pb);
+                        eprintln!("S {:?}", &pb);
+                        if let Ok(_) = fs::remove_file(&pb) {
+                            // FIXME: handle this more better
+                            eprintln!("Deleted old {:?}", &pb);
+                        }
                         let s = String::from_utf8(buf).unwrap();
                         let target = PathBuf::from(s);
                         unix::fs::symlink(&target, &pb)?;
@@ -387,7 +399,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
             }
         }
     } else {
-        panic!("Could not get Tree {}", db32enc_str(root));
+        panic!("Could not find tree object {}", db32enc_str(root));
     }
     Ok(())
 }

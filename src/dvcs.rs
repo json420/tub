@@ -342,58 +342,55 @@ pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
 
 
 fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usize) -> io::Result<()> {
-    if depth < MAX_DEPTH {
-        if let Some(data) = store.get_object(root, false)? {
-            let map = deserialize(&data);
-            fs::create_dir_all(&path)?;
-            for (name, entry) in map.iter() {
-                let mut pb = path.to_path_buf();
-                pb.push(name);
-                match entry.kind {
-                    Kind::EmptyDir => {
-                        fs::create_dir_all(&pb)?;
-                    },
-                    Kind::Dir => {
-                        //println!("D {:?}", pb);
-                        restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
-                    },
-                    Kind::EmptyFile => {
-                        fs::File::create(&pb)?;
-                    },
-                    Kind::File => {
-                        if let Some(mut object) = store.open(&entry.hash)? {
-                            println!("F {:?}", pb);
-                            let mut file = fs::File::create(&pb)?;
-                            object.write_to_file(&mut file)?;
-                        } else {
-                            panic!("could not find object {}", db32enc_str(&entry.hash));
-                        }
-                    }
-                    Kind::ExeFile => {
-                        if let Some(mut object) = store.open(&entry.hash)? {
-                            println!("X {:?}", pb);
-                            let mut file = fs::File::create(&pb)?;
+    if depth >= MAX_DEPTH {
+        panic!("max depth {} reached", depth);
+    }
+    if let Some(data) = store.get_object(root, false)? {
+        let map = deserialize(&data);
+        fs::create_dir_all(&path)?;
+        for (name, entry) in map.iter() {
+            let mut pb = path.to_path_buf();
+            pb.push(name);
+            match entry.kind {
+                Kind::EmptyDir => {
+                    fs::create_dir_all(&pb)?;
+                },
+                Kind::Dir => {
+                    println!("D {:?}", pb);
+                    restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
+                },
+                Kind::EmptyFile => {
+                    fs::File::create(&pb)?;
+                },
+                Kind::File | Kind::ExeFile => {
+                    if let Some(mut object) = store.open(&entry.hash)? {
+                        let mut file = fs::File::create(&pb)?;
+                        if entry.kind == Kind::ExeFile {
                             file.set_permissions(fs::Permissions::from_mode(0o755))?;
-                            object.write_to_file(&mut file)?;
-                        } else {
-                            panic!("could not find object {}", db32enc_str(&entry.hash));
+                            eprintln!("X {:?}", pb);
                         }
+                        else {
+                            eprintln!("F {:?}", pb);
+                        }
+                        object.write_to_file(&mut file)?;
+                    } else {
+                        panic!("could not find object {}", db32enc_str(&entry.hash));
                     }
-                    Kind::SymLink => {
-                        if let Some(buf) = store.get_object(&entry.hash, false)? {
-                            println!("S {:?}", pb);
-                            let s = String::from_utf8(buf).unwrap();
-                            let target = PathBuf::from(s);
-                            unix::fs::symlink(&target, &pb)?;
-                        } else {
-                            panic!("could not find symlink object {}", db32enc_str(&entry.hash));
-                        }
-                    },
                 }
+                Kind::SymLink => {
+                    if let Some(buf) = store.get_object(&entry.hash, false)? {
+                        println!("S {:?}", pb);
+                        let s = String::from_utf8(buf).unwrap();
+                        let target = PathBuf::from(s);
+                        unix::fs::symlink(&target, &pb)?;
+                    } else {
+                        panic!("could not find symlink object {}", db32enc_str(&entry.hash));
+                    }
+                },
             }
-        } else {
-            panic!("could not find tree {}", db32enc_str(root));
         }
+    } else {
+        panic!("Could not get Tree {}", db32enc_str(root));
     }
     Ok(())
 }

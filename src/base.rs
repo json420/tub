@@ -56,6 +56,7 @@ pub enum ObjectType {
     Data,
     Tree,
     Block,
+    Commit,
 }
 
 impl From<u8> for ObjectType {
@@ -64,6 +65,7 @@ impl From<u8> for ObjectType {
             0 => Self::Data,
             1 => Self::Tree,
             2 => Self::Block,
+            3 => Self::Commit,
             _ => panic!("Unknown ObjectType: {}", item),
         }
     }
@@ -122,12 +124,14 @@ mod tests {
         assert_eq!(ObjectType::Tree, 1.into());
         assert_eq!(ObjectType::Block as u8, 2);
         assert_eq!(ObjectType::Block, 2.into());
+        assert_eq!(ObjectType::Commit as u8, 3);
+        assert_eq!(ObjectType::Commit, 3.into());
     }
 
     #[test]
-    #[should_panic(expected = "Unknown ObjectType: 3")]
+    #[should_panic(expected = "Unknown ObjectType: 4")]
     fn test_objtype_panic1() {
-        let _kind: ObjectType = 3.into();
+        let _kind: ObjectType = 4.into();
     }
 
     #[test]

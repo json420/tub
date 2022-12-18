@@ -182,6 +182,7 @@ pub struct Stats {
     pub data: Summary,
     pub tree: Summary,
     pub block: Summary,
+    pub commit: Summary,
 }
 impl Stats {
     pub fn new() -> Self {
@@ -192,6 +193,7 @@ impl Stats {
             data: Summary::new(),
             tree: Summary::new(),
             block: Summary::new(),
+            commit: Summary::new(),
         }
     }
 
@@ -212,6 +214,9 @@ impl Stats {
             },
             ObjectType::Block => {
                 self.block.increment(entry);
+            },
+            ObjectType::Commit => {
+                self.commit.increment(entry);
             },
         }
     }
@@ -480,6 +485,11 @@ impl Store {
 
     pub fn add_tree(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
         self.tbuf.hash_data(ObjectType::Tree, data);
+        self.commit_object()
+    }
+
+    pub fn add_commit(&mut self, data: &[u8]) -> io::Result<(TubHash, bool)> {
+        self.tbuf.hash_data(ObjectType::Commit, data);
         self.commit_object()
     }
 

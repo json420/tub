@@ -303,10 +303,16 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
                     let kind = if is_executable {Kind::ExeFile} else {Kind::File};
                     tree.add(PathBuf::from(name), kind, hash);
                 }
+                else {
+                    tree.add(PathBuf::from(name), Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
+                }
             }
             else if ft.is_dir() {
                 if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
                     tree.add_dir(PathBuf::from(name), hash);
+                }
+                else {
+                    tree.add(PathBuf::from(name), Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
                 }
             }
         }
@@ -344,9 +350,15 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                 let mut pb = path.to_path_buf();
                 pb.push(name);
                 match entry.kind {
+                    Kind::EmptyDir => {
+                        fs::create_dir_all(&pb)?;
+                    },
                     Kind::Dir => {
                         //println!("D {:?}", pb);
                         restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
+                    },
+                    Kind::EmptyFile => {
+                        fs::File::create(&pb)?;
                     },
                     Kind::File => {
                         if let Some(mut object) = store.open(&entry.hash)? {
@@ -377,9 +389,6 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                             panic!("could not find symlink object {}", db32enc_str(&entry.hash));
                         }
                     },
-                    _ => {
-                        panic!("implement more stuff");
-                    }
                 }
             }
         } else {

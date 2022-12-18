@@ -2,12 +2,9 @@
 
 use std::collections::HashMap;
 use std::path::{PathBuf, Path};
-use std::ffi::OsStr;
-use std::os::unix::ffi::OsStrExt;
 use std::fs;
 use std::io;
 use std::convert::Into;
-use std::io::prelude::*;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
 
@@ -259,7 +256,6 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
     }
     else {
         panic!("max depth reached");
-        Ok(None)
     }
 }
 
@@ -322,7 +318,6 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
     }
     else {
         panic!("max depth reached");
-        Ok(None)
     }
 }
 

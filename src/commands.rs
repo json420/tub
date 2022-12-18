@@ -283,7 +283,7 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let root = dvcs::commit_tree(&mut tub, &source)?;
     println!("{}", db32enc_str(&root));
     let commit = dvcs::Commit::new(root, String::from("test commit"));
-    tub.add_commit(&commit.serialize());
+    tub.add_commit(&commit.serialize())?;
     Ok(())
 }
 

@@ -3,8 +3,8 @@ Tub needs to be blazing freakin' fast.
 Sounds challenging... let's get to work!
 
 
-Comparision with Git
-====================
+Comparison with Git
+===================
 
 Although Git is a fast DVCS, Git isn't necessary a fast *database* in a general
 sense.
@@ -22,9 +22,9 @@ one small object:
     4. rename()
 
 As Tub needs very fast small object read and write performance, the above
-approach is difficult to justify.
+approach is too costly.
 
-Tub can write a new small object in a single call to write(), which will append
+Tub writes new small objects with a single call to write(), which will append
 the object to the append file.  The next step is to have Tub write all small
 objects needed for a commit using vectored IO with a single call to pwritev(),
 which will get us down to a fraction of a system call per small object write.
@@ -34,12 +34,12 @@ Much better.
 Set Budgets
 ===========
 
-We don't want to get lost in micro optimizations early on, that's not what
-we're talking about.  But we need to consider macro optimizations, like
-minimizing system calls and memeory allocations.
+We don't want to get lost in micro optimizations early on, that's not what we're
+talking about.  But we need to consider macro optimizations, like minimizing
+system calls and memory allocations.
 
 For a given operation, set a budget for system calls and memory allocations.
-If that bugdet isn't at the theoretical minimum, try to get it there... or have
+If that budget isn't at the theoretical minimum, try to get it there... or have
 a very good justification for going over budget.
 
 
@@ -47,12 +47,37 @@ Hashing Performance
 ===================
 
 Like Git, Tub does a lot of hashing, so the performance of the hash function we
-use is critical.  We will probaly pick one of these 3:
+use is critical.  We will probably pick one of these three:
 
-    1. Skein
+    1. Skein-512
     2. Blake
     3. Blake2b
 
-Sha3 (Keccak) is basically off the table because it's too slow.  Blake3 is fast,
-but probably not cryptographically robust enough.
+Sha3 (Keccak) is basically off the table because it's way too slow.  Blake3 is
+fast, but probably not cryptographically robust enough.
+
+If we can get a Skein implementation running as fast or faster than Blake2b,
+well... we should use Skein (Skein implementations are generally faster than
+OG Blake, BTW).
+
+Some hash function requirements Jason feels are essential:
+
+    1.  Fast, fast fast... as fast as possible while meeting security
+        requirements
+    2.  At least 512 bits of internal state
+    3.  Modern and well reviewed (being a sha3 contender is nice)
+
+The hash function is one place where early micro optimizations is appropriate.
+We need to know what sort of real-world performance we can squeeze out of a
+hash function before we make a choice.
+
+
+Storage Efficiency
+==================
+
+Document oriented databases aren't generally known for their storage efficiency,
+which can limit where they can be used.
+
+We want Tub to be the most storage efficient document oriented database on the
+market.  Jason's current split schema design probably gets us there.
 

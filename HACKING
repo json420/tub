@@ -58,8 +58,7 @@ Some key differences between Tub and Git (developers should have these in mind):
         the equivalent of git push when network connectivity is available.
 
 
-Tub is best understood as three layers.
-
+Tub is best understood as three layers:
 
 Layer 0: Object Storage
 -----------------------
@@ -84,15 +83,14 @@ like a non-human-readable Git tag.
 The document oriented database (below) takes a lot of inspiration from CouchDB,
 and these are semantically equivalent:
 
-    Tub          CouchDB
-    ==========================
-    `TubId`   => `doc["_id]`
-    `TubHash` => `doc["_rev"]`
+    Tub        CouchDB
+    ======================
+    TubId   => doc["_id"]
+    TubHash => doc["_rev"]
 
 
 Layer 3: Application Layer
 --------------------------
-
 
 
 

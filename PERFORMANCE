@@ -1,0 +1,58 @@
+Tub needs to be blazing freakin' fast.
+
+Sounds challenging... let's get to work!
+
+
+Comparision with Git
+====================
+
+Although Git is a fast DVCS, Git isn't necessary a fast *database* in a general
+sense.
+
+In fact, as a rule of thumb, unless Tub is faster than Git as a DVCS for a given
+operation, Tub probably isn't fast enough as a database.
+
+For example, Git writes new objects in "loose" format, each object in its own
+file.  A reasonable choice for a DVCS, but that's also 4 system calls to write
+one small object:
+
+    1. open()
+    2. write()
+    3. close()
+    4. rename()
+
+As Tub needs very fast small object read and write performance, the above
+approach is difficult to justify.
+
+Tub can write a new small object in a single call to write(), which will append
+the object to the append file.  The next step is to have Tub write all small
+objects needed for a commit using vectored IO with a single call to pwritev(),
+which will get us down to a fraction of a system call per small object write.
+Much better.
+
+
+Set Budgets
+===========
+
+We don't want to get lost in micro optimizations early on, that's not what
+we're talking about.  But we need to consider macro optimizations, like
+minimizing system calls and memeory allocations.
+
+For a given operation, set a budget for system calls and memory allocations.
+If that bugdet isn't at the theoretical minimum, try to get it there... or have
+a very good justification for going over budget.
+
+
+Hashing Performance
+===================
+
+Like Git, Tub does a lot of hashing, so the performance of the hash function we
+use is critical.  We will probaly pick one of these 3:
+
+    1. Skein
+    2. Blake
+    3. Blake2b
+
+Sha3 (Keccak) is basically off the table because it's too slow.  Blake3 is fast,
+but probably not cryptographically robust enough.
+

@@ -1,0 +1,36 @@
+Installing Tub
+==============
+
+On account of being so kickass, Tub is written in Rust, which you can install
+from here:
+
+    https://rustup.rs/
+
+Then build and install Tub like this:
+
+    $ cargo install --path .
+
+The `tub` CLI tool is our current toy version control software.
+
+Initialize a Tub and import some objects (files) like this:
+
+    $ tub init
+    $ tub import /usr/share/doc
+
+Then you can check what is now in your Tub:
+
+    $ tub list-objects
+    $ tub stats
+
+
+WTF is Tub?  A database, version control software, or what?
+===========================================================
+
+The goal of Tub is to improve the operational efficiency of complex human
+systems (companies, governments, nonprofits, etc).  Go faster, solve harder
+problems, make the wold a better place... that kinda stuff.
+
+Tub is made for ALL of your data.  From source code to raw video files to
+structured data.  The way Tub can improve operational efficiency is by unifying
+all your data into a single, coherent system.
+

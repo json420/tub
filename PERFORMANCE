@@ -65,9 +65,9 @@ Some hash function requirements Jason feels are essential:
     1.  Fast, fast fast... as fast as possible while meeting security
         requirements
     2.  At least 512 bits of internal state
-    3.  Modern and well reviewed (being a sha3 contender is nice)
+    3.  Modern and well reviewed (being a sha3 finalist is nice)
 
-The hash function is one place where early micro optimizations is appropriate.
+The hash function is one place where early micro optimizations are appropriate.
 We need to know what sort of real-world performance we can squeeze out of a
 hash function before we make a choice.
 
@@ -80,4 +80,17 @@ which can limit where they can be used.
 
 We want Tub to be the most storage efficient document oriented database on the
 market.  Jason's current split schema design probably gets us there.
+
+
+SIMD
+====
+
+Ah yes, that underutilized CPU resource.
+
+The Rust SIMD module looks promising, although it's currently only enabled in
+the nightly builds... this might be a reason to develop against the nightly
+builds.
+
+It would be cool if Tub was a "SIMD first" project, and we should think about
+this when designing the protocols.
 

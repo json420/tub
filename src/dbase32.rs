@@ -1,4 +1,4 @@
-//! Custom base32 encoding used to encode IDs.
+//! Custom base32 encoding used to encode `TubHash` and `TubId`.
 
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
@@ -210,17 +210,6 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 }
 
 
-//check_db32
-pub fn check_db32(text: &str) -> Result<(), String> {
-    let valid = isdb32(text.as_bytes());
-    
-    if !valid {
-        return Err("ER".to_string());
-    }
-    Ok(())
-    
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -245,46 +234,46 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==0, txt.len()==48")]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==0, txt.len()==48")]
     fn test_empty_bin_panic() {
         check_bin_txt(&[], &[0_u8; 48]);
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==31, txt.len()==48")]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==31, txt.len()==48")]
     fn test_bin_mod_5_panic() {
         check_bin_txt(&[0_u8; 31], &[0_u8; 48]);
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==0")]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==30, txt.len()==0")]
     fn test_empty_txt_panic() {
         check_bin_txt(&[0_u8; 30], &[]);
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==49")]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==30, txt.len()==49")]
     fn test_txt_mod_8_panic() {
         check_bin_txt(&[0_u8; 30], &[0_u8; 49]);
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==24")]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==30, txt.len()==24")]
     fn test_bin_txt_mismatch_panic() {
         check_bin_txt(&[0_u8; 30], &[0_u8; 24]);
     }
 
     #[test]
-    #[should_panic (expected = "Bad dbase32 internal call")]
+    #[should_panic (expected="Bad dbase32 internal call")]
     fn test_encode() {
         let bin: &[u8;10] = b"binary foo";
         let mut result: [u8;16] = [0;16];
 
-        super::db32enc_into(bin, &mut result);
+        db32enc_into(bin, &mut result);
         assert_eq!(&result, b"FCNPVRELI7J9FUUI");
         
         let mut result: [u8;14] = [0;14];
-        super::db32enc_into(bin, &mut result);
+        db32enc_into(bin, &mut result);
     }
 
     #[test]

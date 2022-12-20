@@ -58,9 +58,9 @@ protocol.
 
 Blake3 already has a great Rust implementation (by the Blake3 developers!)
 
-Kangaroo Twelve has hardware support (Sha3 ARMV8-A instructions), and it is
-probably more likely get hardware support.  Of course, Blake3 is a bit faster
-and has less need for hardware support.
+Kangaroo Twelve has hardware support (Sha3 ARMV8-A instructions), and K12 is
+probably more likely to get hardware support in x86-64 CPU's (eventually).  But
+Blake3 is faster and has less need for hardware support in the first place.
 
 
 Storage Efficiency

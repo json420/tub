@@ -198,7 +198,7 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
         bin_at!(bin, i, 4) = (taxi >>  0) as u8 & 255;
     }
     /*
-        31: 00011111 <= bits set in REVERSE for valid characters
+         31: 00011111 <= bits set in REVERSE for valid characters
         224: 11100000 <= bits set in REVERSE for invalid characters */
     r & 224 == 0
 }

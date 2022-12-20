@@ -42,7 +42,8 @@ Some key differences between Tub and Git (developers should have these in mind):
         performance demands on Tub's storage layer that Git doesn't necessarily
         have.  In particular, Tub's small object read performance needs to be
         as fast as possible.  We have a budget of 1 syscall per small object
-        read.  In order to do this, we use an in-memory index.  Worth it!
+        read or write.  In order to do this, we use an in-memory index.
+        Worth it!
 
     *   Like above, we want to keep space requirements as small as possible,
         minimize CPU time spent encoding/decoding.  In places where Git uses a

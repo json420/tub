@@ -1,7 +1,5 @@
 //! Custom base32 encoding used to encode IDs.
 
-use crate::util::getrandom;
-
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
@@ -90,6 +88,7 @@ impl Iterator for DirNameIter {
         }
     }
 }
+
 
 macro_rules! bin_at {
     ($bin:ident, $i:ident, $j:literal) => {
@@ -223,13 +222,6 @@ pub fn check_db32(text: &str) -> Result<(), String> {
     }
     Ok(())
     
-}
-
-//random_id
-pub fn random_id() -> String {
-    let mut buf: [u8; 15] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-    getrandom(&mut buf); 
-    db32enc_str(&buf)
 }
 
 

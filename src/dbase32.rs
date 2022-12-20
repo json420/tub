@@ -3,11 +3,6 @@
 use crate::util::getrandom;
 
 
-/* FIXME: Do we want to use this still?
-const MAX_BIN_LEN: usize = 60; //480 bits
-const MAX_TXT_LEN: usize = 96;
-*/
-
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,
@@ -64,13 +59,6 @@ static REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
 ];
 
-//const DB32_SET: &str = FORWARD; //encode()???
-//static _ASCII: [u8; 128] = [0;128];
-
-fn _text_to_bytes(text: &str) -> std::str::Bytes {
-    let b: std::str::Bytes = text.bytes();
-    return b;
-}
 
 /// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
@@ -90,16 +78,12 @@ impl Iterator for Name2Iter {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i < 1024 {
-            let mut s = String::from("ZZ");
-            let a = FORWARD[self.i >> 5];
-            let b = FORWARD[self.i & 31];
-            unsafe {
-                let buf = s.as_bytes_mut();
-                buf[0] = a;
-                buf[1] = b;
-            }
+            let mut buf = Vec::new();
+            buf.resize(2, 0);
+            buf[0] = FORWARD[self.i >> 5];
+            buf[1] = FORWARD[self.i & 31];
             self.i += 1;
-            Some(s)
+            Some(String::from_utf8(buf).unwrap())
         }
         else {
             None
@@ -126,31 +110,36 @@ macro_rules! rotate {
 }
 
 
-pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
-    if bin.len() != 0 && bin.len() % 5 == 0 && txt.len() == bin.len() * 8 / 5 {
-        assert!(txt.len() % 8 == 0);
-        let mut taxi: u64;
-        for i in 0..bin.len() / 5 {
-            /* Pack 40 bits into the taxi (8 bits at a time) */
-            taxi = bin_at!(bin, i, 0) as u64;
-            taxi = bin_at!(bin, i, 1) as u64 | (taxi << 8);
-            taxi = bin_at!(bin, i, 2) as u64 | (taxi << 8);
-            taxi = bin_at!(bin, i, 3) as u64 | (taxi << 8);
-            taxi = bin_at!(bin, i, 4) as u64 | (taxi << 8);
-
-            /* Unpack 40 bits from the taxi (5 bits at a time) */
-            txt_at!(txt, i, 0) = FORWARD[((taxi >> 35) & 31) as usize];
-            txt_at!(txt, i, 1) = FORWARD[((taxi >> 30) & 31) as usize];
-            txt_at!(txt, i, 2) = FORWARD[((taxi >> 25) & 31) as usize];
-            txt_at!(txt, i, 3) = FORWARD[((taxi >> 20) & 31) as usize];
-            txt_at!(txt, i, 4) = FORWARD[((taxi >> 15) & 31) as usize];
-            txt_at!(txt, i, 5) = FORWARD[((taxi >> 10) & 31) as usize];
-            txt_at!(txt, i, 6) = FORWARD[((taxi >>  5) & 31) as usize];
-            txt_at!(txt, i, 7) = FORWARD[((taxi >>  0) & 31) as usize];
-        }
+fn check_bin_txt(bin: &[u8], txt: &[u8]) {
+    if bin.len() == 0 || bin.len() % 5 != 0
+    || txt.len() == 0 || txt.len() % 8 != 0
+    || txt.len() != bin.len() * 8 / 5
+    {
+        panic!("Bad dbase32 internal call");
     }
-    else {
-        panic!("db32enc_into(): Bad call");
+}
+
+
+pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
+    check_bin_txt(bin, txt);
+    let mut taxi: u64;
+    for i in 0..bin.len() / 5 {
+        /* Pack 40 bits into the taxi (8 bits at a time) */
+        taxi = bin_at!(bin, i, 0) as u64;
+        taxi = bin_at!(bin, i, 1) as u64 | (taxi << 8);
+        taxi = bin_at!(bin, i, 2) as u64 | (taxi << 8);
+        taxi = bin_at!(bin, i, 3) as u64 | (taxi << 8);
+        taxi = bin_at!(bin, i, 4) as u64 | (taxi << 8);
+
+        /* Unpack 40 bits from the taxi (5 bits at a time) */
+        txt_at!(txt, i, 0) = FORWARD[((taxi >> 35) & 31) as usize];
+        txt_at!(txt, i, 1) = FORWARD[((taxi >> 30) & 31) as usize];
+        txt_at!(txt, i, 2) = FORWARD[((taxi >> 25) & 31) as usize];
+        txt_at!(txt, i, 3) = FORWARD[((taxi >> 20) & 31) as usize];
+        txt_at!(txt, i, 4) = FORWARD[((taxi >> 15) & 31) as usize];
+        txt_at!(txt, i, 5) = FORWARD[((taxi >> 10) & 31) as usize];
+        txt_at!(txt, i, 6) = FORWARD[((taxi >>  5) & 31) as usize];
+        txt_at!(txt, i, 7) = FORWARD[((taxi >>  0) & 31) as usize];
     }
 }
 
@@ -187,36 +176,31 @@ pub fn isdb32(txt: &[u8]) -> bool {
 
 
 pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
-    if txt.len() != 0 && txt.len() % 8 == 0 && bin.len() == txt.len() * 5 / 8 {
-        let mut taxi: u64;
-        let mut r: u8 = 0;
-        for i in 0..txt.len() / 8 {
+    check_bin_txt(bin, txt);
+    let mut taxi: u64;
+    let mut r: u8 = 0;
+    for i in 0..txt.len() / 8 {
+        /* Pack 40 bits into the taxi (5 bits at a time) */
+        r = rotate!(txt, i, 0) | (r & 224);    taxi = r as u64;
+        r = rotate!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
 
-            /* Pack 40 bits into the taxi (5 bits at a time) */
-            r = rotate!(txt, i, 0) | (r & 224);    taxi = r as u64;
-            r = rotate!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
-            r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
-
-            /* Unpack 40 bits from the taxi (8 bits at a time) */
-            bin_at!(bin, i, 0) = (taxi >> 32) as u8 & 255;
-            bin_at!(bin, i, 1) = (taxi >> 24) as u8 & 255;
-            bin_at!(bin, i, 2) = (taxi >> 16) as u8 & 255;
-            bin_at!(bin, i, 3) = (taxi >>  8) as u8 & 255;
-            bin_at!(bin, i, 4) = (taxi >>  0) as u8 & 255;
-        }
-        /*
-            31: 00011111 <= bits set in REVERSE for valid characters
-            224: 11100000 <= bits set in REVERSE for invalid characters */
-        r & 224 == 0
+        /* Unpack 40 bits from the taxi (8 bits at a time) */
+        bin_at!(bin, i, 0) = (taxi >> 32) as u8 & 255;
+        bin_at!(bin, i, 1) = (taxi >> 24) as u8 & 255;
+        bin_at!(bin, i, 2) = (taxi >> 16) as u8 & 255;
+        bin_at!(bin, i, 3) = (taxi >>  8) as u8 & 255;
+        bin_at!(bin, i, 4) = (taxi >>  0) as u8 & 255;
     }
-    else {
-        panic!("db32dec_into(): Bad call");
-    }
+    /*
+        31: 00011111 <= bits set in REVERSE for valid characters
+        224: 11100000 <= bits set in REVERSE for invalid characters */
+    r & 224 == 0
 }
 
 pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
@@ -302,11 +286,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected = "db32enc_into(): Bad call")]
+    fn test_check_bin_txt() {
+        let good_bin = [0_u8; 30];
+        let good_txt = [0_u8; 48];
+        check_bin_txt(&good_bin, &good_txt);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call")]
     fn test_encode() {
         let bin: &[u8;10] = b"binary foo";
         let mut result: [u8;16] = [0;16];
-        
+
         super::db32enc_into(bin, &mut result);
         assert_eq!(&result, b"FCNPVRELI7J9FUUI");
         
@@ -340,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip() {
-        for _ in 0..50_000 {
+        for _ in 0..5_000 {
             let bin = random_hash();
             let txt = super::db32enc(&bin);
             let bin2 = super::db32dec(&txt).unwrap();

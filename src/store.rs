@@ -27,7 +27,7 @@ use tempfile::TempDir;
 
 use crate::base::*;
 use crate::protocol::{hash_tombstone};
-use crate::dbase32::{db32enc_str, Name2Iter};
+use crate::dbase32::{db32enc_str, DirNameIter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
 use crate::leaf_io::{TubBuf, TmpObject, ReindexBuf};
@@ -94,7 +94,7 @@ pub fn init_store(path: &Path) -> io::Result<Store>
     // objects directory and sub-directories
     pb.push(OBJECTDIR);
     fs::create_dir(pb.as_path())?;
-    for name in Name2Iter::new() {
+    for name in DirNameIter::new() {
         pb.push(name);
         fs::create_dir(pb.as_path())?;
         pb.pop();
@@ -558,7 +558,7 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dbase32::Name2Iter;
+    use crate::dbase32::DirNameIter;
     use crate::helpers::TestTempDir;
     use crate::util::{random_hash, random_small_object};
 
@@ -665,7 +665,7 @@ mod tests {
 
         let dirs = tmp.list_dir(&[DOTDIR, OBJECTDIR]);
         assert_eq!(dirs.len(), 1024);
-        let expected: Vec<String> = Name2Iter::new().collect();
+        let expected: Vec<String> = DirNameIter::new().collect();
         assert_eq!(dirs, expected);
         assert_eq!(dirs[0], "33");
         assert_eq!(dirs[1], "34");
@@ -683,7 +683,7 @@ mod tests {
         assert_eq!(tmp.list_root(), expected);
         let dirs = tmp.list_dir(&[OBJECTDIR]);
         assert_eq!(dirs.len(), 1024);
-        let expected: Vec<String> = Name2Iter::new().collect();
+        let expected: Vec<String> = DirNameIter::new().collect();
         assert_eq!(dirs, expected);
         assert_eq!(dirs[0], "33");
         assert_eq!(dirs[1], "34");

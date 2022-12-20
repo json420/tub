@@ -63,17 +63,17 @@ static REVERSE: &[u8; 256] = &[
 /// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
 #[derive(Debug)]
-pub struct Name2Iter {
+pub struct DirNameIter {
     i: usize,
 }
 
-impl Name2Iter {
+impl DirNameIter {
     pub fn new() -> Self {
         Self {i: 0}
     }
 }
 
-impl Iterator for Name2Iter {
+impl Iterator for DirNameIter {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_name2iter() {
-        let names = Vec::from_iter(Name2Iter::new());
+        let names = Vec::from_iter(DirNameIter::new());
         assert_eq!(names.len(), 1024);
         assert_eq!(names[0], "33");
         assert_eq!(names[1], "34");

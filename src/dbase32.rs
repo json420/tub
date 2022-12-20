@@ -232,43 +232,6 @@ pub fn random_id() -> String {
     db32enc_str(&buf)
 }
 
-//time_id
-fn _check_join(string_list: Vec<&str>) -> Result<String, String> {
-    let s = string_list.last().unwrap();
-    print!("{}",s);
-    if isdb32(s.as_bytes()) {
-        Ok(s.to_string())
-    }
-    else {
-        Err(s.to_string())
-    }
-}
-//db32_join
-pub fn db32_join(string_list: Vec<&str>) -> Result<String, String> {
-    let s = "/".to_string() + &string_list.join("/");
-    match _check_join(string_list) {
-        Ok(_) => Ok(s),
-        Err(_) => Err(s),
-        
-    }
-}
-
-//db32_join_2
-pub fn db32_join2(string_list: Vec<&str>) -> Result<String, String> {
-    let last_part = *(string_list.last().unwrap());
-    let i = last_part.chars().map(|c| c.len_utf8()).take(2).sum();
-    let parts = match &string_list.len() {
-       0..=1 => "".to_string(),
-        _ => string_list.as_slice()[..&string_list.len()-1].join("/") + "/",
-    };
-   
-    let s = "/".to_string() + &parts + &last_part[..i] + "/" + &last_part[i..];
-    match _check_join(string_list) {
-        Ok(_) => Ok(s),
-        Err(_) => Err(s),
-        
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -403,29 +366,4 @@ mod tests {
         assert_eq!(db32dec(b"FCNPVRELI7J9FUUI").unwrap(), b"binary foo");
         assert_eq!(db32dec(b"fcnpvreli7j9fuui"), None); 
     }
-
-    #[test]
-    fn test_db32_join() {
-        //let parts = vec!["first", "second"];
-        let parts = vec!["first", "second", "ABRYRYAB"];
-        let result = super::db32_join(parts);
-        assert_eq!(result, Ok("/first/second/ABRYRYAB".to_string()));
-        
-        let parts = vec!["first", "second", "11111111ABRYRYAB"];
-        let result = super::db32_join(parts);
-        assert_eq!(result, Err("/first/second/11111111ABRYRYAB".to_string()));
-    }
-    
-    #[test]
-    fn test_db32_join2() {
-        //let parts = vec!["first", "second"];
-        let parts = vec!["first", "second","ABRYRYAB"];
-        let result = super::db32_join2(parts);
-        assert_eq!(result, Ok("/first/second/AB/RYRYAB".to_string()));
-        
-        let parts = vec!["first", "second", "11111111ABRYRYAB"];
-        let result = super::db32_join(parts);
-        assert_eq!(result, Err("/first/second/11111111ABRYRYAB".to_string()));
-    }
-    
 }

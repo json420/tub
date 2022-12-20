@@ -8,7 +8,7 @@ use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
 
-use crate::dbase32::db32enc_str;
+use crate::dbase32::db32enc;
 use crate::leaf_io::TubBuf;
 use crate::store::Store;
 use crate::base::*;
@@ -259,7 +259,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
             let obj = tree.serialize();
             let hash = tbuf.hash_data(ObjectType::Tree, &obj);
             accum.trees.push(TreeDir::new(obj, hash));
-            eprintln!("{} {:?}", db32enc_str(&hash), dir);
+            eprintln!("{} {:?}", db32enc(&hash), dir);
             Ok(Some(hash))
         }
         else {
@@ -328,7 +328,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
     if tree.len() > 0 {
         let obj = tree.serialize();
         let (hash, _new) = tub.add_tree(&obj)?;
-        eprintln!("Tree: {} {:?}", db32enc_str(&hash), dir);
+        eprintln!("Tree: {} {:?}", db32enc(&hash), dir);
         Ok(Some(hash))
     }
     else {
@@ -379,7 +379,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         }
                         object.write_to_file(&mut file)?;
                     } else {
-                        panic!("could not find object {}", db32enc_str(&entry.hash));
+                        panic!("could not find object {}", db32enc(&entry.hash));
                     }
                 }
                 Kind::SymLink => {
@@ -393,13 +393,13 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         let target = PathBuf::from(s);
                         unix::fs::symlink(&target, &pb)?;
                     } else {
-                        panic!("could not find symlink object {}", db32enc_str(&entry.hash));
+                        panic!("could not find symlink object {}", db32enc(&entry.hash));
                     }
                 },
             }
         }
     } else {
-        panic!("Could not find tree object {}", db32enc_str(root));
+        panic!("Could not find tree object {}", db32enc(root));
     }
     Ok(())
 }

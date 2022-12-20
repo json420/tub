@@ -27,7 +27,7 @@ use tempfile::TempDir;
 
 use crate::base::*;
 use crate::protocol::{hash_tombstone};
-use crate::dbase32::{db32enc_str, DirNameIter};
+use crate::dbase32::{db32enc, DirNameIter};
 use crate::util::random_id;
 use crate::leaf_io::{Object, get_preamble_size};
 use crate::leaf_io::{TubBuf, TmpObject, ReindexBuf};
@@ -141,7 +141,7 @@ fn push_old_pack_path(pb: &mut PathBuf) {
 
 fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(OBJECTDIR);
-    let sid = db32enc_str(id);
+    let sid = db32enc(id);
     let (prefix, suffix) = sid.split_at(2);
     pb.push(prefix);
     pb.push(suffix);
@@ -149,12 +149,12 @@ fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
 
 fn push_partial_path(pb: &mut PathBuf, id: &TubHash) {
     pb.push(PARTIALDIR);
-    pb.push(db32enc_str(id));
+    pb.push(db32enc(id));
 }
 
 fn push_tmp_path(pb: &mut PathBuf, key: &TubId) {
     pb.push(TMPDIR);
-    pb.push(db32enc_str(key));
+    pb.push(db32enc(key));
 }
 
 
@@ -500,7 +500,7 @@ impl Store {
             self.file.read_exact_at(&mut buf, entry.data_offset())?;
             /*  FIXME
             if verify && id != &hash(&buf).hash {
-                eprintln!("{} is corrupt", db32enc_str(id));
+                eprintln!("{} is corrupt", db32enc(id));
                 self.delete_object(id)?;
             }
             */
@@ -533,7 +533,7 @@ impl Store {
         removed (not copied into the new pack file).
         */
         if let Some(entry) = self.index.get(hash) {
-            eprintln!("Deleting {}", db32enc_str(hash));
+            eprintln!("Deleting {}", db32enc(hash));
             let mut buf = [0_u8; HEADER_LEN];
             buf[ROOT_HASH_RANGE].copy_from_slice(hash);
             buf[PAYLOAD_HASH_RANGE].copy_from_slice(&hash_tombstone(hash));

@@ -9,7 +9,7 @@ use clap::{ArgAction, Parser, Subcommand};
 use crate::base::*;
 use crate::store::{find_store, init_tree, Store};
 use crate::importer::Scanner;
-use crate::dbase32::{db32enc_str, db32dec_into};
+use crate::dbase32::{db32enc, db32dec_into};
 use crate::leaf_io::hash_file;
 use crate::dvcs;
 
@@ -261,7 +261,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
     for src in files.iter() {
         let (root, new) = tub.import_file(src.open()?, src.size)?;
         println!("{} {}{} {:?}",
-            db32enc_str(&root),
+            db32enc(&root),
             get_largemark(src.is_large()),
             get_newmark(new),
             src.path
@@ -281,7 +281,7 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
     let root = dvcs::commit_tree(&mut tub, &source)?;
-    println!("{}", db32enc_str(&root));
+    println!("{}", db32enc(&root));
     let commit = dvcs::Commit::new(root, String::from("test commit"));
     tub.add_commit(&commit.serialize())?;
     Ok(())
@@ -313,7 +313,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     let mut keys = tub.keys();
     keys.sort();
     for hash in keys {
-        println!("{}", db32enc_str(&hash));
+        println!("{}", db32enc(&hash));
     }
     eprintln!("{} objects in store", tub.len());
     Ok(())

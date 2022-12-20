@@ -144,14 +144,11 @@ pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
     }
 }
 
-pub fn db32enc(bin: &[u8]) -> Vec<u8> {
+
+pub fn db32enc(bin: &[u8]) -> String {
     let mut txt = vec![0; bin.len() * 8 / 5];
     db32enc_into(bin, &mut txt);
-    txt
-}
-
-pub fn db32enc_str(bin_src: &[u8]) -> String {
-    String::from_utf8(db32enc(bin_src)).unwrap()
+    String::from_utf8(txt).unwrap()
 }
 
 
@@ -319,7 +316,7 @@ mod tests {
         for _ in 0..5_000 {
             let bin = random_hash();
             let txt = super::db32enc(&bin);
-            let bin2 = super::db32dec(&txt).unwrap();
+            let bin2 = super::db32dec(&txt.as_bytes()).unwrap();
             assert_eq!(&bin, &bin2[..]);
         }
     }
@@ -328,18 +325,25 @@ mod tests {
     fn test_bad_txt() {
         let bin = random_hash();
         let txt = db32enc(&bin);
-        assert_eq!(isdb32(&txt), true);
+        assert_eq!(isdb32(&txt.as_bytes()), true);
         for i in 0..txt.len() {
             for v in 0..=255 {
                 let mut copy = txt.clone();
-                copy[i] = v;
+                unsafe {
+                    copy.as_mut_vec()[i] = v;
+                }
                 if FORWARD.contains(&v) {
-                    assert_eq!(isdb32(&copy), true);
-                    assert_ne!(db32dec(&copy).unwrap(), txt);
+                    assert_eq!(isdb32(&copy.as_bytes()), true);
+                    if copy == txt {
+                        assert_eq!(db32dec(&copy.as_bytes()).unwrap(), bin);
+                    }
+                    else {
+                        assert_ne!(db32dec(&copy.as_bytes()).unwrap(), bin);
+                    }
                 }
                 else {
-                    assert_eq!(isdb32(&copy), false);
-                    assert_eq!(db32dec(&copy), None);
+                    assert_eq!(isdb32(&copy.as_bytes()), false);
+                    assert_eq!(db32dec(&copy.as_bytes()), None);
                 }
             }
         }

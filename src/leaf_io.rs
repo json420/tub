@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::ops;
 
 use crate::base::*;
-use crate::dbase32::db32enc_str;
+use crate::dbase32::db32enc;
 use crate::protocol::{hash_leaf, hash_root, hash_tombstone,  hash_payload};
 
 
@@ -648,13 +648,13 @@ impl ReindexBuf {
 
 impl fmt::Display for TubBuf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", db32enc_str(&self.hash()))
+        write!(f, "{}", db32enc(&self.hash()))
     }
 }
 
 impl fmt::Display for ReindexBuf {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", db32enc_str(&self.hash()))
+        write!(f, "{}", db32enc(&self.hash()))
     }
 }
 

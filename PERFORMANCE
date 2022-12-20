@@ -47,29 +47,20 @@ Hashing Performance
 ===================
 
 Like Git, Tub does a lot of hashing, so the performance of the hash function we
-use is critical.  We will probably pick one of these three:
+use is critical.  There seem to be two high-performance contenders: 
 
-    1. Skein-512
-    2. Blake
-    3. Blake2b
+    1. Blake3 - https://github.com/BLAKE3-team/BLAKE3
 
-Sha3 (Keccak) is basically off the table because it's way too slow.  Blake3 is
-fast, but probably not cryptographically robust enough.
+    2. Kangaroo Twelve - https://keccak.team/kangarootwelve.html
 
-If we can get a Skein implementation running as fast or faster than Blake2b,
-well... we should use Skein (Skein implementations are generally faster than
-OG Blake, BTW).
+The question is whether they are secure enough for a decently long run in the
+protocol.
 
-Some hash function requirements Jason feels are essential:
+Blake3 already has a great Rust implementation (by the Blake3 developers!)
 
-    1.  Fast, fast fast... as fast as possible while meeting security
-        requirements
-    2.  At least 512 bits of internal state
-    3.  Modern and well reviewed (being a sha3 finalist is nice)
-
-The hash function is one place where early micro optimizations are appropriate.
-We need to know what sort of real-world performance we can squeeze out of a
-hash function before we make a choice.
+Kangaroo Twelve has hardware support (Sha3 ARMV8-A instructions), and it is
+probably more likely get hardware support.  Of course, Blake3 is a bit faster
+and has less need for hardware support.
 
 
 Storage Efficiency

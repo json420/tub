@@ -1,11 +1,18 @@
 //! Object hashing protocol.
 
+/*
 
+Like Git, Tub does a lot of hashing, so the performance of the hash function we
+use is critical.  There seem to be two high-performance contenders: 
 
-// https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
+    1. Blake3 - https://github.com/BLAKE3-team/BLAKE3
 
-/*  FIXME: Skein probably provides better performance and a better security
-    margin than Blake2b, so we should strongly consider Skein.
+    2. Kangaroo Twelve - https://keccak.team/kangarootwelve.html
+
+Large object protocol based on the Dmedia hashing protocol:
+
+https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
+
 */
 use blake3;
 use crate::base::*;

@@ -115,7 +115,9 @@ fn check_bin_txt(bin: &[u8], txt: &[u8]) {
     || txt.len() == 0 || txt.len() % 8 != 0
     || txt.len() != bin.len() * 8 / 5
     {
-        panic!("Bad dbase32 internal call");
+        panic!("Bad dbase32 internal call: bin.len()=={}, txt.len()=={}",
+            bin.len(), txt.len()
+        );
     }
 }
 
@@ -287,9 +289,37 @@ mod tests {
 
     #[test]
     fn test_check_bin_txt() {
-        let good_bin = [0_u8; 30];
-        let good_txt = [0_u8; 48];
-        check_bin_txt(&good_bin, &good_txt);
+        check_bin_txt(&[0_u8; 30], &[0_u8; 48]);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==0, txt.len()==48")]
+    fn test_empty_bin_panic() {
+        check_bin_txt(&[], &[0_u8; 48]);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==31, txt.len()==48")]
+    fn test_bin_mod_5_panic() {
+        check_bin_txt(&[0_u8; 31], &[0_u8; 48]);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==0")]
+    fn test_empty_txt_panic() {
+        check_bin_txt(&[0_u8; 30], &[]);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==49")]
+    fn test_txt_mod_8_panic() {
+        check_bin_txt(&[0_u8; 30], &[0_u8; 49]);
+    }
+
+    #[test]
+    #[should_panic (expected = "Bad dbase32 internal call: bin.len()==30, txt.len()==24")]
+    fn test_bin_txt_mismatch_panic() {
+        check_bin_txt(&[0_u8; 30], &[0_u8; 24]);
     }
 
     #[test]

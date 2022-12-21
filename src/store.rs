@@ -136,7 +136,7 @@ fn push_pack_path(pb: &mut PathBuf) {
 
 fn push_old_pack_path(pb: &mut PathBuf) {
     pb.push(PACKFILE);
-    pb.set_extension("db.old");
+    pb.set_extension("tub.previous");
 }
 
 fn push_object_path(pb: &mut PathBuf, id: &TubHash) {
@@ -619,7 +619,7 @@ mod tests {
     fn test_push_pack_path() {
         let mut pb = PathBuf::new();
         push_pack_path(&mut pb);
-        assert_eq!(pb.as_os_str(), "bathtub.db");
+        assert_eq!(pb.as_os_str(), PACKFILE);
     }
 
     #[test]

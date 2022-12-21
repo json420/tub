@@ -38,8 +38,8 @@ pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 135..143;
 pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 143..173;
 pub const BLOCK_LEN: usize = 173;
 
-pub const DOTDIR: &str = ".bathtub_db";
-pub const PACKFILE: &str = "bathtub.db";
+pub const DOTDIR: &str = ".tub";
+pub const PACKFILE: &str = "append.tub";
 pub const OBJECTDIR: &str = "objects";
 pub const PARTIALDIR: &str = "partial";
 pub const TMPDIR: &str = "tmp";

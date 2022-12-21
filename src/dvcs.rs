@@ -221,11 +221,10 @@ impl TreeAccum {
 }
 
 
-fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
+fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
 {
     if depth < MAX_DEPTH {
         let mut tree = Tree::new();
-        let mut tbuf = TubBuf::new();
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
@@ -250,7 +249,7 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
                 }
             }
             else if ft.is_dir() {
-                if let Some(hash) = scan_tree_inner(accum, &path, depth + 1)? {
+                if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
                     tree.add_dir(PathBuf::from(name), hash);
                 }
             }
@@ -272,8 +271,9 @@ fn scan_tree_inner(accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result
 }
 
 pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
+    let mut tbuf = TubBuf::new();
     let mut accum = TreeAccum::new();
-    if let Some(root_hash) = scan_tree_inner(&mut accum, dir, 0)? {
+    if let Some(root_hash) = scan_tree_inner(&mut tbuf, &mut accum, dir, 0)? {
         Ok((root_hash, accum))
     }
     else {

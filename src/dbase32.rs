@@ -1,5 +1,19 @@
 //! Custom base32 encoding used to encode `TubHash` and `TubId`.
 
+/*
+This is the encoding Jason developed for Novacut, originally implemented in
+Python and C:
+
+    https://launchpad.net/dbase32
+
+Dbase32 uses an encoding table whose symbols are in ASCII/UTF-8 sorted order:
+
+    3456789ABCDEFGHIJKLMNOPQRSTUVWXY
+
+This means that unlike RFC-3548 Base32 encoding, the sort-order of the encoded
+data will match the sort-order of the binary data.
+*/
+
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
@@ -201,6 +215,7 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     r & 224 == 0
 }
 
+
 pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
     let mut bin = vec![0; txt.len() * 5 / 8];
     if db32dec_into(txt, &mut bin) {
@@ -263,6 +278,19 @@ mod tests {
         assert_eq!(names[1021], "YW");
         assert_eq!(names[1022], "YX");
         assert_eq!(names[1023], "YY");
+
+        // Should contain 1024 unique items:
+        let mut set: HashSet<String> = HashSet::new();
+        for n in names.iter() {
+            let n = n.clone();
+            assert_eq!(n.len(), 2);
+            assert!(set.insert(n));
+        }
+
+        // Should be in sorted order:
+        let mut copy = names.clone();
+        copy.sort();
+        assert_eq!(copy, names);
     }
 
     #[test]
@@ -301,16 +329,51 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 internal call")]
-    fn test_encode() {
-        let bin: &[u8;10] = b"binary foo";
-        let mut result: [u8;16] = [0;16];
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==10, txt.len()==15")]
+    fn test_db32enc_into_panic_low() {
+        let bin = b"binary foo";
+        let mut txt = [0_u8; 16];
+        db32enc_into(bin, &mut txt);
+        assert_eq!(&txt, b"FCNPVRELI7J9FUUI");
 
-        db32enc_into(bin, &mut result);
-        assert_eq!(&result, b"FCNPVRELI7J9FUUI");
-        
-        let mut result: [u8;14] = [0;14];
-        db32enc_into(bin, &mut result);
+        let mut txt = [0_u8; 15];
+        db32enc_into(bin, &mut txt);
+    }
+
+    #[test]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==10, txt.len()==17")]
+    fn test_db32enc_into_panic_high() {
+        let bin = b"binary foo";
+        let mut txt = [0_u8; 16];
+        db32enc_into(bin, &mut txt);
+        assert_eq!(&txt, b"FCNPVRELI7J9FUUI");
+
+        let mut txt = [0_u8; 17];
+        db32enc_into(bin, &mut txt);
+    }
+
+    #[test]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==9, txt.len()==16")]
+    fn test_db32dec_into_panic_low() {
+        let txt = b"FCNPVRELI7J9FUUI";
+        let mut bin = [0_u8; 10];
+        db32dec_into(txt, &mut bin);
+        assert_eq!(&bin, b"binary foo");
+
+        let mut bin = [0_u8; 9];
+        db32dec_into(txt, &mut bin);
+    }
+
+    #[test]
+    #[should_panic (expected="Bad dbase32 internal call: bin.len()==11, txt.len()==16")]
+    fn test_db32dec_into_panic_high() {
+        let txt = b"FCNPVRELI7J9FUUI";
+        let mut bin = [0_u8; 10];
+        db32dec_into(txt, &mut bin);
+        assert_eq!(&bin, b"binary foo");
+
+        let mut bin = [0_u8; 11];
+        db32dec_into(txt, &mut bin);
     }
 
     #[test]

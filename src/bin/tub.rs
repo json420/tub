@@ -1,4 +1,4 @@
-use bathtub_db::commands::run;
+use tub::commands::run;
 
 
 fn main() {

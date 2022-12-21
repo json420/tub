@@ -1,8 +1,8 @@
 use std::io;
-use bathtub_db::util::random_hash;
-use bathtub_db::dbase32::db32enc;
-use bathtub_db::blockchain::{BlockChain};
-use bathtub_db::base::*;
+use tub::util::random_hash;
+use tub::dbase32::db32enc;
+use tub::blockchain::{BlockChain};
+use tub::base::*;
 
 
 fn main() -> io::Result<()> {

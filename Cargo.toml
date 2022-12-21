@@ -1,5 +1,5 @@
 [package]
-name = "bathtub_db"
+name = "tub"
 version = "0.1.0"
 edition = "2021"
 

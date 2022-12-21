@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use blake3;
-use bathtub_db::util::*;
-use bathtub_db::dbase32::{db32enc, isdb32, db32enc_into, db32dec_into};
-use bathtub_db::base::*;
+use tub::util::*;
+use tub::dbase32::{db32enc, isdb32, db32enc_into, db32dec_into};
+use tub::base::*;
 
 use blake2::{Blake2b, Digest, digest::consts::U30};
 
@@ -57,7 +57,7 @@ fn bm_blake2b_64k(c: &mut Criterion) {
 fn bm_isdb32(c: &mut Criterion) {
     let txt = db32enc(&random_hash());
     c.bench_function("isdb32",
-        |b| b.iter(|| isdb32(black_box(&txt[..])))
+        |b| b.iter(|| isdb32(black_box(txt.as_bytes())))
     );
 }
 
@@ -73,7 +73,7 @@ fn bm_db32dec_into(c: &mut Criterion) {
     let txt = db32enc(&random_hash());
     let mut bin = [0_u8; TUB_HASH_LEN];
     c.bench_function("db32dec_into",
-        |b| b.iter(|| db32dec_into(black_box(&txt[..]), black_box(&mut bin)))
+        |b| b.iter(|| db32dec_into(black_box(txt.as_bytes()), black_box(&mut bin)))
     );
 }
 

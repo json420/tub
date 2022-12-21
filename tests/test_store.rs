@@ -2,10 +2,10 @@
 
 use std::io::prelude::*;
 use std::fs::File;
-use bathtub_db::base::*;
-use bathtub_db::store::Store;
-use bathtub_db::leaf_io::TubBuf;
-use bathtub_db::util::{random_hash, random_small_object};
+use tub::base::*;
+use tub::store::Store;
+use tub::leaf_io::TubBuf;
+use tub::util::{random_hash, random_small_object};
 
 
 struct RandObj {

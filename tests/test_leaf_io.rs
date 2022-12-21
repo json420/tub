@@ -1,5 +1,5 @@
-use bathtub_db::base::*;
-use bathtub_db::leaf_io::*;
+use tub::base::*;
+use tub::leaf_io::*;
 
 #[cfg(test)]
 

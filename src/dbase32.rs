@@ -213,8 +213,45 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use crate::util::random_hash;
     use super::*;
+
+    #[test]
+    fn test_forward_table() {
+        assert_eq!(FORWARD.len(), 32);
+
+        // Should contain 32 unique values
+        let mut set: HashSet<u8> = HashSet::new();
+        for v in FORWARD.iter() {
+            assert!(set.insert(v.clone()))
+        }
+        assert_eq!(set.len(), FORWARD.len());
+
+        // Values should be in sorted order
+        let mut table = Vec::from_iter(FORWARD.iter().cloned());
+        table.sort();
+        assert_eq!(table, FORWARD);
+    }
+
+    #[test]
+    fn test_reverse_table() {
+        assert_eq!(REVERSE.len(), 256);
+
+        // Should contain 33 unique values
+        let mut set: HashSet<u8> = HashSet::new();
+        for v in REVERSE.iter() {
+            let v = v.clone();
+            let new = set.insert(v);
+            if v < 32 {
+                assert!(new);
+            }
+            else {
+                assert_eq!(v, 255);
+            }
+        }
+        assert_eq!(set.len(), 33);
+    }
 
     #[test]
     fn test_name2iter() {

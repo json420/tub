@@ -9,11 +9,13 @@ use zstd::bulk;
 
 
 fn main() -> io::Result<()> {
+    /*
     let mut bc = BlockChain::generate();
     for _i in 0..100 {
         bc.append(BlockType::Configure, &random_hash());
         println!("{} {}", db32enc(bc.as_payload()), bc.counter());
     }
+    */
     let mut infile = File::open(".tub/append.tub")?;
     let mut outfile = File::create(".tub/append.tub.zstd")?;
     let mut buf: Vec<u8> = Vec::new();
@@ -30,7 +32,7 @@ fn main() -> io::Result<()> {
         println!("{} {}", i, size);
         i += 1;
         buf.resize(size, 0);
-        let comp = bulk::compress(&buf, 10)?;
+        let comp = bulk::compress(&buf, 0)?;
         outsize += comp.len();
         outfile.write_all(&comp)?;
     }

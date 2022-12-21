@@ -12,6 +12,7 @@ clap = { version = "4.0.26", features = ["derive"] }
 libc = "0.2.126"
 sodiumoxide = "0.2.7"
 tempfile = "3.3.0"
+zstd = "0.12.1"
 
 [dev-dependencies]
 criterion = "0.4.0"

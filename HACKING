@@ -1,5 +1,87 @@
+Guidelines for making Tub all like kickass and shit, yo
+=======================================================
+
+    *   Never add unnecessary complexity or attack surface
+
+    *   If we find ourselves with unnecessary complexity (which will happen as
+        we work through finalizing the Tub protocols), rip it the fuck out.
+        Don't be sentimental; no sacred cows.
+
+    *   Never leave performance on the dinner table... the faster Tub is, the
+        moo widely it can be used (and the moo mooney we can make!)
+
+    *   Never store or transmit unnecessary date.  Eg, we're going to send doc
+        updates over the network as deltas (planned doc format allows for
+        *ridiculously* fast delta compute and apply).
+
+    *   We might even *initially* write doc updates as deltas according to a
+        scheme like this: write up to, say, 15 deltas from the last fully
+        specified doc revision, otherwise write the complete doc out; if a
+        particular non-fully-specified doc revision is super read hot (and
+        considering how far it is down the delta chain), write that doc out
+        fully specified to the append file to keep read performance high; note
+        we still need to fully reconstruct the doc in-memory for schema and hash
+        validation
+
+    *   Always use simple, compact binary encodings; the exception being let's
+        probably avoid any tricky bit packing; there are only trivial space 
+        savings to be gained in the current protocol design by doing this,
+        plus leaving all bits available in say, the object type byte, is just
+        good for future expansion.  Keeping all the protocols byte-wise defined
+        makes them simpler, friendlier, and less easy to fuck up
+
+    *   Null terminated anything can fuck off!  Always length prefix, never use
+        null termination in any data formats, wire formats, blah, blah.  Rust
+        don't do no dumbass null termination! (Except as needed to talk to
+        dumbass C functions and systems calls!)
+
+    *   Network-byte-order can fuck off!  All the computers people actually use
+        (ie, ARM, ARM64, x86, x86-64, RISC-V) are little-endian, so it's fucking
+        stupid to waste clycle(s) to swap byte order!  All Tub protocols will be
+        LITLE MOTHER FUCKING ENDIAN!  If the Internet were designed today (and
+        people weren't being fucking stupid), "network-byte-order" would
+        absolutely be little-endian.  (This is one of very few technical
+        decisions where Jason disagrees with in Git.)
+
+    *   The network-wire-format is the in-memory-format is the on-disk-format;
+        whenever possible, we want to read from the AF_UNIX sockets into a
+        buffer, validate the request, and then in the case of a write, write the
+        exact content of that buffer to disk, with no in-memory transformation
+        or copying whenever possible; note that transformation can be required
+        for deltas
+
+    *   Zero copy is cool; be all like zero copy and shit whenever you can
+
+    *   Fixed length is cool; whenever possible use fixed length data stuctures,
+        especially is performance hot spots, and also for simplicity, security,
+        and general unfuckupability.
+
+    *   Think about cache efficiency in the protocol designs A LOT!  We should
+        all have this tattooed our foreheads in reverse: I WILL NEVER FORGET THE
+        ALL IMPORTANT 64 BYTE CACHE LINE SIZE, NOR FORGOT ITS PROFOUND
+        PERFORMANCE IMPLICATIONS!  As the software engineers like to say, size
+        (and alignment) really do matter!
+
+    *   When in doubt, do constant time comparisons and encoding/decoding.
+        Don't optimize for error cases!  Eg, by short cutting a Dbase32 decode
+        at the first error, you not only leak potentially exploitable timing
+        information, you also make exectution for the non-error case slower!
+        Branches, yo!  Gah, fucking stupid!
+        (FIXME: we aren't yet doing constant time compare on TubHash / TubID)
+        (FIXME: let's help Rust get kickass and safe for constant time stuff.
+        Jason thinks there should be contant_time{}, a bit like unsafe{},
+        that indicates a contract with the compiler: the compliler, to the
+        extened possible, should prevent you from doing non-contant stuff, plus
+        also the compiler super pinky swears not inject any unexpected
+        non-constant-time shenanigans into the code generated from the block)
+
+    *   Complexity is to ass cancer what the devil is to diarrhea.  It doesn't
+        make sense, it's fucking stupid, and it should be avoided at all cost.
+
+
 Understanding (and hacking on) Bathtub DB
 =========================================
+
 
 Tub (or Bathtub DB, your pick) is a lot like Git, so if you understand how Git
 works under the hood, you're a long way toward understanding Tub.  Basically

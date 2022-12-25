@@ -5,43 +5,30 @@ Guidelines for making Tub all like kickass and shit, yo
 
     *   If we find ourselves with unnecessary complexity (which will happen as
         we work through finalizing the Tub protocols), rip it the fuck out.
-        Don't be sentimental; no sacred cows.
 
-    *   Never leave performance on the dinner table... the faster Tub is, the
-        moo widely it can be used (and the moo mooney we can make!)
+    *   Never leave performance on the table... the faster Tub is, the more
+        widely it can be used (and the more mooney we can make!)
 
-    *   Never store or transmit unnecessary date.  Eg, we're going to send doc
-        updates over the network as deltas (planned doc format allows for
-        *ridiculously* fast delta compute and apply).
+    *   Never store or transmit unnecessary data.
 
-    *   We might even *initially* write doc updates as deltas according to a
-        scheme like this: write up to, say, 15 deltas from the last fully
-        specified doc revision, otherwise write the complete doc out; if a
-        particular non-fully-specified doc revision is super read hot (and
-        considering how far it is down the delta chain), write that doc out
-        fully specified to the append file to keep read performance high; note
-        we still need to fully reconstruct the doc in-memory for schema and hash
-        validation
+    *   Always use simple, compact binary encodings, the compactness exception
+        being let's probably avoid any tricky bit packing; there are only
+        trivial space  savings to be gained in the current protocol design by
+        doing this, plus leaving all bits available in say, the object type
+        byte, is just good for future expansion.  Keeping all the protocols
+        byte-wise defined makes them simpler, friendlier, and less easy to fuck
+        up.
 
-    *   Always use simple, compact binary encodings; the exception being let's
-        probably avoid any tricky bit packing; there are only trivial space 
-        savings to be gained in the current protocol design by doing this,
-        plus leaving all bits available in say, the object type byte, is just
-        good for future expansion.  Keeping all the protocols byte-wise defined
-        makes them simpler, friendlier, and less easy to fuck up
-
-    *   Null terminated anything can fuck off!  Always length prefix, never use
-        null termination in any data formats, wire formats, blah, blah.  Rust
-        don't do no dumbass null termination! (Except as needed to talk to
-        dumbass C functions and systems calls!)
+    *   Null terminated anything can fuck off!  Always length prefix; never use
+        null termination in any Tub data formats, wire formats, etc.
 
     *   Network-byte-order can fuck off!  All the computers people actually use
         (ie, ARM, ARM64, x86, x86-64, RISC-V) are little-endian, so it's fucking
-        stupid to waste clycle(s) to swap byte order!  All Tub protocols will be
-        LITLE MOTHER FUCKING ENDIAN!  If the Internet were designed today (and
-        people weren't being fucking stupid), "network-byte-order" would
-        absolutely be little-endian.  (This is one of very few technical
-        decisions where Jason disagrees with in Git.)
+        stupid to waste clycle(s) to swap byte order!  All Tub protocols and
+        formats will be LITLE MOTHER FUCKING ENDIAN!  If the Internet were
+        designed today (and people weren't being fucking stupid),
+        "network-byte-order" would obviously be little-endian.  (This is one of
+        very few technical decisions that Jason disagrees with in Git.)
 
     *   The network-wire-format is the in-memory-format is the on-disk-format;
         whenever possible, we want to read from the AF_UNIX sockets into a
@@ -50,11 +37,15 @@ Guidelines for making Tub all like kickass and shit, yo
         or copying whenever possible; note that transformation can be required
         for deltas
 
-    *   Zero copy is cool; be all like zero copy and shit whenever you can
+    *   Zero copy is cool; do all like zero copy and shit whenever you can, yo
 
     *   Fixed length is cool; whenever possible use fixed length data stuctures,
-        especially is performance hot spots, and also for simplicity, security,
+        especially in performance hot spots, and also for simplicity, security,
         and general unfuckupability.
+
+    *   SIMD is cool; when designing data structures and algorithms, aim to make
+        them SIMD friendly (and then implement said SIMD paths to make sure
+        they are friendly!)
 
     *   Think about cache efficiency in the protocol designs A LOT!  We should
         all have this tattooed our foreheads in reverse: I WILL NEVER FORGET THE
@@ -68,16 +59,58 @@ Guidelines for making Tub all like kickass and shit, yo
         information, you also make exectution for the non-error case slower!
         Branches, yo!  Gah, fucking stupid!
         (FIXME: we aren't yet doing constant time compare on TubHash / TubID)
-        (FIXME: let's help Rust get kickass and safe for constant time stuff.
+        (FIXME: let's help Rust be kickass and safe for constant time stuff.
         Jason thinks there should be contant_time{}, a bit like unsafe{},
         that indicates a contract with the compiler: the compliler, to the
-        extened possible, should prevent you from doing non-contant stuff, plus
-        also the compiler super pinky swears not inject any unexpected
+        extent possible, should prevent you from doing non-contant-time stuff,
+        plus also the compiler super pinky swears not to inject any unexpected
         non-constant-time shenanigans into the code generated from the block)
 
-    *   Complexity is to ass cancer what the devil is to diarrhea.  It doesn't
-        make sense, it's fucking stupid, and it should be avoided at all cost.
+    *   When in doubt, follow Git's design (because it's a great design).  Git's
+        packfile design, how it handles delta compression, its merge algorithms,
+        etc... our starting point for most things like that should be to copy
+        what Git does (with whatever needed Tubification).  A few planned
+        deviations from Git (asside from those mentioned above):
 
+        -   Compression algorithm needs to be configurable and upgradable; best
+            way to make sure this happens is to immediately add two compression
+            algorithms and get lots of iterations on that problem before the
+            protocols are finalized
+
+        -   So obivously our default compressor should be zstd, because holly
+            fuck balls its performance is amazing; FYI, because zstd is *so*
+            much faster (and even has better compression!) than zlib, Tub
+            absolutely kicks Git's ass in this area (like ~11.7x faster and
+            1.27x better compression ratio when compressing a 1.9GB append.tub
+            file contaiting lots of text files and some binaries all stored as a
+            Tub trees... fucking impressive!)
+
+        -   But it could be very useful to also have a slow but highly effective
+            archival compressor, maybe even something super heavy like xz
+            (note: Jason is open to adding additional compression agorithms
+            later, but he will absouletly keep it at 2 max till we stabilize
+            the protcols)
+
+        -   Hash function and hashing protocols need to be configurable and
+            upgradeable; Jason knows this is pain city because he tried to work
+            through this problem preemptively in the Dmedia (Novacut) file
+            hashing protocols[1], and despite his best efforts, he never
+            actually got the code paths to support mulitple protcols at once
+            (because when it tried, it exploded into such a mess he felt he
+            couldn't justify the time investment at the moment)
+
+        *   Git's CLI is, hmmm... let's try to improve on that quite a lot.
+            Jason thinks the Bazaar CLI is quite well done, worth looking at if
+            you've never played with it.  But really we're going to de a clean
+            slate design, considering all that's changed since get was desgined.
+
+    *   Needless complexity is to nut cancer what the devil is to diarrhea.  It
+        doesn't make sense, it's fucking stupid, and it should be avoided at all
+        cost.
+
+
+[1] Dmedia file hashing protocol:
+    https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
 
 Understanding (and hacking on) Bathtub DB
 =========================================

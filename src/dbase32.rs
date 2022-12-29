@@ -90,11 +90,10 @@ byte
  * Note that the rotated table is only an implementation issue.  Whether you
  * rotate your left or right by however many bytes, don't it rotate it at all
  *
- *
  * FIXME: do we need to explicitly request 64 byte alignment here like in C,
  * or is Rust cooler than that?
  *
- * FIXME: there is probably some kickass 
+ * FIXME: there is probably some kickass SIMD way of doing this constant time.
  */
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[

@@ -1,6 +1,6 @@
 //! Doodles on version control software built on Bathtub DB
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io;
@@ -38,6 +38,57 @@ impl From<u8> for Kind {
             5 => Self::SymLink,
             _ => panic!("Unknown Kind: {}", item),
         }
+    }
+}
+
+
+// How about we have a metadata layer, kept in the object store, for things like
+// the tracking list
+#[derive(Debug, PartialEq)]
+pub struct TrackingList {
+    set: HashSet<PathBuf>,
+}
+
+impl TrackingList {
+    pub fn new () -> Self {
+        Self {set: HashSet::new()}
+    }
+
+    pub fn deserialize(buf: &[u8]) -> Self {
+        let mut tl = Self::new();
+        let mut offset = 0;
+        while offset < buf.len() {
+            let size = u16::from_le_bytes(
+                buf[offset..offset + 2].try_into().expect("oops")
+            ) as usize;
+            offset += 2;
+            let s = String::from_utf8(
+                buf[offset..offset + size].to_vec()
+            ).unwrap();
+            let pb = PathBuf::from(s);
+            offset += size;
+            tl.add(pb);
+        }
+        tl
+    }
+
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        let mut list = Vec::from_iter(self.set.iter());
+        list.sort();
+        for pb in list.iter() {
+            let path = pb.to_str().unwrap().as_bytes();
+            let size = path.len() as u16;
+            buf.extend_from_slice(&size.to_le_bytes());
+            buf.extend_from_slice(path);
+        }
+    }
+
+    pub fn contains(&self, pb: &PathBuf) -> bool {
+        self.set.contains(pb)
+    }
+
+    pub fn add(&mut self, pb: PathBuf) {
+        self.set.insert(pb);
     }
 }
 
@@ -445,6 +496,48 @@ mod tests {
     #[should_panic(expected = "Unknown Kind: 255")]
     fn test_kind_panic2() {
         let _kind: Kind = 255.into();
+    }
+
+    #[test]
+    fn test_tracking_list() {
+        let mut tl  = TrackingList::new();
+        let mut buf = Vec::new();
+        tl.serialize(&mut buf);
+        assert_eq!(buf, vec![]);
+
+        let pb = PathBuf::from("test");
+        assert!(! tl.contains(&pb));
+        tl.add(pb.clone());
+        assert!(tl.contains(&pb));
+
+        tl.serialize(&mut buf);
+        assert_eq!(buf, vec![4, 0, 116, 101, 115, 116]);
+
+        let pb = PathBuf::from("foo");
+        assert!(! tl.contains(&pb));
+        tl.add(pb.clone());
+        assert!(tl.contains(&pb));
+        buf.clear();
+        tl.serialize(&mut buf);
+        assert_eq!(buf, vec![
+            3, 0, 102, 111, 111,
+            4, 0, 116, 101, 115, 116,
+        ]);
+
+        let pb = PathBuf::from("sparse");
+        assert!(! tl.contains(&pb));
+        tl.add(pb.clone());
+        assert!(tl.contains(&pb));
+        buf.clear();
+        tl.serialize(&mut buf);
+        assert_eq!(buf, vec![
+            3, 0, 102, 111, 111,
+            6, 0, 115, 112, 97, 114, 115, 101,
+            4, 0, 116, 101, 115, 116,
+        ]);
+
+        let tl2 = TrackingList::deserialize(&buf);
+        assert_eq!(tl2, tl);
     }
 
     #[test]

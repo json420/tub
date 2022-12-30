@@ -113,7 +113,7 @@ impl TreeEntry {
     }
 }
 
-pub type TreeMap = HashMap<PathBuf, TreeEntry>;
+pub type TreeMap = HashMap<String, TreeEntry>;
 
 
 ///
@@ -144,14 +144,13 @@ impl Tree {
             assert!(size > 0);
             offset += 2;
 
-            let s = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
-            let pb = PathBuf::from(s);
+            let name = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
             offset += size;
 
             let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
             offset += h.len();
 
-            map.insert(pb, TreeEntry::new(kind, h));
+            map.insert(name, TreeEntry::new(kind, h));
         }
         assert_eq!(offset, buf.len());
         Self {map: map}
@@ -160,8 +159,8 @@ impl Tree {
     pub fn serialize(&self, buf: &mut Vec<u8>) {
         let mut items = Vec::from_iter(self.map.iter());
         items.sort_by(|a, b| b.0.cmp(a.0));
-        for (p, entry) in items.iter() {
-            let path = p.to_str().unwrap().as_bytes();
+        for (name, entry) in items.iter() {
+            let path = name.as_bytes();
             let size = path.len() as u8;
             assert!(size > 0);
             buf.push(entry.kind as u8);
@@ -171,20 +170,32 @@ impl Tree {
         }
     }
 
-    pub fn add(&mut self, key: PathBuf, kind: Kind, hash: TubHash) {
-        self.map.insert(key, TreeEntry::new(kind, hash));
+    pub fn add(&mut self, name: String, kind: Kind, hash: TubHash) {
+        self.map.insert(name, TreeEntry::new(kind, hash));
     }
 
-    pub fn add_empty_dir(&mut self, key: PathBuf) {
-        self.add(key, Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
+    pub fn add_empty_dir(&mut self, name: String) {
+        self.add(name, Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
     }
 
-    pub fn add_empty_file(&mut self, key: PathBuf) {
-        self.add(key, Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
+    pub fn add_empty_file(&mut self, name: String) {
+        self.add(name, Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
     }
 
-    pub fn add_symlink(&mut self, key: PathBuf, hash: TubHash) {
-        self.add(key, Kind::EmptyDir, hash);
+    pub fn add_dir(&mut self, name: String, hash: TubHash) {
+        self.add(name, Kind::Dir, hash);
+    }
+
+    pub fn add_file(&mut self, name: String, hash: TubHash) {
+        self.add(name, Kind::File, hash);
+    }
+
+    pub fn add_exefile(&mut self, name: String, hash: TubHash) {
+        self.add(name, Kind::ExeFile, hash);
+    }
+
+    pub fn add_symlink(&mut self, name: String, hash: TubHash) {
+        self.add(name, Kind::SymLink, hash);
     }
 }
 
@@ -271,8 +282,8 @@ fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: 
         let entry = entry?;
         let ft = entry.file_type()?;
         let path = entry.path();
-        let name = path.file_name().unwrap();
-        if name.to_str().unwrap().starts_with(".") {
+        let name = path.file_name().unwrap().to_str().unwrap().to_string();
+        if name.starts_with(".") {
             eprintln!("Skipping hiddin: {:?}", path);
         }
         else if ft.is_symlink() {
@@ -284,7 +295,7 @@ fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: 
             if size > 0 {
                 let file = fs::File::open(&path)?;
                 let hash = tbuf.hash_file(file, size)?;
-                tree.add(PathBuf::from(name), Kind::File, hash);
+                tree.add_file(name, hash);
                 accum.files.push(
                     TreeFile::new(path.to_path_buf(), size, hash)
                 );
@@ -292,7 +303,7 @@ fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: 
         }
         else if ft.is_dir() {
             if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
-                tree.add(PathBuf::from(name), Kind::Dir, hash);
+                tree.add_dir(name, hash);
             }
         }
     }
@@ -324,7 +335,6 @@ pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
 pub struct Scanner {
     tbuf: TubBuf,
     obuf: Vec<u8>,
-    accum: TreeAccum,
 }
 
 impl Scanner {
@@ -332,7 +342,6 @@ impl Scanner {
         Self {
             tbuf: TubBuf::new(),
             obuf: Vec::new(),
-            accum: TreeAccum::new(),
         }
     }
 
@@ -346,8 +355,8 @@ impl Scanner {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
-            let name = path.file_name().unwrap();
-            if name.to_str().unwrap().starts_with(".") {
+            let name = path.file_name().unwrap().to_str().unwrap().to_string();
+            if name.starts_with(".") {
                 eprintln!("Skipping hiddin: {:?}", path);
             }
             else if ft.is_symlink() {
@@ -359,23 +368,24 @@ impl Scanner {
                 if size > 0 {
                     let file = fs::File::open(&path)?;
                     let hash = self.tbuf.hash_file(file, size)?;
-                    tree.add(PathBuf::from(name), Kind::File, hash);
-                    self.accum.files.push(
-                        TreeFile::new(path.to_path_buf(), size, hash)
-                    );
+                    tree.add_file(name, hash);
+                }
+                else {
+                    //tree.add_empty_file(&path);
                 }
             }
             else if ft.is_dir() {
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
-                    tree.add(PathBuf::from(name), Kind::Dir, hash);
+                    tree.add_dir(name, hash);
+                }
+                else {
+                    //tree.add_empty_dir(&path);
                 }
             }
         }
         if tree.len() > 0 {
-            let mut obj = Vec::new();
-            tree.serialize(&mut obj);
-            let hash = self.tbuf.hash_data(ObjectType::Tree, &obj);
-            self.accum.trees.push(TreeDir::new(obj, hash));
+            tree.serialize(&mut self.obuf);
+            let hash = self.tbuf.hash_data(ObjectType::Tree, &self.obuf);
             eprintln!("{} {:?}", db32enc(&hash), dir);
             Ok(Some(hash))
         }
@@ -400,15 +410,12 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
         let entry = entry?;
         let ft = entry.file_type()?;
         let path = entry.path();
-        let name = path.file_name().unwrap();
-        if name.to_str().unwrap().starts_with(".") {
-            eprintln!("Skipping hiddin: {:?}", path);
-        }
-        else if ft.is_symlink() {
+        let name = path.file_name().unwrap().to_str().unwrap().to_string();
+        if ft.is_symlink() {
             let value = fs::read_link(&path)?;
             let data = value.to_str().unwrap().as_bytes();
             let (hash, _new) = tub.add_object(data)?;
-            tree.add(PathBuf::from(name), Kind::SymLink, hash);
+            tree.add_symlink(name, hash);
         }
         else if ft.is_file() {
             let meta = fs::metadata(&path)?;
@@ -416,20 +423,23 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
             if size > 0 {
                 let file = fs::File::open(&path)?;
                 let (hash, _new) = tub.import_file(file, size)?;
-                let is_executable = meta.permissions().mode() & 0o111 != 0;
-                let kind = if is_executable {Kind::ExeFile} else {Kind::File};
-                tree.add(PathBuf::from(name), kind, hash);
+                if meta.permissions().mode() & 0o111 != 0 {  // Executable?
+                    tree.add_exefile(name, hash);
+                }
+                else {
+                    tree.add_file(name, hash);
+                }
             }
             else {
-                tree.add_empty_file(PathBuf::from(name));
+                tree.add_empty_file(name);
             }
         }
         else if ft.is_dir() {
             if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
-                tree.add(PathBuf::from(name), Kind::Dir, hash);
+                tree.add_dir(name, hash);
             }
             else {
-                tree.add_empty_dir(PathBuf::from(name));
+                tree.add_empty_dir(name);
             }
         }
     }

@@ -296,11 +296,11 @@ impl Scanner {
             let ft = entry.file_type()?;
             let path = entry.path();
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
-            if name.starts_with(".") {
-                eprintln!("Skipping hiddin: {:?}", path);
-            }
-            else if ft.is_symlink() {
-                eprintln!("Skipping symlink: {:?}", path);
+            if ft.is_symlink() {
+                let value = fs::read_link(&path)?;
+                let data = value.to_str().unwrap().as_bytes();
+                let hash = self.tbuf.hash_data(ObjectType::Data, &data);
+                tree.add_symlink(name, hash);
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
@@ -308,10 +308,15 @@ impl Scanner {
                 if size > 0 {
                     let file = fs::File::open(&path)?;
                     let hash = self.tbuf.hash_file(file, size)?;
-                    tree.add_file(name, hash);
+                    if meta.permissions().mode() & 0o111 != 0 {  // Executable?
+                        tree.add_exefile(name, hash);
+                    }
+                    else {
+                        tree.add_file(name, hash);
+                    }
                 }
                 else {
-                    //tree.add_empty_file(&path);
+                    tree.add_empty_file(name);
                 }
             }
             else if ft.is_dir() {
@@ -319,7 +324,8 @@ impl Scanner {
                     tree.add_dir(name, hash);
                 }
                 else {
-                    //tree.add_empty_dir(&path);
+                    println!("empty dir: {:?}", path);
+                    tree.add_empty_dir(name);
                 }
             }
         }
@@ -335,8 +341,8 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tree(&mut self, dir: &Path) {
-        self.scan_tree_inner(dir, 0);
+    pub fn scan_tree(&mut self, dir: &Path) -> io::Result<Option<TubHash>> {
+        self.scan_tree_inner(dir, 0)
     }
 }
 

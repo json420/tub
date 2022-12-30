@@ -263,51 +263,49 @@ impl TreeAccum {
 
 fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
 {
-    if depth < MAX_DEPTH {
-        let mut tree = Tree::new();
-        for entry in fs::read_dir(dir)? {
-            let entry = entry?;
-            let ft = entry.file_type()?;
-            let path = entry.path();
-            let name = path.file_name().unwrap();
-            if name.to_str().unwrap().starts_with(".") {
-                eprintln!("Skipping hiddin: {:?}", path);
-            }
-            else if ft.is_symlink() {
-                eprintln!("Skipping symlink: {:?}", path);
-            }
-            else if ft.is_file() {
-                let meta = fs::metadata(&path)?;
-                let size = meta.len();
-                if size > 0 {
-                    let file = fs::File::open(&path)?;
-                    let hash = tbuf.hash_file(file, size)?;
-                    tree.add(PathBuf::from(name), Kind::File, hash);
-                    accum.files.push(
-                        TreeFile::new(path.to_path_buf(), size, hash)
-                    );
-                }
-            }
-            else if ft.is_dir() {
-                if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
-                    tree.add(PathBuf::from(name), Kind::Dir, hash);
-                }
+    if depth >= MAX_DEPTH {
+        panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+    }
+    let mut tree = Tree::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let ft = entry.file_type()?;
+        let path = entry.path();
+        let name = path.file_name().unwrap();
+        if name.to_str().unwrap().starts_with(".") {
+            eprintln!("Skipping hiddin: {:?}", path);
+        }
+        else if ft.is_symlink() {
+            eprintln!("Skipping symlink: {:?}", path);
+        }
+        else if ft.is_file() {
+            let meta = fs::metadata(&path)?;
+            let size = meta.len();
+            if size > 0 {
+                let file = fs::File::open(&path)?;
+                let hash = tbuf.hash_file(file, size)?;
+                tree.add(PathBuf::from(name), Kind::File, hash);
+                accum.files.push(
+                    TreeFile::new(path.to_path_buf(), size, hash)
+                );
             }
         }
-        if tree.len() > 0 {
-            let mut obj = Vec::new();
-            tree.serialize(&mut obj);
-            let hash = tbuf.hash_data(ObjectType::Tree, &obj);
-            accum.trees.push(TreeDir::new(obj, hash));
-            eprintln!("{} {:?}", db32enc(&hash), dir);
-            Ok(Some(hash))
-        }
-        else {
-            Ok(None)
+        else if ft.is_dir() {
+            if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
+                tree.add(PathBuf::from(name), Kind::Dir, hash);
+            }
         }
     }
+    if tree.len() > 0 {
+        let mut obj = Vec::new();
+        tree.serialize(&mut obj);
+        let hash = tbuf.hash_data(ObjectType::Tree, &obj);
+        accum.trees.push(TreeDir::new(obj, hash));
+        eprintln!("{} {:?}", db32enc(&hash), dir);
+        Ok(Some(hash))
+    }
     else {
-        panic!("max depth reached");
+        Ok(None)
     }
 }
 

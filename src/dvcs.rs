@@ -321,6 +321,75 @@ pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
 }
 
 
+pub struct Scanner {
+    tbuf: TubBuf,
+    obuf: Vec<u8>,
+    accum: TreeAccum,
+}
+
+impl Scanner {
+    pub fn new() -> Self {
+        Self {
+            tbuf: TubBuf::new(),
+            obuf: Vec::new(),
+            accum: TreeAccum::new(),
+        }
+    }
+
+    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<TubHash>>
+    {
+        if depth >= MAX_DEPTH {
+            panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+        }
+        let mut tree = Tree::new();
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let ft = entry.file_type()?;
+            let path = entry.path();
+            let name = path.file_name().unwrap();
+            if name.to_str().unwrap().starts_with(".") {
+                eprintln!("Skipping hiddin: {:?}", path);
+            }
+            else if ft.is_symlink() {
+                eprintln!("Skipping symlink: {:?}", path);
+            }
+            else if ft.is_file() {
+                let meta = fs::metadata(&path)?;
+                let size = meta.len();
+                if size > 0 {
+                    let file = fs::File::open(&path)?;
+                    let hash = self.tbuf.hash_file(file, size)?;
+                    tree.add(PathBuf::from(name), Kind::File, hash);
+                    self.accum.files.push(
+                        TreeFile::new(path.to_path_buf(), size, hash)
+                    );
+                }
+            }
+            else if ft.is_dir() {
+                if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
+                    tree.add(PathBuf::from(name), Kind::Dir, hash);
+                }
+            }
+        }
+        if tree.len() > 0 {
+            let mut obj = Vec::new();
+            tree.serialize(&mut obj);
+            let hash = self.tbuf.hash_data(ObjectType::Tree, &obj);
+            self.accum.trees.push(TreeDir::new(obj, hash));
+            eprintln!("{} {:?}", db32enc(&hash), dir);
+            Ok(Some(hash))
+        }
+        else {
+            Ok(None)
+        }
+    }
+
+    pub fn scan_tree(&mut self, dir: &Path) {
+        self.scan_tree_inner(dir, 0);
+    }
+}
+
+
 fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
 {
     if depth >= MAX_DEPTH {

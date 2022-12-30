@@ -384,6 +384,7 @@ impl Scanner {
             }
         }
         if tree.len() > 0 {
+            self.obuf.clear();
             tree.serialize(&mut self.obuf);
             let hash = self.tbuf.hash_data(ObjectType::Tree, &self.obuf);
             eprintln!("{} {:?}", db32enc(&hash), dir);

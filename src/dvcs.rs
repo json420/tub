@@ -73,14 +73,22 @@ impl TrackingList {
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
-        let mut list = Vec::from_iter(self.set.iter());
-        list.sort();
-        for pb in list.iter() {
+        for pb in self.as_sorted_vec() {
             let path = pb.to_str().unwrap().as_bytes();
             let size = path.len() as u16;
             buf.extend_from_slice(&size.to_le_bytes());
             buf.extend_from_slice(path);
         }
+    }
+
+    pub fn as_sorted_vec(&self) -> Vec<&PathBuf> {
+        let mut list = Vec::from_iter(self.set.iter());
+        list.sort();
+        list
+    }
+
+    pub fn len(&self) -> usize {
+        self.set.len()
     }
 
     pub fn contains(&self, pb: &PathBuf) -> bool {
@@ -501,6 +509,7 @@ mod tests {
     #[test]
     fn test_tracking_list() {
         let mut tl  = TrackingList::new();
+        assert_eq!(tl.len(), 0);
         let mut buf = Vec::new();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![]);
@@ -509,7 +518,8 @@ mod tests {
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
-
+        assert_eq!(tl.len(), 1);
+        assert_eq!(tl.as_sorted_vec(), vec![&PathBuf::from("test")]);
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![4, 0, 116, 101, 115, 116]);
 
@@ -517,6 +527,11 @@ mod tests {
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
+        assert_eq!(tl.len(), 2);
+        assert_eq!(tl.as_sorted_vec(), vec![
+            &PathBuf::from("foo"),
+            &PathBuf::from("test"),
+        ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
@@ -528,6 +543,12 @@ mod tests {
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
+        assert_eq!(tl.len(), 3);
+        assert_eq!(tl.as_sorted_vec(), vec![
+            &PathBuf::from("foo"),
+            &PathBuf::from("sparse"),
+            &PathBuf::from("test"),
+        ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![

@@ -111,14 +111,6 @@ impl TreeEntry {
     pub fn new(kind: Kind, hash: TubHash) -> Self {
         Self {kind: kind, hash: hash}
     }
-
-    pub fn new_dir(hash: TubHash) -> Self {
-        Self {kind: Kind::Dir, hash: hash}
-    }
-
-    pub fn new_file(hash: TubHash) -> Self {
-        Self {kind: Kind::File, hash: hash}
-    }
 }
 
 pub type TreeMap = HashMap<PathBuf, TreeEntry>;
@@ -198,12 +190,8 @@ impl Tree {
         self.add(key, Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
     }
 
-    pub fn add_dir(&mut self, key: PathBuf, hash: TubHash) {
-        self.map.insert(key, TreeEntry::new_dir(hash));
-    }
-
-    pub fn add_file(&mut self, key: PathBuf, hash: TubHash) {
-        self.map.insert(key, TreeEntry::new_file(hash));
+    pub fn add_symlink(&mut self, key: PathBuf, hash: TubHash) {
+        self.add(key, Kind::EmptyDir, hash);
     }
 }
 
@@ -301,7 +289,7 @@ fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: 
                 if size > 0 {
                     let file = fs::File::open(&path)?;
                     let hash = tbuf.hash_file(file, size)?;
-                    tree.add_file(PathBuf::from(name), hash);
+                    tree.add(PathBuf::from(name), Kind::File, hash);
                     accum.files.push(
                         TreeFile::new(path.to_path_buf(), size, hash)
                     );
@@ -309,7 +297,7 @@ fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: 
             }
             else if ft.is_dir() {
                 if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
-                    tree.add_dir(PathBuf::from(name), hash);
+                    tree.add(PathBuf::from(name), Kind::Dir, hash);
                 }
             }
         }
@@ -377,7 +365,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
         }
         else if ft.is_dir() {
             if let Some(hash) = commit_tree_inner(tub, &path, depth + 1)? {
-                tree.add_dir(PathBuf::from(name), hash);
+                tree.add(PathBuf::from(name), Kind::Dir, hash);
             }
             else {
                 tree.add_empty_dir(PathBuf::from(name));
@@ -513,6 +501,7 @@ mod tests {
         let mut buf = Vec::new();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![]);
+        assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = PathBuf::from("test");
         assert!(! tl.contains(&pb));
@@ -522,6 +511,7 @@ mod tests {
         assert_eq!(tl.as_sorted_vec(), vec![&PathBuf::from("test")]);
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![4, 0, 116, 101, 115, 116]);
+        assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = PathBuf::from("foo");
         assert!(! tl.contains(&pb));
@@ -538,6 +528,7 @@ mod tests {
             3, 0, 102, 111, 111,
             4, 0, 116, 101, 115, 116,
         ]);
+        assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = PathBuf::from("sparse");
         assert!(! tl.contains(&pb));
@@ -556,9 +547,7 @@ mod tests {
             6, 0, 115, 112, 97, 114, 115, 101,
             4, 0, 116, 101, 115, 116,
         ]);
-
-        let tl2 = TrackingList::deserialize(&buf);
-        assert_eq!(tl2, tl);
+        assert_eq!(TrackingList::deserialize(&buf), tl);
     }
 
     #[test]
@@ -583,7 +572,7 @@ mod tests {
         let mut map: TreeMap = HashMap::new();
         let pb = PathBuf::from("bar");
         let hash = [11_u8; TUB_HASH_LEN];
-        map.insert(pb, TreeEntry::new_file(hash));
+        map.insert(pb, TreeEntry::new(Kind::File, hash));
         let buf = serialize(&map);
         assert_eq!(buf, [3,  3, 98, 97, 114,
                         11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
@@ -594,9 +583,9 @@ mod tests {
         assert_eq!(map2, map);
 
         let mut map: TreeMap = HashMap::new();
-        map.insert(PathBuf::from("as"), TreeEntry::new_file(random_hash()));
-        map.insert(PathBuf::from("the"), TreeEntry::new_file(random_hash()));
-        map.insert(PathBuf::from("world"), TreeEntry::new_file(random_hash()));
+        map.insert(PathBuf::from("as"), TreeEntry::new(Kind::File, random_hash()));
+        map.insert(PathBuf::from("the"), TreeEntry::new(Kind::File, random_hash()));
+        map.insert(PathBuf::from("world"), TreeEntry::new(Kind::File, random_hash()));
         let buf = serialize(&map);
         let map2 = deserialize(&buf);
         assert_eq!(map2, map);

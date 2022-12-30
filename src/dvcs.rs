@@ -272,66 +272,6 @@ impl TreeAccum {
 }
 
 
-fn scan_tree_inner(tbuf: &mut TubBuf, accum: &mut TreeAccum, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
-{
-    if depth >= MAX_DEPTH {
-        panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
-    }
-    let mut tree = Tree::new();
-    for entry in fs::read_dir(dir)? {
-        let entry = entry?;
-        let ft = entry.file_type()?;
-        let path = entry.path();
-        let name = path.file_name().unwrap().to_str().unwrap().to_string();
-        if name.starts_with(".") {
-            eprintln!("Skipping hiddin: {:?}", path);
-        }
-        else if ft.is_symlink() {
-            eprintln!("Skipping symlink: {:?}", path);
-        }
-        else if ft.is_file() {
-            let meta = fs::metadata(&path)?;
-            let size = meta.len();
-            if size > 0 {
-                let file = fs::File::open(&path)?;
-                let hash = tbuf.hash_file(file, size)?;
-                tree.add_file(name, hash);
-                accum.files.push(
-                    TreeFile::new(path.to_path_buf(), size, hash)
-                );
-            }
-        }
-        else if ft.is_dir() {
-            if let Some(hash) = scan_tree_inner(tbuf, accum, &path, depth + 1)? {
-                tree.add_dir(name, hash);
-            }
-        }
-    }
-    if tree.len() > 0 {
-        let mut obj = Vec::new();
-        tree.serialize(&mut obj);
-        let hash = tbuf.hash_data(ObjectType::Tree, &obj);
-        accum.trees.push(TreeDir::new(obj, hash));
-        eprintln!("{} {:?}", db32enc(&hash), dir);
-        Ok(Some(hash))
-    }
-    else {
-        Ok(None)
-    }
-}
-
-pub fn scan_tree(dir: &Path) -> io::Result<(TubHash, TreeAccum)> {
-    let mut tbuf = TubBuf::new();
-    let mut accum = TreeAccum::new();
-    if let Some(root_hash) = scan_tree_inner(&mut tbuf, &mut accum, dir, 0)? {
-        Ok((root_hash, accum))
-    }
-    else {
-        panic!("FIXME: handle this more better");
-    }
-}
-
-
 pub struct Scanner {
     tbuf: TubBuf,
     obuf: Vec<u8>,

@@ -103,20 +103,20 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Super scary command to delete 1/5 of the objects")]
-    DelRandom {
+    #[command(about = "List tracked paths")]
+    Ls {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Delete object from object store")]
-    DelObject {
+    #[command(about = "Add path to tracking list")]
+    Add {
         #[arg(help="Source directory (defaults to current CWD)")]
-        hash: String,
+        path: String,
 
         #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
@@ -166,11 +166,11 @@ pub fn run() -> io::Result<()> {
         Commands::Stats {tub} => {
             cmd_stats(tub)
         }
-        Commands::DelRandom {tub} => {
-            cmd_del_random(tub)
+        Commands::Ls {tub} => {
+            cmd_ls(tub)
         }
-        Commands::DelObject {tub, hash} => {
-            cmd_obj_del(tub, hash)
+        Commands::Add {tub, path} => {
+            cmd_add(tub, path)
         }
         Commands::CatFile {hash, tub, dst} => {
             cmd_obj_cat(hash, tub, dst)
@@ -215,8 +215,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(mut store) = find_store(&target) {
-        eprintln!("Using store {:?}", store.path());
-        store.reindex()?;
+        //store.reindex()?;
         Ok(store)
     }
     else {
@@ -335,16 +334,26 @@ fn cmd_stats(tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn cmd_del_random(tub: OptPath) -> io::Result<()>
+fn cmd_add(tub: OptPath, path: String) -> io::Result<()>
 {
-    let mut tub = get_tub(tub)?;
-    let keys = tub.keys();
-    for (i, hash) in keys.iter().enumerate() {
-        if i % 5 == 0 {
-            tub.delete_object(hash)?;
-        }
+    let tub = get_tub(tub)?;
+    let wt = dvcs::WorkingTree::new(tub);
+    let mut tl = wt.load_tracking_list()?;
+    tl.add(path);
+    wt.save_tracking_list(tl)?;
+    println!("yo from cmd_add");
+    Ok(())
+}
+
+fn cmd_ls(tub: OptPath) -> io::Result<()>
+{
+    let tub = get_tub(tub)?;
+    let wt = dvcs::WorkingTree::new(tub);
+    let tl = wt.load_tracking_list()?;
+    for path in tl.as_sorted_vec() {
+        println!("{}", path);
     }
-    eprintln!("{} objects in store", tub.len());
+    eprintln!("\t{} item(s) in tracking list", tl.len());
     Ok(())
 }
 

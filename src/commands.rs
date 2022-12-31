@@ -118,13 +118,6 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Print summary about objets in Tub")]
-    Stats {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
-        tub: Option<PathBuf>,
-    },
-
     #[command(about = "Repack and remove tombstones")]
     Repack {
         #[arg(short, long, value_name="DIR")]
@@ -164,9 +157,6 @@ pub fn run() -> io::Result<()> {
         }
         Commands::ListObjects {tub} => {
             cmd_list_objects(tub)
-        }
-        Commands::Stats {tub} => {
-            cmd_stats(tub)
         }
         Commands::Repack {tub} => {
             cmd_repack(tub)
@@ -314,12 +304,6 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
         println!("{}", db32enc(&hash));
     }
     eprintln!("{} objects in Tub", tub.len());
-    Ok(())
-}
-
-fn cmd_stats(tub: OptPath) -> io::Result<()>
-{
-    let tub = get_reindexed_tub(tub)?;
     let stats = tub.stats();
     println!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
     println!("Objects by size:");

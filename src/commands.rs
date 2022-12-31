@@ -125,19 +125,6 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Cat object data to file or stdout")]
-    CatFile {
-        #[arg(help="Dbase32-encoded hash")]
-        hash: String,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
-        tub: Option<PathBuf>,
-
-        #[arg(help="File name to write data to")]
-        dst: Option<PathBuf>,
-    },
-
     #[command(about = "Repack and remove tombstones")]
     Repack {
         #[arg(short, long, value_name="DIR")]
@@ -181,9 +168,6 @@ pub fn run() -> io::Result<()> {
         Commands::Stats {tub} => {
             cmd_stats(tub)
         }
-        Commands::CatFile {hash, tub, dst} => {
-            cmd_obj_cat(hash, tub, dst)
-        }
         Commands::Repack {tub} => {
             cmd_repack(tub)
         }
@@ -224,11 +208,10 @@ fn get_tub(target: OptPath) -> io::Result<Store>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(mut store) = find_store(&target) {
-        //store.reindex()?;
         Ok(store)
     }
     else {
-        eprintln!("Could not find repository in {:?}", &target);
+        eprintln!("Could not find Tub in {:?}", &target);
         exit(42);
     }
 }
@@ -268,7 +251,7 @@ fn get_largemark(large: bool) -> String {
 fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
-    let mut tub = get_tub(tub)?;
+    let mut tub = get_reindexed_tub(tub)?;
     let files = Scanner::scan_dir(&source)?;
 
     let mut new_cnt = 0_u64;
@@ -330,7 +313,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     for hash in keys {
         println!("{}", db32enc(&hash));
     }
-    eprintln!("{} objects in store", tub.len());
+    eprintln!("{} objects in Tub", tub.len());
     Ok(())
 }
 
@@ -392,32 +375,6 @@ fn cmd_ls(tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn cmd_obj_cat(txt: String, tub: OptPath, dst: OptPath) -> io::Result<()>
-{
-    if txt.len() != 48 {
-        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
-        exit(42);
-    }
-    if let Some(hash) = decode_hash(&txt) {
-        let tub = get_tub(tub)?;
-        let pb: PathBuf = match dst {
-            Some(inner) => {
-                inner
-            }
-            None => {
-                PathBuf::from(txt)
-            }
-        };
-        if let Some(mut obj) = tub.open(&hash)? {
-            eprintln!("Writting to {:?}", &pb);
-            let mut file = fs::File::options()
-                            .create_new(true)
-                            .append(true).open(&pb)?;
-            obj.write_to_file(&mut file)?;
-        }
-    }
-    Ok(())
-}
 
 fn cmd_repack(tub: OptPath) -> io::Result<()>
 {

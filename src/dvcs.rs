@@ -7,6 +7,7 @@ use std::io;
 use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
+use std::io::prelude::*;
 
 use crate::dbase32::db32enc;
 use crate::leaf_io::TubBuf;
@@ -475,11 +476,63 @@ pub fn restore_tree(store: &mut Store, root: &TubHash, path: &Path) -> io::Resul
 }
 
 
+#[derive(Debug)]
+pub struct WorkingTree {
+    store: Store,
+}
+
+impl WorkingTree {
+    pub fn new(store: Store) -> Self {
+        Self {store: store}
+    }
+
+    fn tl_path(&self) -> PathBuf {
+        let mut pb = self.store.path();
+        pb.push("tracking_list");
+        pb
+    }
+
+    pub fn load_tracking_list(&self) -> io::Result<TrackingList> {
+        let pb = self.tl_path();
+        if let Ok(mut file) = fs::File::open(&pb) {
+            let mut buf = Vec::new();
+            file.read_to_end(&mut buf)?;
+            println!("read to end");
+            Ok(TrackingList::deserialize(&buf))
+        }
+        else {
+            Ok(TrackingList::new())
+        }
+    }
+
+    pub fn save_tracking_list(&self, tl: TrackingList) -> io::Result<()> {
+        let pb = self.tl_path();
+        let mut file = fs::File::create(&pb)?;
+        let mut buf = Vec::new();
+        tl.serialize(&mut buf);
+        file.write_all(&buf)?;
+        println!("saved tracking list {}", tl.len());
+        Ok(())
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::store::Store;
     use crate::util::random_hash;
+
+    #[test]
+    fn test_working_tree() {
+        let (tmp, mut store) = Store::new_tmp();
+        let wt = WorkingTree::new(store);
+        let mut tl = wt.load_tracking_list().unwrap();
+        assert_eq!(tl.len(), 0);
+        wt.save_tracking_list(tl).unwrap();
+        let tl = wt.load_tracking_list().unwrap();
+        assert_eq!(tl.len(), 0);
+    }
 
     #[test]
     fn test_kind() {

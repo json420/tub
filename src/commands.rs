@@ -22,11 +22,6 @@ type OptPath = Option<PathBuf>;
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-
-    #[arg(short, long, action=ArgAction::SetTrue)]
-    #[arg(help="Write buttloads of debuging stuffs to stderr")]
-    verbose: bool,
-
 }
 
 
@@ -44,10 +39,37 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "Initalize a Bathtub DB repository")]
+    #[command(about = "Initalize a new Tub")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
+    },
+
+    #[command(about = "Add path to tracking list")]
+    Add {
+        #[arg(help="Path to add")]
+        path: String,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
+
+    #[command(about = "Remove path from tracking list")]
+    Rm {
+        #[arg(help="Path to remove")]
+        path: String,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
+
+    #[command(about = "List tracked paths")]
+    Ls {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
     },
 
     #[command(about = "Recursively import files from directory")]
@@ -103,23 +125,6 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "List tracked paths")]
-    Ls {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
-        tub: Option<PathBuf>,
-    },
-
-    #[command(about = "Add path to tracking list")]
-    Add {
-        #[arg(help="Source directory (defaults to current CWD)")]
-        path: String,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
-        tub: Option<PathBuf>,
-    },
-
     #[command(about = "Cat object data to file or stdout")]
     CatFile {
         #[arg(help="Dbase32-encoded hash")]
@@ -148,6 +153,16 @@ pub fn run() -> io::Result<()> {
         Commands::Init {target} => {
             cmd_init(target)
         }
+        Commands::Add {tub, path} => {
+            cmd_add(tub, path)
+        }
+        Commands::Rm {tub, path} => {
+            cmd_rm(tub, path)
+        }
+        Commands::Ls {tub} => {
+            cmd_ls(tub)
+        }
+
         Commands::Import {source, tub} => {
             cmd_import(source, tub)
         }
@@ -165,12 +180,6 @@ pub fn run() -> io::Result<()> {
         }
         Commands::Stats {tub} => {
             cmd_stats(tub)
-        }
-        Commands::Ls {tub} => {
-            cmd_ls(tub)
-        }
-        Commands::Add {tub, path} => {
-            cmd_add(tub, path)
         }
         Commands::CatFile {hash, tub, dst} => {
             cmd_obj_cat(hash, tub, dst)
@@ -339,9 +348,28 @@ fn cmd_add(tub: OptPath, path: String) -> io::Result<()>
     let tub = get_tub(tub)?;
     let wt = dvcs::WorkingTree::new(tub);
     let mut tl = wt.load_tracking_list()?;
-    tl.add(path);
-    wt.save_tracking_list(tl)?;
-    println!("yo from cmd_add");
+    if tl.add(path.clone()) {
+        eprintln!("\tAdded '{}' to tracking list", path);
+        wt.save_tracking_list(tl)?;
+    }
+    else {
+        eprintln!("\t'{}' is already tracked", path);
+    }
+    Ok(())
+}
+
+fn cmd_rm(tub: OptPath, path: String) -> io::Result<()>
+{
+    let tub = get_tub(tub)?;
+    let wt = dvcs::WorkingTree::new(tub);
+    let mut tl = wt.load_tracking_list()?;
+    if tl.remove(&path) {
+        eprintln!("\tRemoved '{}' from tracking list", path);
+        wt.save_tracking_list(tl)?;
+    }
+    else {
+        eprintln!("\t'{}' is not a tracked file", path);
+    }
     Ok(())
 }
 
@@ -354,24 +382,6 @@ fn cmd_ls(tub: OptPath) -> io::Result<()>
         println!("{}", path);
     }
     eprintln!("\t{} item(s) in tracking list", tl.len());
-    Ok(())
-}
-
-fn cmd_obj_del(tub: OptPath, txt: String) -> io::Result<()>
-{
-    if txt.len() != 48 {
-        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
-        exit(42);
-    }
-    if let Some(hash) = decode_hash(&txt) {
-        println!("good db32: {}", txt);
-        let mut tub = get_tub(tub)?;
-        tub.delete_object(&hash)?;
-    }
-    else {
-        println!("Invalid Dbase32 encoding: {:?}", txt);
-        exit(42);
-    }
     Ok(())
 }
 

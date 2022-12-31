@@ -95,8 +95,12 @@ impl TrackingList {
         self.set.contains(pb)
     }
 
-    pub fn add(&mut self, path: String) {
-        self.set.insert(path);
+    pub fn add(&mut self, path: String) -> bool {
+        self.set.insert(path)
+    }
+
+    pub fn remove(&mut self, path: &String) -> bool {
+        self.set.remove(path)
     }
 }
 

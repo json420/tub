@@ -24,8 +24,8 @@ fn main() -> io::Result<()> {
 
     let wt = WorkingTree::new(store);
     let mut tl = wt.load_tracking_list()?;
-    tl.add(PathBuf::from("hello"));
-    tl.add(PathBuf::from("apples"));
+    tl.add(String::from("hello"));
+    tl.add(String::from("apples"));
     wt.save_tracking_list(tl)?;
 
     let tl = wt.load_tracking_list()?;

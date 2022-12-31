@@ -46,7 +46,7 @@ impl From<u8> for Kind {
 /// List of paths to be tracked
 #[derive(Debug, PartialEq)]
 pub struct TrackingList {
-    set: HashSet<PathBuf>,
+    set: HashSet<String>,
 }
 
 impl TrackingList {
@@ -62,12 +62,11 @@ impl TrackingList {
                 buf[offset..offset + 2].try_into().expect("oops")
             ) as usize;
             offset += 2;
-            let s = String::from_utf8(
+            let path = String::from_utf8(
                 buf[offset..offset + size].to_vec()
             ).unwrap();
-            let pb = PathBuf::from(s);
             offset += size;
-            tl.add(pb);
+            tl.add(path);
         }
         assert_eq!(offset, buf.len());
         tl
@@ -75,14 +74,14 @@ impl TrackingList {
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
         for pb in self.as_sorted_vec() {
-            let path = pb.to_str().unwrap().as_bytes();
+            let path = pb.as_bytes();
             let size = path.len() as u16;
             buf.extend_from_slice(&size.to_le_bytes());
             buf.extend_from_slice(path);
         }
     }
 
-    pub fn as_sorted_vec(&self) -> Vec<&PathBuf> {
+    pub fn as_sorted_vec(&self) -> Vec<&String> {
         let mut list = Vec::from_iter(self.set.iter());
         list.sort();
         list
@@ -92,12 +91,12 @@ impl TrackingList {
         self.set.len()
     }
 
-    pub fn contains(&self, pb: &PathBuf) -> bool {
+    pub fn contains(&self, pb: &String) -> bool {
         self.set.contains(pb)
     }
 
-    pub fn add(&mut self, pb: PathBuf) {
-        self.set.insert(pb);
+    pub fn add(&mut self, path: String) {
+        self.set.insert(path);
     }
 }
 
@@ -497,7 +496,6 @@ impl WorkingTree {
         if let Ok(mut file) = fs::File::open(&pb) {
             let mut buf = Vec::new();
             file.read_to_end(&mut buf)?;
-            println!("read to end");
             Ok(TrackingList::deserialize(&buf))
         }
         else {
@@ -511,7 +509,6 @@ impl WorkingTree {
         let mut buf = Vec::new();
         tl.serialize(&mut buf);
         file.write_all(&buf)?;
-        println!("saved tracking list {}", tl.len());
         Ok(())
     }
 }
@@ -575,24 +572,24 @@ mod tests {
         assert_eq!(buf, vec![]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
-        let pb = PathBuf::from("test");
+        let pb = String::from("test");
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 1);
-        assert_eq!(tl.as_sorted_vec(), vec![&PathBuf::from("test")]);
+        assert_eq!(tl.as_sorted_vec(), vec![&String::from("test")]);
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![4, 0, 116, 101, 115, 116]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
-        let pb = PathBuf::from("foo");
+        let pb = String::from("foo");
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
-            &PathBuf::from("foo"),
-            &PathBuf::from("test"),
+            &String::from("foo"),
+            &String::from("test"),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
@@ -602,15 +599,15 @@ mod tests {
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
-        let pb = PathBuf::from("sparse");
+        let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
-            &PathBuf::from("foo"),
-            &PathBuf::from("sparse"),
-            &PathBuf::from("test"),
+            &String::from("foo"),
+            &String::from("sparse"),
+            &String::from("test"),
         ]);
         buf.clear();
         tl.serialize(&mut buf);

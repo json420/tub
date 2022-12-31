@@ -245,32 +245,6 @@ impl TreeFile {
     }
 }
 
-pub struct TreeDir {
-    pub data: Vec<u8>,
-    pub hash: TubHash,
-}
-
-impl TreeDir {
-    pub fn new(data: Vec<u8>, hash: TubHash) -> Self {
-        Self {data: data, hash: hash}
-    }
-}
-
-
-pub struct TreeAccum {
-    pub trees: Vec<TreeDir>,
-    pub files: Vec<TreeFile>,
-}
-
-impl TreeAccum {
-    pub fn new() -> Self {
-        Self {
-            trees: Vec::new(),
-            files: Vec::new(),
-        }
-    }
-}
-
 
 pub struct Scanner {
     tbuf: TubBuf,

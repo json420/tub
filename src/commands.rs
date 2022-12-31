@@ -234,6 +234,13 @@ fn get_tub(target: OptPath) -> io::Result<Store>
 }
 
 
+fn get_reindexed_tub(target: OptPath) -> io::Result<Store> {
+    let mut tub = get_tub(target)?;
+    tub.reindex()?;
+    Ok(tub)
+}
+
+
 fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
@@ -317,7 +324,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
 
 fn cmd_list_objects(tub: OptPath) -> io::Result<()>
 {
-    let tub = get_tub(tub)?;
+    let tub = get_reindexed_tub(tub)?;
     let mut keys = tub.keys();
     keys.sort();
     for hash in keys {
@@ -329,7 +336,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
 
 fn cmd_stats(tub: OptPath) -> io::Result<()>
 {
-    let tub = get_tub(tub)?;
+    let tub = get_reindexed_tub(tub)?;
     let stats = tub.stats();
     println!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
     println!("Objects by size:");

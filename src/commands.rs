@@ -18,7 +18,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="🛁 Tub: Relaxing version control for all. 🦓 💖 🌎")]
+#[command(about="🛁 Tub: Relaxing version control for everyone! 🦓 💖 🌎")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -120,10 +120,10 @@ enum Commands {
     #[command(about = "📜 View commit history")]
     Log {},
 
-    #[command(about = "🔗 Verify all objects, blockchains, and metadata 🚿")]
+    #[command(about = "🔗 Verify all objects, blockchains, and metadata")]
     Check {},
 
-    #[command(about = "🚀 Compute the Tub-Hash of a file")]
+    #[command(about = "🚀 Compare hashing performance with git hash-object 🤣")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,

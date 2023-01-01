@@ -81,7 +81,7 @@ enum Commands {
     #[command(about = "🚫 Add paths to ignore list")]
     Ignore {},
 
-    #[command(about = "🔎 Show changes in working tree")]
+    #[command(about = "🔎 Examine changes in working tree")]
     Diff {},
 
     #[command(about = "🤔 Sumarize changes in working tree")]
@@ -240,7 +240,7 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
         None => env::current_dir()?,
     };
     if ! pb.is_dir() {
-        eprintln!("🛁 Not a directory: {:?}", pb);
+        eprintln!("🛁❗ Not a directory: {:?}", pb);
         exit(42);
     }
     Ok(pb.canonicalize()?)
@@ -253,7 +253,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
         Ok(store)
     }
     else {
-        eprintln!("🛁 Could not find Tub in {:?}", &target);
+        eprintln!("🛁❗ Could not find Tub in {:?}", &target);
         exit(42);
     }
 }
@@ -270,11 +270,11 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(_store) = find_store(&target) {
-        eprintln!("🛁 Tub already exists: {:?}", target);
+        eprintln!("🛁❗ Tub already exists: {:?}", target);
         exit(42);
     }
     else if let Ok(store) = init_tree(&target) {
-        eprintln!("🛁 Created Tub: {:?}", store.path());
+        eprintln!("🛁 Created new Tub: {:?}", store.path());
     }
     Ok(())
 }
@@ -293,7 +293,7 @@ fn get_largemark(large: bool) -> String {
 
 fn not_yet() -> io::Result<()>
 {
-    println!("🤪 Yo dawg, this command hasn't been implemented yet!");
+    println!("🛁 Yo dawg, this command hasn't been implemented yet! 🤪");
     Ok(())
 }
 
@@ -328,9 +328,10 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
     let root = dvcs::commit_tree(&mut tub, &source)?;
-    println!("{}", db32enc(&root));
     let commit = dvcs::Commit::new(root, String::from("test commit"));
     tub.add_commit(&commit.serialize())?;
+    println!("{}", db32enc(&root));
+    eprintln!("🛁 Great job on {} ‼ 💋", db32enc(&root)); // Haha, over the top, I know
     Ok(())
 }
 

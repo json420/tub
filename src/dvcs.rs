@@ -302,7 +302,7 @@ impl Scanner {
                     tree.add_dir(name, hash);
                 }
                 else {
-                    println!("empty dir: {:?}", path);
+                    //println!("empty dir: {:?}", path);
                     tree.add_empty_dir(name);
                 }
             }
@@ -311,7 +311,7 @@ impl Scanner {
             self.obuf.clear();
             tree.serialize(&mut self.obuf);
             let hash = self.tbuf.hash_data(ObjectType::Tree, &self.obuf);
-            eprintln!("{} {:?}", db32enc(&hash), dir);
+            //eprintln!("{} {:?}", db32enc(&hash), dir);
             Ok(Some(hash))
         }
         else {
@@ -372,7 +372,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
         let mut obj = Vec::new();
         tree.serialize(&mut obj);
         let (hash, _new) = tub.add_tree(&obj)?;
-        eprintln!("Tree: {} {:?}", db32enc(&hash), dir);
+        //eprintln!("Tree: {} {:?}", db32enc(&hash), dir);
         Ok(Some(hash))
     }
     else {

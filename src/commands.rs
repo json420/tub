@@ -39,7 +39,7 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "Initalize a new Tub")]
+    #[command(about = "Create a new Tub")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
@@ -72,18 +72,8 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Recursively import files from directory")]
-    Import {
-        #[arg(help="Source directory (defaults to current CWD)")]
-        source: Option<PathBuf>,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
-        tub: Option<PathBuf>,
-    },
-
     #[command(about = "Recursively commit directory")]
-    CommitTree {
+    Commit {
         #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
 
@@ -93,7 +83,7 @@ enum Commands {
     },
 
     #[command(about = "Restore tree from root tree hash")]
-    RestoreTree {
+    Revert {
         #[arg(help="Dbase32-encoded hash")]
         hash: String,
 
@@ -105,10 +95,21 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Calculate the Tub-Hash of a file")]
-    HashObject {
+    #[command(about = "Compute the Tub-Hash of a file")]
+    Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,
+    },
+
+    /*
+    #[command(about = "Recursively import files from directory")]
+    Import {
+        #[arg(help="Source directory (defaults to current CWD)")]
+        source: Option<PathBuf>,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
     },
 
     #[command(about = "Print hash of each object specified Tub")]
@@ -124,6 +125,7 @@ enum Commands {
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
+    */
 }
 
 
@@ -142,18 +144,18 @@ pub fn run() -> io::Result<()> {
         Commands::Ls {tub} => {
             cmd_ls(tub)
         }
-
-        Commands::Import {source, tub} => {
-            cmd_import(source, tub)
-        }
-        Commands::CommitTree {source, tub} => {
+        Commands::Commit {source, tub} => {
             cmd_commit_tree(source, tub)
         }
-        Commands::RestoreTree {hash, dst, tub} => {
+        Commands::Revert {hash, dst, tub} => {
             cmd_restore_tree(hash, dst, tub)
         }
-        Commands::HashObject {path} => {
+        Commands::Hash {path} => {
             cmd_hash(&path)
+        }
+        /*
+        Commands::Import {source, tub} => {
+            cmd_import(source, tub)
         }
         Commands::ListObjects {tub} => {
             cmd_list_objects(tub)
@@ -161,6 +163,7 @@ pub fn run() -> io::Result<()> {
         Commands::Repack {tub} => {
             cmd_repack(tub)
         }
+        */
     }
 }
 

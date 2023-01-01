@@ -18,7 +18,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="🛁 Tub 💖 Rust")]
+#[command(about="🛁 Tub: Relaxing version control for all. 🦓 💖 🌎")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -39,13 +39,13 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "😎 Create a new Tub repository 🛁")]
+    #[command(about = "😎 Create a new Tub 🛁 repository")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
     },
 
-    #[command(about = "🤠 Fork history into a new indpendent branch 🪛")]
+    #[command(about = "👷 Fork history into a new indpendent branch 🪛")]
     Branch {},
 
     #[command(about = "➕ Add path(s) to tracking list")]
@@ -78,10 +78,13 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
+    #[command(about = "🚫 Add path(s) to ignore list")]
+    Ignore {},
+
     #[command(about = "🔎 Show changes in working tree")]
     Diff {},
 
-    #[command(about = "📜 Sumarize changes in working tree")]
+    #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -98,7 +101,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Merge one branch into other")]
+    #[command(about = "🧬 Merge one branch into other 😍")]
     Merge {},
 
     #[command(about = "🚽 Revert 💩 changes in working tree")]
@@ -113,6 +116,12 @@ enum Commands {
         #[arg(help="Path of Tub control directory")]
         tub: Option<PathBuf>,
     },
+
+    #[command(about = "📜 View commit history")]
+    Log {},
+
+    #[command(about = "🔗 Verify all objects, blockchains, and metadata 🚿")]
+    Check {},
 
     #[command(about = "🚀 Compute the Tub-Hash of a file")]
     Hash {
@@ -169,6 +178,9 @@ pub fn run() -> io::Result<()> {
         Commands::Rm {tub, path} => {
             cmd_rm(tub, path)
         }
+        Commands::Ignore {} => {
+            not_yet()
+        }
         Commands::Diff {} => {
             not_yet()
         }
@@ -180,6 +192,12 @@ pub fn run() -> io::Result<()> {
         }
         Commands::Revert {hash, dst, tub} => {
             cmd_restore_tree(hash, dst, tub)
+        }
+        Commands::Log {} => {
+            not_yet()
+        }
+        Commands::Check {} => {
+            not_yet()
         }
         Commands::Hash {path} => {
             cmd_hash(&path)

@@ -18,7 +18,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="🛁 Tub: Relaxing version control for everyone! 🦓 💖 🌎")]
+#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦓")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -39,7 +39,7 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "😎 Create a new Tub 🛁 repository")]
+    #[command(about = "😎 Create a new 🛁 repository")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
@@ -48,7 +48,7 @@ enum Commands {
     #[command(about = "👷 Fork history into a new indpendent branch 🪛")]
     Branch {},
 
-    #[command(about = "➕ Add path(s) to tracking list")]
+    #[command(about = "➕ Add paths to tracking list")]
     Add {
         #[arg(help="Path to add")]
         path: String,
@@ -58,7 +58,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "➖ Remove path(s) from tracking list")]
+    #[command(about = "➖ Remove paths from tracking list")]
     Rm {
         #[arg(help="Path to remove")]
         path: String,
@@ -78,7 +78,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🚫 Add path(s) to ignore list")]
+    #[command(about = "🚫 Add paths to ignore list")]
     Ignore {},
 
     #[command(about = "🔎 Show changes in working tree")]
@@ -91,7 +91,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "💖 Commit current working tree state")]
+    #[command(about = "💖 Snapshot current working tree state 🤓")]
     Commit {
         #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
@@ -123,7 +123,7 @@ enum Commands {
     #[command(about = "🔗 Verify all objects, blockchains, and metadata")]
     Check {},
 
-    #[command(about = "🚀 Compare hashing performance with git hash-object 🤣")]
+    #[command(about = "🚀 Yo, compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,
@@ -220,7 +220,7 @@ pub fn run() -> io::Result<()> {
 fn decode_hash(txt: &String) -> Option<TubHash>
 {
     if txt.len() != 48 {
-        eprintln!("Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
+        eprintln!("🛁 Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
         exit(42);
     }
     let mut bin = [0_u8; TUB_HASH_LEN];
@@ -240,7 +240,7 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
         None => env::current_dir()?,
     };
     if ! pb.is_dir() {
-        eprintln!("Not a directory: {:?}", pb);
+        eprintln!("🛁 Not a directory: {:?}", pb);
         exit(42);
     }
     Ok(pb.canonicalize()?)
@@ -253,7 +253,7 @@ fn get_tub(target: OptPath) -> io::Result<Store>
         Ok(store)
     }
     else {
-        eprintln!("Could not find Tub in {:?}", &target);
+        eprintln!("🛁 Could not find Tub in {:?}", &target);
         exit(42);
     }
 }
@@ -270,11 +270,11 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(_store) = find_store(&target) {
-        eprintln!("Tub already exists: {:?}", target);
+        eprintln!("🛁 Tub already exists: {:?}", target);
         exit(42);
     }
     else if let Ok(store) = init_tree(&target) {
-        eprintln!("Created Tub: {:?}", store.path());
+        eprintln!("🛁 Created Tub: {:?}", store.path());
     }
     Ok(())
 }
@@ -293,7 +293,7 @@ fn get_largemark(large: bool) -> String {
 
 fn not_yet() -> io::Result<()>
 {
-    println!("yo dawg, this command hasn't been implemented yet!");
+    println!("🤪 Yo dawg, this command hasn't been implemented yet!");
     Ok(())
 }
 
@@ -319,7 +319,7 @@ fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
             dup_cnt += 1;
         }
     }
-    eprintln!("Imported {} new files and {} duplicates", new_cnt, dup_cnt);
+    eprintln!("🛁 Imported {} new files and {} duplicates", new_cnt, dup_cnt);
     Ok(())
 }
 
@@ -362,7 +362,7 @@ fn cmd_list_objects(tub: OptPath) -> io::Result<()>
     for hash in keys {
         println!("{}", db32enc(&hash));
     }
-    eprintln!("{} objects in Tub", tub.len());
+    eprintln!("🛁 {} objects in Tub", tub.len());
     let stats = tub.stats();
     println!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
     println!("Objects by size:");
@@ -382,11 +382,11 @@ fn cmd_add(tub: OptPath, path: String) -> io::Result<()>
     let wt = dvcs::WorkingTree::new(tub);
     let mut tl = wt.load_tracking_list()?;
     if tl.add(path.clone()) {
-        eprintln!("\tAdded '{}' to tracking list", path);
+        eprintln!("🛁 Added '{}' to tracking list", path);
         wt.save_tracking_list(tl)?;
     }
     else {
-        eprintln!("\t'{}' is already tracked", path);
+        eprintln!("🛁 '{}' is already tracked", path);
     }
     Ok(())
 }
@@ -397,11 +397,11 @@ fn cmd_rm(tub: OptPath, path: String) -> io::Result<()>
     let wt = dvcs::WorkingTree::new(tub);
     let mut tl = wt.load_tracking_list()?;
     if tl.remove(&path) {
-        eprintln!("\tRemoved '{}' from tracking list", path);
+        eprintln!("🛁 Removed '{}' from tracking list", path);
         wt.save_tracking_list(tl)?;
     }
     else {
-        eprintln!("\t'{}' is not a tracked file", path);
+        eprintln!("🛁 '{}' is not a tracked file", path);
     }
     Ok(())
 }
@@ -414,7 +414,7 @@ fn cmd_ls(tub: OptPath) -> io::Result<()>
     for path in tl.as_sorted_vec() {
         println!("{}", path);
     }
-    eprintln!("\t{} item(s) in tracking list", tl.len());
+    eprintln!("🛁 {} item(s) in tracking list", tl.len());
     Ok(())
 }
 
@@ -423,7 +423,7 @@ fn cmd_repack(tub: OptPath) -> io::Result<()>
 {
     let mut tub = get_tub(tub)?;
     tub.repack()?;
-    eprintln!("{} objects in store", tub.len());
+    eprintln!("🛁 {} objects in store", tub.len());
     Ok(())
 }
 

@@ -35,17 +35,16 @@ impl Cli {
 }
 */
 
-
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "😎 Create a new 🛁 repository")]
+    #[command(about = "😎 Create a new Tub 🛁 repository")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
     },
 
-    #[command(about = "👷 Fork history into a new indpendent branch 🪛")]
+    #[command(about = "👷 Fork 🥄 history into a new indpendent branch 🪛")]
     Branch {},
 
     #[command(about = "➕ Add paths to tracking list")]
@@ -269,12 +268,13 @@ fn get_reindexed_tub(target: OptPath) -> io::Result<Store> {
 fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
-    if let Ok(_store) = find_store(&target) {
-        eprintln!("🛁❗ Tub already exists: {:?}", target);
+    if let Ok(store) = find_store(&target) {
+        eprintln!("🛁❗ Tub already exists: {:?}", store.path());
         exit(42);
     }
     else if let Ok(store) = init_tree(&target) {
-        eprintln!("🛁 Created new Tub: {:?}", store.path());
+        eprintln!("🛁 Created new Tub repository: {:?}", store.path());
+        eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
     }
     Ok(())
 }
@@ -331,7 +331,7 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let commit = dvcs::Commit::new(root, String::from("test commit"));
     tub.add_commit(&commit.serialize())?;
     println!("{}", db32enc(&root));
-    eprintln!("🛁 Great job on {} ‼ 💋", db32enc(&root)); // Haha, over the top, I know
+    eprintln!("🛁 Wow, great job on {} ‼ 💋", db32enc(&root)); // Haha, over the top, I know
     Ok(())
 }
 

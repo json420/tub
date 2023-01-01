@@ -18,7 +18,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="Tub 💖 Rust")]
+#[command(about="🛁 Tub 💖 Rust")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -39,13 +39,16 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "Create a new Tub")]
+    #[command(about = "😎 Create a new Tub repository 🛁")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,
     },
 
-    #[command(about = "Add path to tracking list")]
+    #[command(about = "🤠 Fork history into a new indpendent branch 🪛")]
+    Branch {},
+
+    #[command(about = "➕ Add path(s) to tracking list")]
     Add {
         #[arg(help="Path to add")]
         path: String,
@@ -55,7 +58,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Remove path from tracking list")]
+    #[command(about = "➖ Remove path(s) from tracking list")]
     Rm {
         #[arg(help="Path to remove")]
         path: String,
@@ -65,14 +68,27 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "List tracked paths")]
-    Ls {
+    #[command(about = "🔀 Rename a tracked path")]
+    Mv {
+        #[arg(help="Path to rename")]
+        path: String,
+
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Recursively commit directory")]
+    #[command(about = "🔎 Show changes in working tree")]
+    Diff {},
+
+    #[command(about = "📜 Sumarize changes in working tree")]
+    Status {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
+
+    #[command(about = "💖 Commit current working tree state")]
     Commit {
         #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
@@ -82,7 +98,10 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Restore tree from root tree hash")]
+    #[command(about = "🧬 Merge one branch into other")]
+    Merge {},
+
+    #[command(about = "🚽 Revert 💩 changes in working tree")]
     Revert {
         #[arg(help="Dbase32-encoded hash")]
         hash: String,
@@ -95,7 +114,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "Compute the Tub-Hash of a file")]
+    #[command(about = "🚀 Compute the Tub-Hash of a file")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,
@@ -135,13 +154,25 @@ pub fn run() -> io::Result<()> {
         Commands::Init {target} => {
             cmd_init(target)
         }
+        Commands::Branch {} => {
+            not_yet()
+        }
+        Commands::Merge {} => {
+            not_yet()
+        }
         Commands::Add {tub, path} => {
+            cmd_add(tub, path)
+        }
+        Commands::Mv {tub, path} => {
             cmd_add(tub, path)
         }
         Commands::Rm {tub, path} => {
             cmd_rm(tub, path)
         }
-        Commands::Ls {tub} => {
+        Commands::Diff {} => {
+            not_yet()
+        }
+        Commands::Status {tub} => {
             cmd_ls(tub)
         }
         Commands::Commit {source, tub} => {
@@ -239,6 +270,13 @@ fn get_newmark(new: bool) -> String {
 fn get_largemark(large: bool) -> String {
     let m = if large {"L"} else {" "};
     String::from(m)
+}
+
+
+fn not_yet() -> io::Result<()>
+{
+    println!("yo dawg, this command hasn't been implemented yet!");
+    Ok(())
 }
 
 fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>

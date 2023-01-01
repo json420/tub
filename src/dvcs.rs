@@ -120,7 +120,7 @@ impl TreeEntry {
 pub type TreeMap = HashMap<String, TreeEntry>;
 
 
-///
+/// Stores entries in a directory
 #[derive(Debug, PartialEq)]
 pub struct Tree {
     map: TreeMap,
@@ -174,7 +174,7 @@ impl Tree {
         }
     }
 
-    pub fn add(&mut self, name: String, kind: Kind, hash: TubHash) {
+    fn add(&mut self, name: String, kind: Kind, hash: TubHash) {
         self.map.insert(name, TreeEntry::new(kind, hash));
     }
 

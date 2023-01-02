@@ -3,6 +3,7 @@ use std::env;
 use std::io;
 use std::fs;
 use std::process::exit;
+use std::time::Instant;
 
 use clap::{ArgAction, Parser, Subcommand};
 
@@ -90,7 +91,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "💖 Snapshot current working tree state 🤓")]
+    #[command(about = "💖 Take a snapshot 📸 of your work 🤓")]
     Commit {
         #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
@@ -100,10 +101,10 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Merge one branch into other 😍")]
+    #[command(about = "🧬 Combine one branch with other 😍")]
     Merge {},
 
-    #[command(about = "🚽 Revert 💩 changes in working tree")]
+    #[command(about = "🚽 Undo 💩 changes in working tree")]
     Revert {
         #[arg(help="Dbase32-encoded hash")]
         hash: String,
@@ -293,7 +294,7 @@ fn get_largemark(large: bool) -> String {
 
 fn not_yet() -> io::Result<()>
 {
-    println!("🛁 Yo dawg, this command hasn't been implemented yet! 🤪");
+    eprintln!("🛁❗ Yo dawg, this command hasn't been implemented yet! 🤪");
     Ok(())
 }
 
@@ -331,7 +332,7 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
     let commit = dvcs::Commit::new(root, String::from("test commit"));
     tub.add_commit(&commit.serialize())?;
     println!("{}", db32enc(&root));
-    eprintln!("🛁 Wow, great job on {} ‼ 💋", db32enc(&root)); // Haha, over the top, I know
+    eprintln!("🛁 Wow, great job on {} ‼ 💋", db32enc(&root));
     Ok(())
 }
 
@@ -350,10 +351,20 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let pb = path.canonicalize()?;
     let size = fs::metadata(&pb)?.len();
     let file = fs::File::open(&pb)?;
+    eprintln!("🛁 Computing TubHash, this wont take long...");
+    let start = Instant::now();
     let tt = hash_file(file, size)?;
     println!("{}", tt);
+    let elapsed = start.elapsed().as_secs_f64();
+    eprintln!("🛁 Holy fuck balls Blake3 is fast! 🚀");
+    eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, (size as f64 / elapsed) as u64);
+    eprintln!("🛁 Seriously, run `time git hash-object` on the same file, you'll be astonished 😲");
+    eprintln!("🛁 And the Blake3 reference implementation is even written in Rust!");
+    eprintln!("🛁 Tub 💖 Blake3");
+    eprintln!("🛁 Tub 💖 Rust");
     Ok(())
 }
+
 
 fn cmd_list_objects(tub: OptPath) -> io::Result<()>
 {
@@ -384,10 +395,11 @@ fn cmd_add(tub: OptPath, path: String) -> io::Result<()>
     let mut tl = wt.load_tracking_list()?;
     if tl.add(path.clone()) {
         eprintln!("🛁 Added '{}' to tracking list", path);
+        eprintln!("🛁 This is getting exciting, let me grab my popcorn 🍿");
         wt.save_tracking_list(tl)?;
     }
     else {
-        eprintln!("🛁 '{}' is already tracked", path);
+        eprintln!("🛁❗ '{}' is already tracked", path);
     }
     Ok(())
 }
@@ -402,7 +414,7 @@ fn cmd_rm(tub: OptPath, path: String) -> io::Result<()>
         wt.save_tracking_list(tl)?;
     }
     else {
-        eprintln!("🛁 '{}' is not a tracked file", path);
+        eprintln!("🛁❗ '{}' is not a tracked file", path);
     }
     Ok(())
 }
@@ -418,7 +430,6 @@ fn cmd_ls(tub: OptPath) -> io::Result<()>
     eprintln!("🛁 {} item(s) in tracking list", tl.len());
     Ok(())
 }
-
 
 fn cmd_repack(tub: OptPath) -> io::Result<()>
 {

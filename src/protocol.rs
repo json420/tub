@@ -81,6 +81,41 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
+trait IdBytes {
+    type Buf;
+    fn new() -> Self;
+    fn new_from(buf: &[u8]) -> Self;
+    fn as_buf(&self) -> &[u8];
+    fn as_mut_buf(&mut self) -> &mut &[u8];
+}
+
+
+trait Protocol {
+    type Hash;
+    type Id;
+
+    fn new() -> Self;
+    fn hash_leaf(&self, index: u64, data: &[u8]) -> Self::Hash;
+    fn hash_root(&self, size: u64, data: &[u8]) -> Self::Hash;
+}
+
+
+struct Store<P: Protocol> {
+    protocol: P,
+}
+
+impl<P: Protocol> Store<P> {
+    fn get(&self, hash: P::Hash, buf: &mut [u8]) {
+        self.protocol.hash_leaf(0, buf);
+    }
+
+    fn add(&self, buf: &[u8]) -> (P::Hash, bool) {
+        (self.protocol.hash_leaf(0, buf), true)
+        //P::Hash::new()
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;

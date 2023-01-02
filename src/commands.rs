@@ -48,7 +48,7 @@ enum Commands {
     #[command(about = "👷 Fork 🥄 history into a new indpendent branch 🪛")]
     Branch {},
 
-    #[command(about = "➕ Add paths to tracking list")]
+    #[command(about = "🔴 Add paths to tracking list")]
     Add {
         #[arg(help="Path to add")]
         path: String,
@@ -58,9 +58,9 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "➖ Remove paths from tracking list")]
-    Rm {
-        #[arg(help="Path to remove")]
+    #[command(about = "🟡 Rename a tracked path")]
+    Mv {
+        #[arg(help="Path to rename")]
         path: String,
 
         #[arg(short, long, value_name="DIR")]
@@ -68,9 +68,9 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🔀 Rename a tracked path")]
-    Mv {
-        #[arg(help="Path to rename")]
+    #[command(about = "🟢 Remove paths from tracking list")]
+    Rm {
+        #[arg(help="Path to remove")]
         path: String,
 
         #[arg(short, long, value_name="DIR")]
@@ -328,11 +328,12 @@ fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let mut tub = get_tub(tub)?;
+    eprintln!("🛁 Writing commit...");
     let root = dvcs::commit_tree(&mut tub, &source)?;
     let commit = dvcs::Commit::new(root, String::from("test commit"));
     tub.add_commit(&commit.serialize())?;
     println!("{}", db32enc(&root));
-    eprintln!("🛁 Wow, great job on {} ‼ 💋", db32enc(&root));
+    eprintln!("🛁 Wow, great job on that one! 💋");
     Ok(())
 }
 
@@ -360,8 +361,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, (size as f64 / elapsed) as u64);
     eprintln!("🛁 Seriously, run `time git hash-object` on the same file, you'll be astonished 😲");
     eprintln!("🛁 And the Blake3 reference implementation is even written in Rust!");
-    eprintln!("🛁 Tub 💖 Blake3");
-    eprintln!("🛁 Tub 💖 Rust");
+    eprintln!("🛁 Tub 💖 Blake3, Tub 💖 Rust");
     Ok(())
 }
 

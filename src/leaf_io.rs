@@ -244,7 +244,7 @@ impl LeafState {
             let file_stop = object_size;
             let leaf_start = HEADER_LEN;
             let leaf_stop = leaf_start + object_size as usize;
-            let leaf_hash_start = HEADER_LEN;
+            let leaf_hash_start = HEADER_LEN - TUB_HASH_LEN;
             let leaf_hash_stop = HEADER_LEN;
             Self {
                 closed: closed,
@@ -518,14 +518,9 @@ impl TubBuf {
 
     pub fn hash_file(&mut self, mut file: File, size: u64) -> io::Result<TubHash> {
         self.resize(size);
-        if self.state.is_small() {
-            file.read_exact(self.as_mut_leaf().unwrap())?;
-        }
-        else if self.state.is_large() {
-            while let Some(buf) = self.as_mut_leaf() {
-                file.read_exact(buf)?;
-                self.hash_leaf();
-            }
+        while let Some(buf) = self.as_mut_leaf() {
+            file.read_exact(buf)?;
+            self.hash_leaf();
         }
         Ok(self.finalize())
     }
@@ -678,14 +673,7 @@ impl LeafReader {
         self.tbuf.is_large()
     }
 
-    pub fn read_in_small(&mut self) -> io::Result<()> {
-        assert!(self.tbuf.is_small());
-        self.file.read_exact(self.tbuf.as_mut_leaf().unwrap())?;
-        Ok(())
-    }
-
     pub fn read_next_leaf(&mut self) -> io::Result<Option<&[u8]>> {
-        assert!(self.tbuf.is_large());
         if let Some(buf) = self.tbuf.as_mut_leaf() {
             self.file.read_exact(buf)?;
             self.tbuf.hash_leaf();
@@ -759,7 +747,7 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEADER_LEN,
                 leaf_stop: HEADER_LEN + size as usize,
-                leaf_hash_start: HEADER_LEN,
+                leaf_hash_start: HEADER_LEN - TUB_HASH_LEN,
                 leaf_hash_stop: HEADER_LEN,
             });
             let state = state.next_leaf();
@@ -772,7 +760,7 @@ mod tests {
                 file_stop: size,
                 leaf_start: HEADER_LEN,
                 leaf_stop: HEADER_LEN + size as usize,
-                leaf_hash_start: HEADER_LEN,
+                leaf_hash_start: HEADER_LEN - TUB_HASH_LEN,
                 leaf_hash_stop: HEADER_LEN,
             });
         }

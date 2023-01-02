@@ -101,7 +101,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Combine one branch with other 😍")]
+    #[command(about = "🧬 Merge changes made in one branch with another 😍")]
     Merge {},
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]
@@ -123,7 +123,7 @@ enum Commands {
     #[command(about = "🔗 Verify all objects, blockchains, and metadata")]
     Check {},
 
-    #[command(about = "🚀 Yo, compare 🛁 hashing performance with git hash-object! 😜")]
+    #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,
@@ -357,11 +357,12 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let tt = hash_file(file, size)?;
     println!("{}", tt);
     let elapsed = start.elapsed().as_secs_f64();
+    let rate = (size as f64 / elapsed) as u64;
+    eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, rate);
     eprintln!("🛁 Holy fuck balls Blake3 is fast! 🚀");
-    eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, (size as f64 / elapsed) as u64);
-    eprintln!("🛁 Seriously, run `time git hash-object` on the same file, you'll be astonished 😲");
-    eprintln!("🛁 And the Blake3 reference implementation is even written in Rust!");
-    eprintln!("🛁 Tub 💖 Blake3, Tub 💖 Rust");
+    eprintln!("🛁 Run `time git hash-object` on the same file to compare 😲");
+    eprintln!("🛁 The Blake3 reference implementation is even written in Rust!");
+    eprintln!("🛁 Tub 💖 Rust, Tub 💖 Blake3");
     Ok(())
 }
 

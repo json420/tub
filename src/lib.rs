@@ -14,5 +14,5 @@ pub mod commands;
 pub mod leaf_io;
 pub mod dvcs;
 pub mod blockchain;
-pub mod formats;
+pub mod object;
 

@@ -101,7 +101,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Merge changes made in one branch with another 😍")]
+    #[command(about = "🧬 Merge changes made in one branch into another 😍")]
     Merge {},
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]

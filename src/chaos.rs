@@ -1,4 +1,6 @@
 //! Content Hash Addressable Object Store
+//!
+//! Dead simple.
 
 use seahash;
 use crate::base::*;
@@ -16,9 +18,8 @@ Current protocol V0 object format:
 | HASH | INFO | PAYLOAD             |
 |   30 |    4 | 1 - MAX_OBJECT_SIZE |
 
-
-
 */
+
 
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -63,14 +64,17 @@ impl<const N: usize> fmt::Display for TubName<N> {
 pub type TubId2 = TubName<15>;
 
 
+/// Packs 24-bit `size` and 8-bit `kind` into a u32
+#[derive(Debug, PartialEq, Eq)]
 pub struct Info {
     val: u32,
 }
 
 impl Info {
     fn new(size: usize, kind: u8) -> Self {
-        assert!(size > 0);
-        assert!(size <= 16777216);
+        if size < 1 || size > OBJECT_MAX_SIZE {
+            panic!("Need 1 <= size <= {}; got size={}", OBJECT_MAX_SIZE, size);
+        }
         Self {val: (size - 1) as u32 | (kind as u32) << 24}
     }
 
@@ -86,11 +90,11 @@ impl Info {
         self.val
     }
 
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         ((self.val & 0x00ffffff) + 1) as usize
     }
 
-    fn kind(&self) -> u8 {
+    pub fn kind(&self) -> u8 {
         (self.val >> 24) as u8
     }
 }
@@ -308,6 +312,17 @@ mod tests {
         assert_eq!(n.as_buf(), [255_u8; 30]);
         assert_eq!(n.as_mut_buf(), [255_u8; 30]);
         assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+
+        let mut n = TubName::<20>::new();
+        assert_eq!(n.len(), 20);
+        assert_eq!(n.as_buf(), [0_u8; 20]);
+        assert_eq!(n.as_mut_buf(), [0_u8; 20]);
+        assert_eq!(n.to_string(), "33333333333333333333333333333333");
+        n.as_mut_buf().fill(255);
+        assert_eq!(n.len(), 20);
+        assert_eq!(n.as_buf(), [255_u8; 20]);
+        assert_eq!(n.as_mut_buf(), [255_u8; 20]);
+        assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
     }
 
     #[test]
@@ -315,16 +330,38 @@ mod tests {
         let info = Info::from_le_bytes(&[0; 4]);
         assert_eq!(info.size(), 1);
         assert_eq!(info.kind(), 0);
+        assert_eq!(info.raw(), 0);
+        assert_eq!(info.to_le_bytes(), [0; 4]);
+
+        let info = Info::from_le_bytes(&[255; 4]);
+        assert_eq!(info.size(), OBJECT_MAX_SIZE);
+        assert_eq!(info.kind(), 255);
+        assert_eq!(info.raw(), u32::MAX);
+        assert_eq!(info.to_le_bytes(), [255; 4]);
 
         let info = Info::new(1, 0);
-        assert_eq!(info.raw(), 0);
         assert_eq!(info.size(), 1);
+        assert_eq!(info.kind(), 0);
+        assert_eq!(info.raw(), 0);
+        assert_eq!(info.to_le_bytes(), [0; 4]);
+
+        let info = Info::new(OBJECT_MAX_SIZE, 255);
+        assert_eq!(info.size(), OBJECT_MAX_SIZE);
+        assert_eq!(info.kind(), 255);
+        assert_eq!(info.raw(), u32::MAX);
+        assert_eq!(info.to_le_bytes(), [255; 4]);
     }
 
     #[test]
-    #[should_panic(expected="")]
-    fn test_info_panic() {
+    #[should_panic(expected="Need 1 <= size <= 16777216; got size=0")]
+    fn test_info_panic_low() {
         let sk = Info::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic(expected="Need 1 <= size <= 16777216; got size=16777217")]
+    fn test_info_panic_high() {
+        let sk = Info::new(OBJECT_MAX_SIZE + 1, 0);
     }
 
     #[test]

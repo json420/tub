@@ -107,7 +107,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         }
     }
 
-    pub fn clear_resize(&mut self, size: usize) {
+    pub fn resize(&mut self, size: usize) {
         self.buf.clear();
         self.buf.resize(N + 4 + size, 0);
     }
@@ -131,6 +131,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn is_valid(&self) -> bool {
         self.hash() == self.compute()
+    }
+
+    pub fn validate_against(&self, hash: &TubName<N>) -> bool {
+        self.is_valid() && hash == &self.hash()
     }
 
     pub fn finalize(&mut self) -> TubName<N> {
@@ -193,14 +197,24 @@ impl Entry {
 }
 
 
+/// Organizes objects in an append-only file
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
-    object: Object<H, N>,
+    hasher: H,
     map: HashMap<TubName<N>, Entry>,
     offset: u64,
 }
 
 impl<H: Hasher, const N: usize> Store<H, N> {
+    pub fn new(file: fs::File) -> Self {
+        Self {
+            file: file,
+            hasher: H::new(),
+            map: HashMap::new(),
+            offset: 0,
+        }
+    }
+
     pub fn new_object() -> Object<H, N> {
         Object::new()
     }
@@ -212,7 +226,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        obj.clear_resize(0);
+        obj.resize(0);
         while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
             obj.resize_to_info();
             if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), self.offset + (N + 4) as u64) {
@@ -223,14 +237,27 @@ impl<H: Hasher, const N: usize> Store<H, N> {
                 }
                 self.offset += (N + 4) as u64;
             }
-            obj.clear_resize(0);
+            obj.resize(0);
         }
         Ok(())
     }
 
     pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
-            Ok(true)
+            obj.resize(entry.info.size());
+            if let Ok(_) = self.file.read_exact_at(obj.as_mut_buf(), entry.offset) {
+                if obj.validate_against(hash) {
+                    Ok(true)
+                }
+                else {
+                    obj.resize(0);
+                    Ok(false)
+                }
+            }
+            else {
+                obj.resize(0);
+                Ok(false)
+            }
         }
         else {
             Ok(false)
@@ -253,18 +280,19 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     }
 
     pub fn delete(&mut self, hash: TubName<N>) -> io::Result<bool> {
+        // FIXME: Decide how tombstones should work with new new
         Ok(true)
     }
 }
 
 
-pub type Hblake3N30 = Store<Blake3, 30>;
+pub type StoreHblake3N30 = Store<Blake3, 30>;
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::ProtocolZero;
+    use crate::helpers::TestTempDir;
 
     #[test]
     fn test_tubname() {
@@ -293,7 +321,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected="")]
-    fn test_info_assert() {
+    fn test_info_panic() {
         let sk = Info::new(0, 0);
     }
 
@@ -301,7 +329,7 @@ mod tests {
     fn test_object() {
         let mut obj: Object<Blake3, 30> = Object::new();
         assert_eq!(obj.len(), 0);
-        obj.clear_resize(0);
+        obj.resize(0);
         assert_eq!(obj.len(), 34);
 
         assert_eq!(obj.info().size(), 1);
@@ -315,9 +343,17 @@ mod tests {
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[255; 34]);
 
-        obj.clear_resize(0);
+        obj.resize(0);
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
+    }
+
+    #[test]
+    fn test_store() {
+        let tmp = TestTempDir::new();
+        let path = tmp.build(&["foo"]);
+        let file = fs::File::create(&path).unwrap();
+        let mut store = Store::<Blake3, 30>::new(file);
     }
 
     #[test]

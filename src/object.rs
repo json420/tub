@@ -117,6 +117,23 @@ impl<P: Protocol> Object<P> {
 }
 
 
+pub struct Store<P: Protocol> {
+    protocol: P,
+}
+
+
+impl<P: Protocol> Store<P> {
+    pub fn load(&self, hash: &P::Hash, obj: &mut Object<P>) -> bool {
+        true
+    }
+
+}
+
+struct Junk {
+    buf: [u8; 30],
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

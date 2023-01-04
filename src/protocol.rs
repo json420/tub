@@ -17,6 +17,7 @@ https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protoc
 use std::ops;
 use blake3;
 use crate::base::*;
+use generic_array::{ArrayLength, GenericArray};
 
 
 pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
@@ -82,14 +83,21 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
-trait NameBytes {
-    type Buf;
-    fn new() -> Self;
-    fn new_from(buf: &[u8]) -> Self;
-    fn as_buf(&self) -> &[u8];
-    fn as_mut_buf(&mut self) -> &mut &[u8];
+struct TubName<N: ArrayLength<u8>> {
+    buf: GenericArray<u8, N>,
 }
 
+impl<N: ArrayLength<u8>> TubName<N> {
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
+    }
+
+}
+
+
+pub trait HashFunc {
+    fn hash_object(info: u32, data: &[u32], target: &mut [u8]);
+}
 
 pub trait Protocol {
     type Hash = [u8; 30];
@@ -115,6 +123,7 @@ pub trait Protocol {
         Self::len()..Self::header_len()
     }
 }
+
 
 pub struct Blake3Protocol {
 

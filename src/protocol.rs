@@ -130,6 +130,7 @@ pub trait Protocol {
 pub struct ProtocolZero {
 
 }
+
 impl Protocol for ProtocolZero {
     fn new() -> Self {
         Self {}

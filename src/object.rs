@@ -46,12 +46,12 @@ impl Info {
 }
 
 
-pub struct Object<P: Protocol> {
+pub struct Object<const N: usize, P: Protocol> {
     buf: Vec<u8>,
     protocol: P,
 }
 
-impl<P: Protocol> Object<P> {
+impl<const N: usize, P: Protocol> Object<N, P> {
     pub fn new() -> Self {
         Self {
             buf: Vec::new(),
@@ -61,7 +61,7 @@ impl<P: Protocol> Object<P> {
 
     pub fn reset(&mut self) {
         self.buf.clear();
-        self.buf.resize(OBJECT_HEADER_LEN, 0);
+        self.buf.resize(N + 4, 0);
     }
 
     pub fn len(&self) -> usize {
@@ -75,20 +75,20 @@ impl<P: Protocol> Object<P> {
     pub fn finalize(&mut self) -> TubHash {
         assert_eq!(self.buf.len(), OBJECT_HEADER_LEN + self.info().size());
         let hash = self.compute();
-        self.buf[OBJECT_HASH_RANGE].copy_from_slice(&hash);
+        self.buf[0..N].copy_from_slice(&hash);
         hash
     }
 
     pub fn info(&self) -> Info {
-        Info::from_le_bytes(&self.buf[OBJECT_INFO_RANGE])
+        Info::from_le_bytes(&self.buf[N..N + 4])
     }
 
     pub fn set_info(&mut self, info: Info) {
-        self.buf[OBJECT_INFO_RANGE].copy_from_slice(&info.to_le_bytes());
+        self.buf[N..N + 4].copy_from_slice(&info.to_le_bytes());
     }
 
     pub fn resize_to_info(&mut self) {
-        self.buf.resize(OBJECT_HEADER_LEN + self.info().size(), 0);
+        self.buf.resize(N + 4 + self.info().size(), 0);
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -117,13 +117,13 @@ impl<P: Protocol> Object<P> {
 }
 
 
-pub struct Store<P: Protocol> {
+pub struct Store<const N: usize, P: Protocol> {
     protocol: P,
 }
 
 
-impl<P: Protocol> Store<P> {
-    pub fn load(&self, hash: TubHash, obj: &mut Object<P>) -> bool {
+impl<const N: usize, P: Protocol> Store<N, P> {
+    pub fn load(&self, hash: TubHash, obj: &mut Object<N, P>) -> bool {
         true
     }
 
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_object() {
-        let mut obj: Object<ProtocolZero> = Object::new();
+        let mut obj: Object<30, ProtocolZero> = Object::new();
         assert_eq!(obj.len(), 0);
         obj.reset();
         assert_eq!(obj.len(), 34);

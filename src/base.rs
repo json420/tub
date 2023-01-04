@@ -38,10 +38,6 @@ pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 135..143;
 pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 143..173;
 pub const BLOCK_LEN: usize = 173;
 
-pub const OBJECT_HEADER_LEN: usize = TUB_HASH_LEN + 4;
-pub const OBJECT_HEADER_RANGE: ops::Range<usize> = 0..TUB_HASH_LEN + 4;
-pub const OBJECT_INFO_RANGE: ops::Range<usize> = TUB_HASH_LEN..TUB_HASH_LEN + 4;
-pub const OBJECT_KIND_INDEX: usize = HEADER_LEN;  // 126..127
 pub const OBJECT_MAX_SIZE: usize = 16777216;
 
 pub const DOTDIR: &str = ".tub";

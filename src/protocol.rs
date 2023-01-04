@@ -14,6 +14,7 @@ Large object protocol based on the Dmedia hashing protocol:
 https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
 
 */
+use std::ops;
 use blake3;
 use crate::base::*;
 
@@ -81,7 +82,7 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
-trait IdBytes {
+trait NameBytes {
     type Buf;
     fn new() -> Self;
     fn new_from(buf: &[u8]) -> Self;
@@ -90,16 +91,58 @@ trait IdBytes {
 }
 
 
-trait Protocol {
+pub trait Protocol {
     type Hash;
-    type Id;
-
     fn new() -> Self;
-    fn hash_leaf(&self, index: u64, data: &[u8]) -> Self::Hash;
-    fn hash_root(&self, size: u64, data: &[u8]) -> Self::Hash;
+    fn len() -> usize;
+    fn hash_object(info: u32, data: &[u8]) -> Self::Hash;
+
+    fn header_len() -> usize {
+        Self::len() + 4
+    }
+
+    fn header_range() -> ops::Range<usize> {
+        0..Self::header_len()
+    }
+
+    fn hash_range() -> ops::Range<usize> {
+        0..Self::len()
+    }
+
+    fn info_range() -> ops::Range<usize> {
+        let len = Self::len();
+        Self::len()..Self::header_len()
+    }
+}
+
+pub struct Blake3Protocol {
+
 }
 
 
+impl Protocol for Blake3Protocol {
+    type Hash = TubHash;
+
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn len() -> usize {
+        30
+    }
+
+    fn hash_object(info: u32, data: &[u8]) -> Self::Hash {
+        let mut h = blake3::Hasher::new();
+        h.update(&info.to_le_bytes());
+        h.update(data);
+        let mut hash: Self::Hash = [0_u8; TUB_HASH_LEN];
+        h.finalize_xof().fill(&mut hash);
+        hash
+    }
+}
+
+
+/*
 struct Store<P: Protocol> {
     protocol: P,
 }
@@ -114,7 +157,7 @@ impl<P: Protocol> Store<P> {
         //P::Hash::new()
     }
 }
-
+*/
 
 #[cfg(test)]
 mod tests {

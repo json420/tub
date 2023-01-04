@@ -17,8 +17,6 @@ https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protoc
 use std::ops;
 use blake3;
 use crate::base::*;
-use crate::dbase32::db32enc;
-use std::fmt;
 
 
 pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
@@ -84,43 +82,6 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
-// FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
-#[derive(Debug, PartialEq, Eq)]
-pub struct TubName<const N: usize> {
-    pub buf: [u8; N],
-}
-
-impl<const N: usize> TubName<N> {
-    pub fn new() -> Self {
-        Self {buf: [0_u8; N]}
-    }
-
-    pub fn len(&self) -> usize {
-        self.buf.len()
-    }
-
-    pub fn as_buf(&self) -> &[u8] {
-        &self.buf
-    }
-
-    pub fn as_mut_buf(&mut self) -> &mut [u8] {
-        &mut self.buf
-    }
-
-    pub fn to_string(&self) -> String {
-        db32enc(&self.buf)
-    }
-
-}
-
-impl<const N: usize> fmt::Display for TubName<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-
-pub type TubId2 = TubName<15>;
-
 
 
 
@@ -139,6 +100,7 @@ impl Hasher for Blake3 {
     }
 
     fn hash_into(&self, info: u32, data: &[u8], hash: &mut [u8]) {
+        assert!(hash.len() > 0 && hash.len() % 5 == 0);
         let mut h = blake3::Hasher::new();
         h.update(&info.to_le_bytes());
         h.update(data);
@@ -197,20 +159,6 @@ mod tests {
     use crate::util::{getrandom, random_object, random_hash};
 
     const COUNT: usize = 1000;
-
-    #[test]
-    fn test_tubname() {
-        let mut n = TubName::<30>::new();
-        assert_eq!(n.len(), 30);
-        assert_eq!(n.as_buf(), [0_u8; 30]);
-        assert_eq!(n.as_mut_buf(), [0_u8; 30]);
-        assert_eq!(n.to_string(), "333333333333333333333333333333333333333333333333");
-        n.as_mut_buf().fill(255);
-        assert_eq!(n.len(), 30);
-        assert_eq!(n.as_buf(), [255_u8; 30]);
-        assert_eq!(n.as_mut_buf(), [255_u8; 30]);
-        assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
-    }
 
     #[test]
     fn test_hash_leaf() {

@@ -1,6 +1,11 @@
 use seahash;
 use crate::base::*;
-use crate::protocol::{Hasher, TubName, Blake3};
+use crate::protocol::{Hasher, Blake3};
+use crate::dbase32::db32enc;
+use std::{fs, io};
+use std::collections::HashMap;
+use std::os::unix::fs::FileExt;
+use std::fmt;
 /*
 
 Generic object format:
@@ -11,6 +16,43 @@ Generic object format:
 
 
 */
+
+// FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
+#[derive(Debug, PartialEq, Eq)]
+pub struct TubName<const N: usize> {
+    pub buf: [u8; N],
+}
+
+impl<const N: usize> TubName<N> {
+    pub fn new() -> Self {
+        Self {buf: [0_u8; N]}
+    }
+
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
+    }
+
+    pub fn to_string(&self) -> String {
+        db32enc(&self.buf)
+    }
+
+}
+
+impl<const N: usize> fmt::Display for TubName<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+
+pub type TubId2 = TubName<15>;
 
 
 pub struct Info {
@@ -46,12 +88,12 @@ impl Info {
 }
 
 
-pub struct Object<const N: usize, H: Hasher> {
-    buf: Vec<u8>,
+pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
+    buf: Vec<u8>,
 }
 
-impl<const N: usize, H: Hasher> Object<N, H> {
+impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn new() -> Self {
         Self {
             buf: Vec::new(),
@@ -121,31 +163,75 @@ impl<const N: usize, H: Hasher> Object<N, H> {
     }
 }
 
-
-/*
-
-pub struct Store<const N: usize, P: Protocol> {
-    protocol: P,
+pub struct Entry {
+    info: Info,
+    offset: u64,
 }
 
 
-impl<const N: usize, P: Protocol> Store<N, P> {
-    pub fn load(&self, hash: TubHash, obj: &mut Object<N, P>) -> bool {
-        true
+pub struct Store<H: Hasher, const N: usize> {
+    file: fs::File,
+    object: Object<H, N>,
+    map: HashMap<TubName<N>, Entry>,
+    offset: u64,
+}
+
+impl<H: Hasher, const N: usize> Store<H, N> {
+    pub fn new_object() -> Object<H, N> {
+        Object::new()
     }
 
-}
-*/
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 
-struct Junk {
-    buf: [u8; 30],
+    pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
+        self.map.clear();
+        self.offset = 0;
+        obj.reset();
+        while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
+            obj.resize_to_info();
+            self.file.read_exact_at(obj.as_mut_data(), self.offset + (N + 4) as u64)?;
+            self.offset += (N + 4) as u64;
+        }
+        Ok(())
+    }
+
+    pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<()> {
+        Ok(())
+    }
+
+    pub fn save(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
+        Ok(true)
+    }
+
+    pub fn delete(&mut self, hash: TubName<N>) -> io::Result<bool> {
+        Ok(true)
+    }
 }
+
+
+pub type Hblake3N30 = Store<Blake3, 30>;
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::protocol::ProtocolZero;
+
+    #[test]
+    fn test_tubname() {
+        let mut n = TubName::<30>::new();
+        assert_eq!(n.len(), 30);
+        assert_eq!(n.as_buf(), [0_u8; 30]);
+        assert_eq!(n.as_mut_buf(), [0_u8; 30]);
+        assert_eq!(n.to_string(), "333333333333333333333333333333333333333333333333");
+        n.as_mut_buf().fill(255);
+        assert_eq!(n.len(), 30);
+        assert_eq!(n.as_buf(), [255_u8; 30]);
+        assert_eq!(n.as_mut_buf(), [255_u8; 30]);
+        assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+    }
 
     #[test]
     fn test_info() {
@@ -166,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_object() {
-        let mut obj: Object<30, Blake3> = Object::new();
+        let mut obj: Object<Blake3, 30> = Object::new();
         assert_eq!(obj.len(), 0);
         obj.reset();
         assert_eq!(obj.len(), 34);

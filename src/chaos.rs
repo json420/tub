@@ -1,3 +1,5 @@
+//! Content Hash Addressable Object Store
+
 use seahash;
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};

@@ -1,5 +1,6 @@
 //! # Bathtub DB
 
+#![feature(associated_type_defaults)]
 
 pub mod base;
 pub mod protocol;

@@ -92,7 +92,8 @@ trait NameBytes {
 
 
 pub trait Protocol {
-    type Hash;
+    type Hash = [u8; 30];
+
     fn new() -> Self;
     fn len() -> usize;
     fn hash_object(info: u32, data: &[u8]) -> Self::Hash;

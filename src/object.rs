@@ -61,7 +61,7 @@ impl<P: Protocol> Object<P> {
 
     pub fn reset(&mut self) {
         self.buf.clear();
-        self.buf.resize(P::header_len() + 1, 0);
+        self.buf.resize(P::header_len(), 0);
     }
 
     pub fn len(&self) -> usize {
@@ -70,6 +70,13 @@ impl<P: Protocol> Object<P> {
 
     pub fn compute(&self) -> P::Hash {
         P::hash_object(self.info().raw(), self.as_data())
+    }
+
+    pub fn finalize(&mut self) -> P::Hash {
+        assert_eq!(self.buf.len(), P::header_len() + self.info().size());
+        let hash = self.compute();
+        //self.buf[P::hash_range()].copy_from_slice(hash);
+        hash
     }
 
     pub fn info(&self) -> Info {
@@ -135,24 +142,24 @@ mod tests {
     #[test]
     fn test_object() {
         let mut obj: Object<Blake3Protocol> = Object::new();
-        /*
-        let mut obj = Object<Blake3Protocol>::new();
+        assert_eq!(obj.len(), 0);
+        obj.reset();
+        assert_eq!(obj.len(), 34);
+
         assert_eq!(obj.info().size(), 1);
         assert_eq!(obj.info().kind(), 0);
-        assert_eq!(obj.len(), OBJECT_HEADER_LEN + 1);
-        assert_eq!(obj.as_buf(), &[0; OBJECT_HEADER_LEN + 1]);
+        assert_eq!(obj.as_buf(), &[0; 34]);
 
         obj.as_mut_buf().fill(255);
         assert_eq!(obj.info().size(), 16 * 1024 * 1024);
         assert_eq!(obj.info().kind(), 255);
 
-        assert_eq!(obj.len(), OBJECT_HEADER_LEN + 1);
-        assert_eq!(obj.as_buf(), &[255; OBJECT_HEADER_LEN + 1]);
+        assert_eq!(obj.len(), 34);
+        assert_eq!(obj.as_buf(), &[255; 34]);
 
         obj.reset();
-        assert_eq!(obj.len(), OBJECT_HEADER_LEN + 1);
-        assert_eq!(obj.as_buf(), &[0; OBJECT_HEADER_LEN + 1]);
-        */
+        assert_eq!(obj.len(), 34);
+        assert_eq!(obj.as_buf(), &[0; 34]);
     }
 
     #[test]

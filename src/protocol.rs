@@ -17,7 +17,6 @@ https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protoc
 use std::ops;
 use blake3;
 use crate::base::*;
-use generic_array::{ArrayLength, GenericArray};
 
 
 pub fn hash_leaf(index: u64, data: &[u8]) -> TubHash {
@@ -83,17 +82,17 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
-// FIXME: We'll soon migrate to being generic on digest length:
-struct TubName<N: ArrayLength<u8>> {
-    buf: GenericArray<u8, N>,
+struct TubName<const N: usize> {
+    pub buf: [u8; N],
 }
 
-impl<N: ArrayLength<u8>> TubName<N> {
+impl<const N: usize> TubName<N> {
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
         &mut self.buf
     }
 
 }
+
 
 
 pub trait Protocol {
@@ -102,10 +101,10 @@ pub trait Protocol {
 }
 
 
-pub struct Blake3Protocol {
+pub struct ProtocolZero {
 
 }
-impl Protocol for Blake3Protocol {
+impl Protocol for ProtocolZero {
     fn new() -> Self {
         Self {}
     }

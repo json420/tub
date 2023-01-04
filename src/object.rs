@@ -137,7 +137,7 @@ struct Junk {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::Blake3Protocol;
+    use crate::protocol::ProtocolZero;
 
     #[test]
     fn test_info() {
@@ -158,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_object() {
-        let mut obj: Object<Blake3Protocol> = Object::new();
+        let mut obj: Object<ProtocolZero> = Object::new();
         assert_eq!(obj.len(), 0);
         obj.reset();
         assert_eq!(obj.len(), 34);

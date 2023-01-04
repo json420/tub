@@ -59,7 +59,7 @@ enum Commands {
     },
 
     #[command(about = "🟡 Rename a tracked path")]
-    Mv {
+    Mov {
         #[arg(help="Path to rename")]
         path: String,
 
@@ -69,7 +69,7 @@ enum Commands {
     },
 
     #[command(about = "🟢 Remove paths from tracking list")]
-    Rm {
+    Rem {
         #[arg(help="Path to remove")]
         path: String,
 
@@ -82,7 +82,7 @@ enum Commands {
     Ignore {},
 
     #[command(about = "🔎 Examine changes in working tree")]
-    Diff {},
+    Dif {},
 
     #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
@@ -101,7 +101,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Merge changes made in one branch into another 😍")]
+    #[command(about = "🧬 Insert changes from one branch into another 😍")]
     Merge {},
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]
@@ -172,16 +172,16 @@ pub fn run() -> io::Result<()> {
         Commands::Add {tub, path} => {
             cmd_add(tub, path)
         }
-        Commands::Mv {tub, path} => {
+        Commands::Mov {tub, path} => {
             cmd_add(tub, path)
         }
-        Commands::Rm {tub, path} => {
+        Commands::Rem {tub, path} => {
             cmd_rm(tub, path)
         }
         Commands::Ignore {} => {
             not_yet()
         }
-        Commands::Diff {} => {
+        Commands::Dif {} => {
             not_yet()
         }
         Commands::Status {tub} => {

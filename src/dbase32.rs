@@ -95,6 +95,9 @@ byte
  *
  * FIXME: there is probably some kickass SIMD way of doing this constant time.
  */
+
+// NOTE: This module should have no dependencies.  No use use!
+
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,

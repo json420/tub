@@ -138,7 +138,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn finalize(&mut self) -> TubName<N> {
-        assert_eq!(self.buf.len(), OBJECT_HEADER_LEN + self.info().size());
+        assert_eq!(self.buf.len(), N + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
         hash

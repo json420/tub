@@ -38,6 +38,7 @@ pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 135..143;
 pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 143..173;
 pub const BLOCK_LEN: usize = 173;
 
+pub const INFO_LEN: usize = 4;
 pub const OBJECT_MAX_SIZE: usize = 16777216;
 
 pub const DOTDIR: &str = ".tub";

@@ -9,10 +9,10 @@ use std::fmt;
 use std::io::prelude::*;
 /*
 
-Generic object format:
+Current protocol V0 object format:
 
-
-| HASH | SIZE | TYPE| PAYLOAD |
+| HASH | INFO | PAYLOAD             |
+|   30 |    4 | 1 - MAX_OBJECT_SIZE |
 
 
 
@@ -109,11 +109,11 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn resize(&mut self, size: usize) {
         self.buf.clear();
-        self.buf.resize(N + 4 + size, 0);
+        self.buf.resize(N + INFO_LEN + size, 0);
     }
 
     pub fn resize_to_info(&mut self) {
-        self.buf.resize(N + 4 + self.info().size(), 0);
+        self.buf.resize(N + INFO_LEN + self.info().size(), 0);
     }
 
     pub fn len(&self) -> usize {
@@ -153,11 +153,11 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn info(&self) -> Info {
-        Info::from_le_bytes(&self.buf[N..N + 4])
+        Info::from_le_bytes(&self.buf[N..N + INFO_LEN])
     }
 
     pub fn set_info(&mut self, info: Info) {
-        self.buf[N..N + 4].copy_from_slice(&info.to_le_bytes());
+        self.buf[N..N + INFO_LEN].copy_from_slice(&info.to_le_bytes());
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -173,15 +173,15 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
-        &mut self.buf[0..N + 4]
+        &mut self.buf[0..N + INFO_LEN]
     }
 
     pub fn as_data(&self) -> &[u8] {
-        &self.buf[N + 4..]
+        &self.buf[N + INFO_LEN..]
     }
 
     pub fn as_mut_data(&mut self) -> &mut [u8] {
-        &mut self.buf[N + 4..]
+        &mut self.buf[N + INFO_LEN..]
     }
 }
 

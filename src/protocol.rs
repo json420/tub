@@ -83,6 +83,7 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 }
 
 
+// FIXME: We'll soon migrate to being generic on digest length:
 struct TubName<N: ArrayLength<u8>> {
     buf: GenericArray<u8, N>,
 }
@@ -95,57 +96,25 @@ impl<N: ArrayLength<u8>> TubName<N> {
 }
 
 
-pub trait HashFunc {
-    fn hash_object(info: u32, data: &[u32], target: &mut [u8]);
-}
-
 pub trait Protocol {
-    type Hash = [u8; 30];
-
     fn new() -> Self;
-    fn len() -> usize;
-    fn hash_object(info: u32, data: &[u8]) -> Self::Hash;
-
-    fn header_len() -> usize {
-        Self::len() + 4
-    }
-
-    fn header_range() -> ops::Range<usize> {
-        0..Self::header_len()
-    }
-
-    fn hash_range() -> ops::Range<usize> {
-        0..Self::len()
-    }
-
-    fn info_range() -> ops::Range<usize> {
-        let len = Self::len();
-        Self::len()..Self::header_len()
-    }
+    fn hash_object(info: u32, data: &[u8]) -> TubHash;
 }
 
 
 pub struct Blake3Protocol {
 
 }
-
-
 impl Protocol for Blake3Protocol {
-    type Hash = TubHash;
-
     fn new() -> Self {
         Self {}
     }
 
-    fn len() -> usize {
-        30
-    }
-
-    fn hash_object(info: u32, data: &[u8]) -> Self::Hash {
+    fn hash_object(info: u32, data: &[u8]) -> TubHash {
         let mut h = blake3::Hasher::new();
         h.update(&info.to_le_bytes());
         h.update(data);
-        let mut hash: Self::Hash = [0_u8; TUB_HASH_LEN];
+        let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
         h.finalize_xof().fill(&mut hash);
         hash
     }

@@ -61,34 +61,34 @@ impl<P: Protocol> Object<P> {
 
     pub fn reset(&mut self) {
         self.buf.clear();
-        self.buf.resize(P::header_len(), 0);
+        self.buf.resize(OBJECT_HEADER_LEN, 0);
     }
 
     pub fn len(&self) -> usize {
         self.buf.len()
     }
 
-    pub fn compute(&self) -> P::Hash {
+    pub fn compute(&self) -> TubHash {
         P::hash_object(self.info().raw(), self.as_data())
     }
 
-    pub fn finalize(&mut self) -> P::Hash {
-        assert_eq!(self.buf.len(), P::header_len() + self.info().size());
+    pub fn finalize(&mut self) -> TubHash {
+        assert_eq!(self.buf.len(), OBJECT_HEADER_LEN + self.info().size());
         let hash = self.compute();
-        //self.buf[P::hash_range()].copy_from_slice(hash);
+        self.buf[OBJECT_HASH_RANGE].copy_from_slice(&hash);
         hash
     }
 
     pub fn info(&self) -> Info {
-        Info::from_le_bytes(&self.buf[P::info_range()])
+        Info::from_le_bytes(&self.buf[OBJECT_INFO_RANGE])
     }
 
     pub fn set_info(&mut self, info: Info) {
-        self.buf[P::info_range()].copy_from_slice(&info.to_le_bytes());
+        self.buf[OBJECT_INFO_RANGE].copy_from_slice(&info.to_le_bytes());
     }
 
     pub fn resize_to_info(&mut self) {
-        self.buf.resize(P::header_len() + self.info().size(), 0);
+        self.buf.resize(OBJECT_HEADER_LEN + self.info().size(), 0);
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -104,15 +104,15 @@ impl<P: Protocol> Object<P> {
     }
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
-        &mut self.buf[P::header_range()]
+        &mut self.buf[OBJECT_HEADER_RANGE]
     }
 
     pub fn as_data(&self) -> &[u8] {
-        &self.buf[P::header_len()..]
+        &self.buf[OBJECT_HEADER_LEN..]
     }
 
     pub fn as_mut_data(&mut self) -> &mut [u8] {
-        &mut self.buf[P::header_len()..]
+        &mut self.buf[OBJECT_HEADER_LEN..]
     }
 }
 
@@ -123,7 +123,7 @@ pub struct Store<P: Protocol> {
 
 
 impl<P: Protocol> Store<P> {
-    pub fn load(&self, hash: &P::Hash, obj: &mut Object<P>) -> bool {
+    pub fn load(&self, hash: TubHash, obj: &mut Object<P>) -> bool {
         true
     }
 

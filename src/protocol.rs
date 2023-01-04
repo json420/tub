@@ -86,7 +86,7 @@ pub fn hash_tombstone(hash: &TubHash) -> TubHash {
 
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
 #[derive(Debug, PartialEq, Eq)]
-struct TubName<const N: usize> {
+pub struct TubName<const N: usize> {
     pub buf: [u8; N],
 }
 
@@ -96,7 +96,7 @@ impl<const N: usize> TubName<N> {
     }
 
     pub fn len(&self) -> usize {
-        N
+        self.buf.len()
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -119,6 +119,32 @@ impl<const N: usize> fmt::Display for TubName<N> {
     }
 }
 
+pub type TubId2 = TubName<15>;
+
+
+
+
+pub trait Hasher {
+    fn new() -> Self;
+    fn hash_into(&self, info: u32, data: &[u8], hash: &mut [u8]);
+}
+
+pub struct Blake3 {
+
+}
+
+impl Hasher for Blake3 {
+    fn new() -> Self {
+        Self {}
+    }
+
+    fn hash_into(&self, info: u32, data: &[u8], hash: &mut [u8]) {
+        let mut h = blake3::Hasher::new();
+        h.update(&info.to_le_bytes());
+        h.update(data);
+        h.finalize_xof().fill(hash);
+    }
+}
 
 
 pub trait Protocol {

@@ -1,6 +1,6 @@
 use seahash;
 use crate::base::*;
-use crate::protocol::Protocol;
+use crate::protocol::{Hasher, TubName, Blake3};
 /*
 
 Generic object format:
@@ -46,16 +46,16 @@ impl Info {
 }
 
 
-pub struct Object<const N: usize, P: Protocol> {
+pub struct Object<const N: usize, H: Hasher> {
     buf: Vec<u8>,
-    protocol: P,
+    hasher: H,
 }
 
-impl<const N: usize, P: Protocol> Object<N, P> {
+impl<const N: usize, H: Hasher> Object<N, H> {
     pub fn new() -> Self {
         Self {
             buf: Vec::new(),
-            protocol: P::new(),
+            hasher: H::new(),
         }
     }
 
@@ -68,14 +68,19 @@ impl<const N: usize, P: Protocol> Object<N, P> {
         self.buf.len()
     }
 
-    pub fn compute(&self) -> TubHash {
-        P::hash_object(self.info().raw(), self.as_data())
+    pub fn compute(&self) -> TubName<N> {
+        let mut hash: TubName<N> = TubName::new();
+        self.hasher.hash_into(
+            self.info().raw(), self.as_data(),
+            hash.as_mut_buf()
+        );
+        hash
     }
 
-    pub fn finalize(&mut self) -> TubHash {
+    pub fn finalize(&mut self) -> TubName<N> {
         assert_eq!(self.buf.len(), OBJECT_HEADER_LEN + self.info().size());
         let hash = self.compute();
-        self.buf[0..N].copy_from_slice(&hash);
+        self.buf[0..N].copy_from_slice(hash.as_buf());
         hash
     }
 
@@ -104,18 +109,20 @@ impl<const N: usize, P: Protocol> Object<N, P> {
     }
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
-        &mut self.buf[OBJECT_HEADER_RANGE]
+        &mut self.buf[0..N + 4]
     }
 
     pub fn as_data(&self) -> &[u8] {
-        &self.buf[OBJECT_HEADER_LEN..]
+        &self.buf[N + 4..]
     }
 
     pub fn as_mut_data(&mut self) -> &mut [u8] {
-        &mut self.buf[OBJECT_HEADER_LEN..]
+        &mut self.buf[N + 4..]
     }
 }
 
+
+/*
 
 pub struct Store<const N: usize, P: Protocol> {
     protocol: P,
@@ -128,6 +135,7 @@ impl<const N: usize, P: Protocol> Store<N, P> {
     }
 
 }
+*/
 
 struct Junk {
     buf: [u8; 30],
@@ -158,7 +166,7 @@ mod tests {
 
     #[test]
     fn test_object() {
-        let mut obj: Object<30, ProtocolZero> = Object::new();
+        let mut obj: Object<30, Blake3> = Object::new();
         assert_eq!(obj.len(), 0);
         obj.reset();
         assert_eq!(obj.len(), 34);

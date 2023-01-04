@@ -2,7 +2,6 @@
 //!
 //! Dead simple.
 
-use seahash;
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::db32enc;
@@ -393,12 +392,6 @@ mod tests {
         let path = tmp.build(&["foo"]);
         let file = fs::File::create(&path).unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
-    }
-
-    #[test]
-    fn test_seahash() {
-        let buf = [42; 69];
-        let r = seahash::hash(&buf);
     }
 }
 

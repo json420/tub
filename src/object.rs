@@ -6,6 +6,7 @@ use std::{fs, io};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
+use std::io::prelude::*;
 /*
 
 Generic object format:
@@ -18,7 +19,7 @@ Generic object format:
 */
 
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TubName<const N: usize> {
     pub buf: [u8; N],
 }
@@ -26,6 +27,11 @@ pub struct TubName<const N: usize> {
 impl<const N: usize> TubName<N> {
     pub fn new() -> Self {
         Self {buf: [0_u8; N]}
+    }
+
+    pub fn from(src: &[u8]) -> Self {
+        let buf: [u8; N] = src.try_into().expect("oops");
+        Self {buf: buf}
     }
 
     pub fn len(&self) -> usize {
@@ -101,9 +107,13 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn clear_resize(&mut self, size: usize) {
         self.buf.clear();
-        self.buf.resize(N + 4, 0);
+        self.buf.resize(N + 4 + size, 0);
+    }
+
+    pub fn resize_to_info(&mut self) {
+        self.buf.resize(N + 4 + self.info().size(), 0);
     }
 
     pub fn len(&self) -> usize {
@@ -119,11 +129,23 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         hash
     }
 
+    pub fn is_valid(&self) -> bool {
+        self.hash() == self.compute()
+    }
+
     pub fn finalize(&mut self) -> TubName<N> {
         assert_eq!(self.buf.len(), OBJECT_HEADER_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
         hash
+    }
+
+    pub fn hash(&self) -> TubName<N> {
+        TubName::from(&self.buf[0..N])
+    }
+
+    pub fn set_hash(&mut self, hash: TubName<N>) {
+        self.buf[0..N].copy_from_slice(hash.as_buf());
     }
 
     pub fn info(&self) -> Info {
@@ -132,10 +154,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn set_info(&mut self, info: Info) {
         self.buf[N..N + 4].copy_from_slice(&info.to_le_bytes());
-    }
-
-    pub fn resize_to_info(&mut self) {
-        self.buf.resize(N + 4 + self.info().size(), 0);
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -168,6 +186,12 @@ pub struct Entry {
     offset: u64,
 }
 
+impl Entry {
+    pub fn new(info: Info, offset: u64) -> Self {
+        Self {info: info, offset: offset}
+    }
+}
+
 
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
@@ -188,21 +212,44 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        obj.reset();
+        obj.clear_resize(0);
         while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
             obj.resize_to_info();
-            self.file.read_exact_at(obj.as_mut_data(), self.offset + (N + 4) as u64)?;
-            self.offset += (N + 4) as u64;
+            if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), self.offset + (N + 4) as u64) {
+                if obj.is_valid() {
+                    let hash = obj.hash();
+                    let entry = Entry::new(obj.info(), self.offset);
+                    self.map.insert(hash, entry);
+                }
+                self.offset += (N + 4) as u64;
+            }
+            obj.clear_resize(0);
         }
         Ok(())
     }
 
-    pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<()> {
-        Ok(())
+    pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+        if let Some(entry) = self.map.get(hash) {
+            Ok(true)
+        }
+        else {
+            Ok(false)
+        }
     }
 
     pub fn save(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
-        Ok(true)
+        assert!(obj.is_valid());
+        let hash = obj.hash();
+        let info = obj.info();
+        if let Some(entry) = self.map.get(&hash) {
+            Ok(false)
+        }
+        else {
+            self.file.write_all(obj.as_buf())?;
+            self.offset += info.size() as u64;
+            self.map.insert(hash, Entry::new(info, self.offset));
+            Ok(true)
+        }
     }
 
     pub fn delete(&mut self, hash: TubName<N>) -> io::Result<bool> {
@@ -254,7 +301,7 @@ mod tests {
     fn test_object() {
         let mut obj: Object<Blake3, 30> = Object::new();
         assert_eq!(obj.len(), 0);
-        obj.reset();
+        obj.clear_resize(0);
         assert_eq!(obj.len(), 34);
 
         assert_eq!(obj.info().size(), 1);
@@ -268,7 +315,7 @@ mod tests {
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[255; 34]);
 
-        obj.reset();
+        obj.clear_resize(0);
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
     }

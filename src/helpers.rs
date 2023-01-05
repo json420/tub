@@ -93,10 +93,15 @@ impl TestTempDir {
 }
 
 
+pub fn flip_bit_in(buf: &mut [u8], bit: usize) {
+    assert!(bit < buf.len() * 8);
+    buf[bit / 8] ^= 1<<(bit % 8);
+}
+
 pub fn flip_bit(src: &[u8], bit: usize) -> Vec<u8> {
     assert!(bit < src.len() * 8);
     let mut copy = Vec::from(src);
-    copy[bit / 8] ^= 1<<(bit % 8);
+    flip_bit_in(&mut copy, bit);
     copy
 }
 

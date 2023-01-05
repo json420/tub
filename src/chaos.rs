@@ -1,4 +1,4 @@
-//! Content Hash Addressable Object Store
+//! Content Hash Addressable Object Store (start here)
 //!
 //! Dead simple.
 
@@ -321,7 +321,7 @@ pub type StoreHblake3N30 = Store<Blake3, 30>;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::TestTempDir;
+    use crate::helpers::{TestTempDir, flip_bit_in};
 
     #[test]
     fn test_tubname() {
@@ -408,6 +408,19 @@ mod tests {
         obj.resize(0);
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
+    }
+
+    #[test]
+    fn test_object_validity() {
+        let mut obj: Object<Blake3, 30> = Object::new();
+        obj.randomize(true);
+        assert!(obj.is_valid());
+        for bit in 0..obj.len() * 8 {
+            flip_bit_in(obj.as_mut_buf(), bit);
+            assert!(! obj.is_valid());
+            flip_bit_in(obj.as_mut_buf(), bit);
+            assert!(obj.is_valid());
+        }
     }
 
     #[test]

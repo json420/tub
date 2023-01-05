@@ -39,7 +39,7 @@ impl Cli {
 #[derive(Debug, Subcommand)]
 enum Commands {
 
-    #[command(about = "😎 Create a new Tub 🛁 repository")]
+    #[command(about = "😎 Create a new Tub repository 🛁")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
         target: Option<PathBuf>,

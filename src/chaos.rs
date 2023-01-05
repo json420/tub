@@ -1,4 +1,4 @@
-//! Content Hash Addressable Object Store (start here)
+//! Content Hash Addressable Object Store (START HERE).
 //!
 //! Dead simple.
 
@@ -130,6 +130,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn randomize(&mut self, small: bool) -> TubName<N> {
         getrandom(&mut self.buf[N..N + INFO_LEN]);
         if small {
+            self.buf[N + 1] = 0;
             self.buf[N + 2] = 0;
         }
         self.resize_to_info();
@@ -420,6 +421,14 @@ mod tests {
             assert!(! obj.is_valid());
             flip_bit_in(obj.as_mut_buf(), bit);
             assert!(obj.is_valid());
+        }
+
+        let mut hash = obj.hash();
+        for bit in 0..hash.len() * 8 {
+            flip_bit_in(hash.as_mut_buf(), bit);
+            assert!(! obj.validate_against(&hash));
+            flip_bit_in(hash.as_mut_buf(), bit);
+            assert!(obj.validate_against(&hash));
         }
     }
 

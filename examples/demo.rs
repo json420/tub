@@ -12,11 +12,10 @@ fn main() -> io::Result<()> {
     store.reindex(&mut obj)?;
     println!("{}", store.len());
     /*
-    println!("{}", obj.hash());
-    for _ in 0..69_000 {
+    for _ in 0..420_000 {
         obj.randomize(true);
         assert!(obj.info().size() <= 64 * 1024);
-        println!("{} {} {}", obj.hash(), obj.info().size(), obj.is_valid());
+        println!("{} {} {}", obj.hash(), obj.info().kind(), obj.info().size());
         store.save(&obj);
     }
     */

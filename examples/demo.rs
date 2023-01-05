@@ -12,19 +12,19 @@ fn main() -> io::Result<()> {
     store.reindex(&mut obj)?;
     println!("{}", store.len());
     /*
-    for _ in 0..420_000 {
+    for _ in 0..1_000_000 {
         obj.randomize(true);
         assert!(obj.info().size() <= 64 * 1024);
-        println!("{} {} {}", obj.hash(), obj.info().kind(), obj.info().size());
-        store.save(&obj);
+        //println!("{} {} {}", obj.hash(), obj.info().kind(), obj.info().size());
+        store.save(&obj)?;
     }
+    */
     println!("{}", store.len());
     let keys = store.keys();
     for name in keys {
         //println!("{}", name);
-        store.load(&name, &mut obj);
+        store.load(&name, &mut obj)?;
         //println!("{} *", obj.hash());
     }
-    */
     Ok(())
 }

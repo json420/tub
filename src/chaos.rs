@@ -205,9 +205,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 }
 
+/// A value in the `Store.map` HashMap index.
 pub struct Entry {
-    info: Info,
-    offset: u64,
+    pub info: Info,
+    pub offset: u64,
 }
 
 impl Entry {
@@ -275,19 +276,11 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
             obj.resize(entry.info.size());
-            if let Ok(_) = self.file.read_exact_at(obj.as_mut_buf(), entry.offset) {
-                if obj.validate_against(hash) {
-                    Ok(true)
-                }
-                else {
-                    obj.resize(0);
-                    Ok(false)
-                }
+            self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
+            if ! obj.validate_against(hash) {
+                panic!("{} hash does not match", hash);
             }
-            else {
-                obj.resize(0);
-                Ok(false)
-            }
+            Ok(true)
         }
         else {
             Ok(false)
@@ -445,12 +438,15 @@ mod tests {
         let mut obj1 = store.new_object();
         let mut obj2 = store.new_object();
 
-        obj1.randomize(false);
-        let hash1 = obj1.hash();
-        assert!(store.save(&obj1).unwrap());
-        assert!(store.map.contains_key(&hash1));
-        assert!(store.load(&hash1, &mut obj2).unwrap());
-        assert_eq!(obj1.as_buf(), obj2.as_buf());
+        for _ in 0..8 {
+            obj1.randomize(false);
+            let hash1 = obj1.hash();
+            assert!(store.save(&obj1).unwrap());
+            assert!(store.map.contains_key(&hash1));
+            obj2.resize(0);
+            assert!(store.load(&hash1, &mut obj2).unwrap());
+            assert_eq!(obj1.as_buf(), obj2.as_buf());
+        }
     }
 }
 

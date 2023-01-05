@@ -93,6 +93,14 @@ impl TestTempDir {
 }
 
 
+pub fn flip_bit(src: &[u8], bit: usize) -> Vec<u8> {
+    assert!(bit < src.len() * 8);
+    let mut copy = Vec::from(src);
+    copy[bit / 8] ^= 1<<(bit % 8);
+    copy
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,6 +117,45 @@ mod tests {
         tmp.touch(&["a"]);
         assert_eq!(tmp.list_root(), vec!["a"]);
     
+    }
+
+    #[test]
+    fn test_flip_bit() {
+        let src = [0_u8; 2];
+        assert_eq!(flip_bit(&src,  0), vec![0b00000001, 0b00000000]);
+        assert_eq!(flip_bit(&src,  1), vec![0b00000010, 0b00000000]);
+        assert_eq!(flip_bit(&src,  2), vec![0b00000100, 0b00000000]);
+        assert_eq!(flip_bit(&src,  3), vec![0b00001000, 0b00000000]);
+        assert_eq!(flip_bit(&src,  4), vec![0b00010000, 0b00000000]);
+        assert_eq!(flip_bit(&src,  5), vec![0b00100000, 0b00000000]);
+        assert_eq!(flip_bit(&src,  6), vec![0b01000000, 0b00000000]);
+        assert_eq!(flip_bit(&src,  7), vec![0b10000000, 0b00000000]);
+        assert_eq!(flip_bit(&src,  8), vec![0b00000000, 0b00000001]);
+        assert_eq!(flip_bit(&src,  9), vec![0b00000000, 0b00000010]);
+        assert_eq!(flip_bit(&src, 10), vec![0b00000000, 0b00000100]);
+        assert_eq!(flip_bit(&src, 11), vec![0b00000000, 0b00001000]);
+        assert_eq!(flip_bit(&src, 12), vec![0b00000000, 0b00010000]);
+        assert_eq!(flip_bit(&src, 13), vec![0b00000000, 0b00100000]);
+        assert_eq!(flip_bit(&src, 14), vec![0b00000000, 0b01000000]);
+        assert_eq!(flip_bit(&src, 15), vec![0b00000000, 0b10000000]);
+
+        let src = [255_u8; 2];
+        assert_eq!(flip_bit(&src,  0), vec![0b11111110, 0b11111111]);
+        assert_eq!(flip_bit(&src,  1), vec![0b11111101, 0b11111111]);
+        assert_eq!(flip_bit(&src,  2), vec![0b11111011, 0b11111111]);
+        assert_eq!(flip_bit(&src,  3), vec![0b11110111, 0b11111111]);
+        assert_eq!(flip_bit(&src,  4), vec![0b11101111, 0b11111111]);
+        assert_eq!(flip_bit(&src,  5), vec![0b11011111, 0b11111111]);
+        assert_eq!(flip_bit(&src,  6), vec![0b10111111, 0b11111111]);
+        assert_eq!(flip_bit(&src,  7), vec![0b01111111, 0b11111111]);
+        assert_eq!(flip_bit(&src,  8), vec![0b11111111, 0b11111110]);
+        assert_eq!(flip_bit(&src,  9), vec![0b11111111, 0b11111101]);
+        assert_eq!(flip_bit(&src, 10), vec![0b11111111, 0b11111011]);
+        assert_eq!(flip_bit(&src, 11), vec![0b11111111, 0b11110111]);
+        assert_eq!(flip_bit(&src, 12), vec![0b11111111, 0b11101111]);
+        assert_eq!(flip_bit(&src, 13), vec![0b11111111, 0b11011111]);
+        assert_eq!(flip_bit(&src, 14), vec![0b11111111, 0b10111111]);
+        assert_eq!(flip_bit(&src, 15), vec![0b11111111, 0b01111111]);
     }
 }
 

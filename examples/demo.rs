@@ -18,7 +18,13 @@ fn main() -> io::Result<()> {
         println!("{} {} {}", obj.hash(), obj.info().kind(), obj.info().size());
         store.save(&obj);
     }
-    */
     println!("{}", store.len());
+    let keys = store.keys();
+    for name in keys {
+        //println!("{}", name);
+        store.load(&name, &mut obj);
+        //println!("{} *", obj.hash());
+    }
+    */
     Ok(())
 }

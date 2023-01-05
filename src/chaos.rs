@@ -22,7 +22,7 @@ Current protocol V0 object format:
 
 
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct TubName<const N: usize> {
     pub buf: [u8; N],
 }
@@ -100,6 +100,8 @@ impl Info {
 }
 
 
+/// Buffer containing containing single object's header plus data.
+#[derive(Debug)]
 pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
     buf: Vec<u8>,
@@ -223,7 +225,7 @@ pub fn open_for_store(path: &path::Path) -> io::Result<fs::File> {
 /// Organizes objects in an append-only file
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
-    hasher: H,
+    _hasher: H,
     map: HashMap<TubName<N>, Entry>,
     offset: u64,
 }
@@ -232,7 +234,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn new(file: fs::File) -> Self {
         Self {
             file: file,
-            hasher: H::new(),
+            _hasher: H::new(),
             map: HashMap::new(),
             offset: 0,
         }
@@ -244,6 +246,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn keys(&self) -> Vec<TubName<N>> {
+        Vec::from_iter(self.map.keys().cloned())
     }
 
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
@@ -297,8 +303,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
         else {
             self.file.write_all(obj.as_buf())?;
-            self.offset += info.size() as u64;
             self.map.insert(hash, Entry::new(info, self.offset));
+            self.offset += obj.len() as u64;
             Ok(true)
         }
     }
@@ -308,6 +314,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(true)
     }
 }
+
 
 
 pub type StoreHblake3N30 = Store<Blake3, 30>;
@@ -430,10 +437,20 @@ mod tests {
     fn test_store() {
         let tmp = TestTempDir::new();
         let path = tmp.build(&["foo"]);
-        let file = fs::File::create(&path).unwrap();
+        let file = open_for_store(&path).unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
         let mut obj = store.new_object();
         store.reindex(&mut obj).unwrap();
+
+        let mut obj1 = store.new_object();
+        let mut obj2 = store.new_object();
+
+        obj1.randomize(false);
+        let hash1 = obj1.hash();
+        assert!(store.save(&obj1).unwrap());
+        assert!(store.map.contains_key(&hash1));
+        assert!(store.load(&hash1, &mut obj2).unwrap());
+        assert_eq!(obj1.as_buf(), obj2.as_buf());
     }
 }
 

@@ -160,7 +160,7 @@ impl BlockChain {
         &self.buf[BLOCK_PAYLOAD_RANGE]
     }
 
-    pub fn append(&mut self, kind: BlockType, payload_hash: &TubHash) {
+    pub fn append(&mut self, _kind: BlockType, payload_hash: &TubHash) {
         let cur = self.current_hash;
         self.set_previous(&cur);
         self.set_counter(self.cnt);

@@ -14,7 +14,6 @@ Large object protocol based on the Dmedia hashing protocol:
 https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
 
 */
-use std::ops;
 use blake3;
 use crate::base::*;
 

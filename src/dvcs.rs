@@ -500,9 +500,9 @@ mod tests {
 
     #[test]
     fn test_working_tree() {
-        let (tmp, mut store) = Store::new_tmp();
+        let (_tmp, store) = Store::new_tmp();
         let wt = WorkingTree::new(store);
-        let mut tl = wt.load_tracking_list().unwrap();
+        let tl = wt.load_tracking_list().unwrap();
         assert_eq!(tl.len(), 0);
         wt.save_tracking_list(tl).unwrap();
         let tl = wt.load_tracking_list().unwrap();
@@ -602,7 +602,7 @@ mod tests {
     fn test_commit_tree_depth_panic() {
         let (_tmp, mut store) = Store::new_tmp();
         let pb = PathBuf::from("word");
-        commit_tree_inner(&mut store, &pb, MAX_DEPTH);
+        commit_tree_inner(&mut store, &pb, MAX_DEPTH).unwrap();
     }
 
     #[test]
@@ -611,7 +611,7 @@ mod tests {
         let (_tmp, mut store) = Store::new_tmp();
         let root = random_hash();
         let pb = PathBuf::from("word");
-        restore_tree_inner(&mut store, &root, &pb, MAX_DEPTH);
+        restore_tree_inner(&mut store, &root, &pb, MAX_DEPTH).unwrap();
     }
 
     #[test]

@@ -5,7 +5,7 @@ use std::fs;
 use std::process::exit;
 use std::time::Instant;
 
-use clap::{ArgAction, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 use crate::base::*;
 use crate::store::{find_store, init_tree, Store};
@@ -120,7 +120,7 @@ enum Commands {
     #[command(about = "📜 View commit history")]
     Log {},
 
-    #[command(about = "🔗 Verify all objects, blockchains, and metadata")]
+    #[command(about = "🔗 Verify all objects and blockchains 💵")]
     Check {},
 
     #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
@@ -249,7 +249,7 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 fn get_tub(target: OptPath) -> io::Result<Store>
 {
     let target = dir_or_cwd(target)?;
-    if let Ok(mut store) = find_store(&target) {
+    if let Ok(store) = find_store(&target) {
         Ok(store)
     }
     else {

@@ -297,7 +297,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         assert!(obj.is_valid());
         let hash = obj.hash();
         let info = obj.info();
-        if let Some(entry) = self.map.get(&hash) {
+        if let Some(_entry) = self.map.get(&hash) {
             Ok(false)
         }
         else {
@@ -308,7 +308,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn delete(&mut self, hash: TubName<N>) -> io::Result<bool> {
+    pub fn delete(&mut self, _hash: TubName<N>) -> io::Result<bool> {
         // FIXME: Decide how tombstones should work with new new
         Ok(true)
     }
@@ -378,13 +378,13 @@ mod tests {
     #[test]
     #[should_panic(expected="Need 1 <= size <= 16777216; got size=0")]
     fn test_info_panic_low() {
-        let sk = Info::new(0, 0);
+        let _sk = Info::new(0, 0);
     }
 
     #[test]
     #[should_panic(expected="Need 1 <= size <= 16777216; got size=16777217")]
     fn test_info_panic_high() {
-        let sk = Info::new(OBJECT_MAX_SIZE + 1, 0);
+        let _sk = Info::new(OBJECT_MAX_SIZE + 1, 0);
     }
 
     #[test]
@@ -416,6 +416,8 @@ mod tests {
         let path = tmp.build(&["foo"]);
         let file = fs::File::create(&path).unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
+        let mut obj = store.new_object();
+        store.reindex(&mut obj).unwrap();
     }
 }
 

@@ -354,9 +354,6 @@ impl LeafState {
     
 }
 
-const PREALLOC_COUNT: usize = 1024;
-//const PREALLOC_LEN: usize = HEADER_LEN + (PREALLOC_COUNT * TUB_HASH_LEN) + LEAF_SIZE as usize;
-const PREALLOC_LEN: usize = HEADER_LEN;
 
 #[derive(Debug)]
 pub struct TubBuf {
@@ -364,13 +361,12 @@ pub struct TubBuf {
     state: LeafState,
 }
 
-
 // When state.closed == true, don't allow access to mutable buffers
 // When state.size == 0, also don't allow access to read-only buffers
 impl TubBuf {
     pub fn new() -> Self {
         Self {
-            buf: Vec::with_capacity(PREALLOC_LEN),
+            buf: Vec::new(),
             state: LeafState::new(0),
         }
     }

@@ -251,12 +251,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         self.offset = 0;
         obj.resize(0);
         while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
-            println!("{} {} {} {}",
-                obj.hash(),
-                self.offset,
-                obj.info().size(),
-                obj.info().kind(),
-            );
             obj.resize_to_info();
             let offset = self.offset + (N + INFO_LEN) as u64;
             if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), offset) {

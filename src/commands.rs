@@ -8,11 +8,6 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 
 use crate::base::*;
-use crate::store::{find_store, init_tree, Store};
-use crate::importer::Scanner;
-use crate::dbase32::{db32enc, db32dec_into};
-use crate::leaf_io::hash_file;
-use crate::dvcs;
 
 
 type OptPath = Option<PathBuf>;
@@ -123,37 +118,11 @@ enum Commands {
     #[command(about = "🔗 Verify all objects and blockchains 💵")]
     Check {},
 
-    #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
+    #[command(about = "Compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,
     },
-
-    /*
-    #[command(about = "Recursively import files from directory")]
-    Import {
-        #[arg(help="Source directory (defaults to current CWD)")]
-        source: Option<PathBuf>,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
-        tub: Option<PathBuf>,
-    },
-
-    #[command(about = "Print hash of each object specified Tub")]
-    ListObjects {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
-        tub: Option<PathBuf>,
-    },
-
-    #[command(about = "Repack and remove tombstones")]
-    Repack {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
-        tub: Option<PathBuf>,
-    },
-    */
 }
 
 
@@ -170,13 +139,13 @@ pub fn run() -> io::Result<()> {
             not_yet()
         }
         Commands::Add {tub, path} => {
-            cmd_add(tub, path)
+            not_yet()
         }
         Commands::Mov {tub, path} => {
-            cmd_add(tub, path)
+            not_yet()
         }
         Commands::Rem {tub, path} => {
-            cmd_rm(tub, path)
+            not_yet()
         }
         Commands::Ignore {} => {
             not_yet()
@@ -185,13 +154,13 @@ pub fn run() -> io::Result<()> {
             not_yet()
         }
         Commands::Status {tub} => {
-            cmd_ls(tub)
+            not_yet()
         }
         Commands::Commit {source, tub} => {
-            cmd_commit_tree(source, tub)
+            cmd_commit(source, tub)
         }
         Commands::Revert {hash, dst, tub} => {
-            cmd_restore_tree(hash, dst, tub)
+            not_yet()
         }
         Commands::Log {} => {
             not_yet()
@@ -202,33 +171,6 @@ pub fn run() -> io::Result<()> {
         Commands::Hash {path} => {
             cmd_hash(&path)
         }
-        /*
-        Commands::Import {source, tub} => {
-            cmd_import(source, tub)
-        }
-        Commands::ListObjects {tub} => {
-            cmd_list_objects(tub)
-        }
-        Commands::Repack {tub} => {
-            cmd_repack(tub)
-        }
-        */
-    }
-}
-
-
-fn decode_hash(txt: &String) -> Option<TubHash>
-{
-    if txt.len() != 48 {
-        eprintln!("🛁 Tub-Hash must be 48 characters, got {}: {:?}", txt.len(), txt);
-        exit(42);
-    }
-    let mut bin = [0_u8; TUB_HASH_LEN];
-    if db32dec_into(txt.as_bytes(), &mut bin) {
-        Some(bin)
-    }
-    else {
-        None
     }
 }
 
@@ -246,49 +188,15 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
     Ok(pb.canonicalize()?)
 }
 
-fn get_tub(target: OptPath) -> io::Result<Store>
+fn get_tub(target: OptPath) -> io::Result<()>
 {
-    let target = dir_or_cwd(target)?;
-    if let Ok(store) = find_store(&target) {
-        Ok(store)
-    }
-    else {
-        eprintln!("🛁❗ Could not find Tub in {:?}", &target);
-        exit(42);
-    }
+    eprintln!("🛁❗ Could not find Tub in {:?}", &target);
+    exit(42);
 }
 
 
-fn get_reindexed_tub(target: OptPath) -> io::Result<Store> {
-    let mut tub = get_tub(target)?;
-    tub.reindex()?;
-    Ok(tub)
-}
-
-
-fn cmd_init(target: OptPath) -> io::Result<()>
-{
-    let target = dir_or_cwd(target)?;
-    if let Ok(store) = find_store(&target) {
-        eprintln!("🛁❗ Tub already exists: {:?}", store.path());
-        exit(42);
-    }
-    else if let Ok(store) = init_tree(&target) {
-        eprintln!("🛁 Created new Tub repository: {:?}", store.path());
-        eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
-    }
+fn get_reindexed_tub(target: OptPath) -> io::Result<()> {
     Ok(())
-}
-
-
-fn get_newmark(new: bool) -> String {
-    let m = if new {" "} else {"!"};
-    String::from(m)
-}
-
-fn get_largemark(large: bool) -> String {
-    let m = if large {"L"} else {" "};
-    String::from(m)
 }
 
 
@@ -298,52 +206,24 @@ fn not_yet() -> io::Result<()>
     Ok(())
 }
 
-fn cmd_import(source: OptPath, tub: OptPath) -> io::Result<()>
-{
-    let source = dir_or_cwd(source)?;
-    let mut tub = get_reindexed_tub(tub)?;
-    let files = Scanner::scan_dir(&source)?;
 
-    let mut new_cnt = 0_u64;
-    let mut dup_cnt = 0_u64;
-    for src in files.iter() {
-        let (root, new) = tub.import_file(src.open()?, src.size)?;
-        println!("{} {}{} {:?}",
-            db32enc(&root),
-            get_largemark(src.is_large()),
-            get_newmark(new),
-            src.path
-        );
-        if new {
-            new_cnt += 1;
-        } else {
-            dup_cnt += 1;
-        }
+fn cmd_init(target: OptPath) -> io::Result<()>
+{
+    if false {
+        eprintln!("🛁❗ Tub already exists: {:?}", "fixme");
+        exit(42);
     }
-    eprintln!("🛁 Imported {} new files and {} duplicates", new_cnt, dup_cnt);
+    eprintln!("🛁 Created new Tub repository: {:?}", "fixme");
+    eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
     Ok(())
 }
 
-fn cmd_commit_tree(source: OptPath, tub: OptPath) -> io::Result<()>
+
+fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 {
-    let source = dir_or_cwd(source)?;
-    let mut tub = get_tub(tub)?;
     eprintln!("🛁 Writing commit...");
-    let root = dvcs::commit_tree(&mut tub, &source)?;
-    let commit = dvcs::Commit::new(root, String::from("test commit"));
-    tub.add_commit(&commit.serialize())?;
-    println!("{}", db32enc(&root));
+    //println!("{}", db32enc(&root));
     eprintln!("🛁 Wow, great job on that one! 💋");
-    Ok(())
-}
-
-fn cmd_restore_tree(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()>
-{
-    if let Some(hash) = decode_hash(&txt) {
-        let dst = dir_or_cwd(dst)?;
-        let mut tub = get_tub(tub)?;
-        dvcs::restore_tree(&mut tub, &hash, &dst)?;
-    }
     Ok(())
 }
 
@@ -354,8 +234,6 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let file = fs::File::open(&pb)?;
     eprintln!("🛁 Computing TubHash, this wont take long...");
     let start = Instant::now();
-    let tt = hash_file(file, size)?;
-    println!("{}", tt);
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (size as f64 / elapsed) as u64;
     eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, rate);
@@ -363,80 +241,6 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     eprintln!("🛁 Run `time git hash-object` on the same file to compare 😲");
     eprintln!("🛁 The Blake3 reference implementation is even written in Rust!");
     eprintln!("🛁 Tub 💖 Rust, Tub 💖 Blake3");
-    Ok(())
-}
-
-
-fn cmd_list_objects(tub: OptPath) -> io::Result<()>
-{
-    let tub = get_reindexed_tub(tub)?;
-    let mut keys = tub.keys();
-    keys.sort();
-    for hash in keys {
-        println!("{}", db32enc(&hash));
-    }
-    eprintln!("🛁 {} objects in Tub", tub.len());
-    let stats = tub.stats();
-    println!("Tub contains {} objects ({} bytes)", tub.len(), stats.total);
-    println!("Objects by size:");
-    println!("  {} Large ({} bytes)", stats.large.count, stats.large.total);
-    println!("  {} Small ({} bytes)", stats.small.count, stats.small.total);
-    println!("Objects by type:");
-    println!("  {} Data ({} bytes)", stats.data.count, stats.data.total);
-    println!("  {} Tree ({} bytes)", stats.tree.count, stats.tree.total);
-    println!("  {} Block ({} bytes)", stats.block.count, stats.block.total);
-    println!("  {} Commit ({} bytes)", stats.commit.count, stats.commit.total);
-    Ok(())
-}
-
-fn cmd_add(tub: OptPath, path: String) -> io::Result<()>
-{
-    let tub = get_tub(tub)?;
-    let wt = dvcs::WorkingTree::new(tub);
-    let mut tl = wt.load_tracking_list()?;
-    if tl.add(path.clone()) {
-        eprintln!("🛁 Added '{}' to tracking list", path);
-        eprintln!("🛁 This is getting exciting, let me grab my popcorn 🍿");
-        wt.save_tracking_list(tl)?;
-    }
-    else {
-        eprintln!("🛁❗ '{}' is already tracked", path);
-    }
-    Ok(())
-}
-
-fn cmd_rm(tub: OptPath, path: String) -> io::Result<()>
-{
-    let tub = get_tub(tub)?;
-    let wt = dvcs::WorkingTree::new(tub);
-    let mut tl = wt.load_tracking_list()?;
-    if tl.remove(&path) {
-        eprintln!("🛁 Removed '{}' from tracking list", path);
-        wt.save_tracking_list(tl)?;
-    }
-    else {
-        eprintln!("🛁❗ '{}' is not a tracked file", path);
-    }
-    Ok(())
-}
-
-fn cmd_ls(tub: OptPath) -> io::Result<()>
-{
-    let tub = get_tub(tub)?;
-    let wt = dvcs::WorkingTree::new(tub);
-    let tl = wt.load_tracking_list()?;
-    for path in tl.as_sorted_vec() {
-        println!("{}", path);
-    }
-    eprintln!("🛁 {} item(s) in tracking list", tl.len());
-    Ok(())
-}
-
-fn cmd_repack(tub: OptPath) -> io::Result<()>
-{
-    let mut tub = get_tub(tub)?;
-    tub.repack()?;
-    eprintln!("🛁 {} objects in store", tub.len());
     Ok(())
 }
 

@@ -5,7 +5,8 @@
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::db32enc;
-use std::{fs, io};
+use crate::util::getrandom;
+use std::{fs, io, path};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
@@ -107,7 +108,7 @@ pub struct Object<H: Hasher, const N: usize> {
 impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn new() -> Self {
         Self {
-            buf: Vec::new(),
+            buf: vec![0; N + INFO_LEN],
             hasher: H::new(),
         }
     }
@@ -123,6 +124,17 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    // FIXME: We should not have this in the API, but super handy for testing and play
+    pub fn randomize(&mut self, small: bool) -> TubName<N> {
+        getrandom(&mut self.buf[N..N + INFO_LEN]);
+        if small {
+            self.buf[N + 2] = 0;
+        }
+        self.resize_to_info();
+        getrandom(self.as_mut_data());
+        self.finalize()
     }
 
     pub fn compute(&self) -> TubName<N> {
@@ -143,7 +155,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn finalize(&mut self) -> TubName<N> {
-        assert_eq!(self.buf.len(), N + self.info().size());
+        assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
         hash
@@ -202,6 +214,11 @@ impl Entry {
 }
 
 
+pub fn open_for_store(path: &path::Path) -> io::Result<fs::File> {
+    fs::File::options().read(true).append(true).create(true).open(path)
+}
+
+
 /// Organizes objects in an append-only file
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
@@ -220,7 +237,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn new_object() -> Object<H, N> {
+    pub fn new_object(&self) -> Object<H, N> {
         Object::new()
     }
 
@@ -233,14 +250,21 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         self.offset = 0;
         obj.resize(0);
         while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
+            println!("{} {} {} {}",
+                obj.hash(),
+                self.offset,
+                obj.info().size(),
+                obj.info().kind(),
+            );
             obj.resize_to_info();
-            if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), self.offset + (N + 4) as u64) {
+            let offset = self.offset + (N + INFO_LEN) as u64;
+            if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), offset) {
                 if obj.is_valid() {
                     let hash = obj.hash();
                     let entry = Entry::new(obj.info(), self.offset);
                     self.map.insert(hash, entry);
                 }
-                self.offset += (N + 4) as u64;
+                self.offset += (N + INFO_LEN + obj.info().size()) as u64;
             }
             obj.resize(0);
         }
@@ -366,7 +390,7 @@ mod tests {
     #[test]
     fn test_object() {
         let mut obj: Object<Blake3, 30> = Object::new();
-        assert_eq!(obj.len(), 0);
+        assert_eq!(obj.len(), 34);
         obj.resize(0);
         assert_eq!(obj.len(), 34);
 

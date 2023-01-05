@@ -1,38 +1,25 @@
+use tub::chaos::*;
+use tub::protocol::Blake3;
 use std::io;
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::io::prelude::*;
-use tub::util::random_hash;
-use tub::dbase32::db32enc;
-use tub::blockchain::{BlockChain};
-use tub::base::*;
-use tub::store::Store;
-use tub::dvcs::{Scanner, commit_tree, WorkingTree};
-use zstd::bulk;
+use std::path;
 
 
 fn main() -> io::Result<()> {
-    let (_tmp, mut store) = Store::new_tmp();
+    let p = path::Path::new("newnew.tub");
+    let file = open_for_store(p)?;
+    let mut store: Store<Blake3, 30> = Store::new(file);
+    let mut obj = store.new_object();
+    store.reindex(&mut obj)?;
+    println!("{}", store.len());
     /*
-    let mut scanner = Scanner::new();
-    let p = Path::new("/usr/share/doc");
-    let hash1 = scanner.scan_tree(&p)?.unwrap();
-    let hash2 = commit_tree(&mut store, &p)?;
-    println!("yo");
-    assert_eq!(hash1, hash2);
-    */
-
-    let wt = WorkingTree::new(store);
-    let mut tl = wt.load_tracking_list()?;
-    tl.add(String::from("hello"));
-    tl.add(String::from("apples"));
-    wt.save_tracking_list(tl)?;
-
-    let tl = wt.load_tracking_list()?;
-
-    for p in tl.as_sorted_vec() {
-        println!("{:?}", p);
+    println!("{}", obj.hash());
+    for _ in 0..69_000 {
+        obj.randomize(true);
+        assert!(obj.info().size() <= 64 * 1024);
+        println!("{} {} {}", obj.hash(), obj.info().size(), obj.is_valid());
+        store.save(&obj);
     }
-    println!("more yo {}", tl.len());
+    */
+    println!("{}", store.len());
     Ok(())
 }

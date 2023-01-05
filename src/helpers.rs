@@ -101,9 +101,39 @@ pub fn flip_bit(src: &[u8], bit: usize) -> Vec<u8> {
 }
 
 
+#[derive(Debug)]
+pub struct BitFlipIter<'a> {
+    src: &'a [u8],
+    bit: usize,
+}
+
+impl<'a> BitFlipIter<'a> {
+    pub fn new(src: &'a [u8]) -> Self {
+        Self {src: src, bit: 0}
+    }
+}
+
+impl<'a> Iterator for BitFlipIter<'a> {
+    type Item = Vec<u8>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.bit < self.src.len() * 8 {
+            let buf = flip_bit(self.src, self.bit);
+            self.bit += 1;
+            Some(buf)
+        }
+        else {
+            None
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use super::*;
+    use crate::util::getrandom;
 
     #[test]
     fn test_tempdir() {
@@ -156,6 +186,30 @@ mod tests {
         assert_eq!(flip_bit(&src, 13), vec![0b11111111, 0b11011111]);
         assert_eq!(flip_bit(&src, 14), vec![0b11111111, 0b10111111]);
         assert_eq!(flip_bit(&src, 15), vec![0b11111111, 0b01111111]);
+    }
+
+    #[test]
+    fn test_bit_flip_iter() {
+        let mut set: HashSet<Vec<u8>> = HashSet::new();
+        let src = vec![0; 2];
+        for dif in BitFlipIter::new(&src) {
+            let new = set.insert(dif);
+            assert!(new);
+        }
+        assert_eq!(set.len(), 16);
+        set.insert(src);
+        assert_eq!(set.len(), 17);
+
+        let mut set: HashSet<Vec<u8>> = HashSet::new();
+        let mut src = vec![0; 69];
+        getrandom(&mut src);
+        for dif in BitFlipIter::new(&src) {
+            let new = set.insert(dif);
+            assert!(new);
+        }
+        assert_eq!(set.len(), 69 * 8);
+        set.insert(src);
+        assert_eq!(set.len(), 69 * 8 + 1);
     }
 }
 

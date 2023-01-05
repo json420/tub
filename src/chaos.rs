@@ -64,7 +64,7 @@ impl<const N: usize> fmt::Display for TubName<N> {
 pub type TubId2 = TubName<15>;
 
 
-/// Packs 24-bit `size` and 8-bit `kind` into a u32
+/// Packs 24-bit `size` and 8-bit `kind` into a `u32`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Info {
     val: u32,
@@ -100,7 +100,7 @@ impl Info {
 }
 
 
-/// Buffer containing containing single object's header plus data.
+/// Buffer containing containing a single object's header plus data.
 #[derive(Debug)]
 pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
@@ -223,7 +223,7 @@ pub fn open_for_store(path: &path::Path) -> io::Result<fs::File> {
 }
 
 
-/// Organizes objects in an append-only file
+/// Organizes objects in an append-only file.
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
     _hasher: H,
@@ -447,6 +447,21 @@ mod tests {
             assert!(store.load(&hash1, &mut obj2).unwrap());
             assert_eq!(obj1.as_buf(), obj2.as_buf());
         }
+        for _ in 0..256 {
+            obj1.randomize(true);
+            let hash1 = obj1.hash();
+            assert!(store.save(&obj1).unwrap());
+            assert!(store.map.contains_key(&hash1));
+            obj2.resize(0);
+            assert!(store.load(&hash1, &mut obj2).unwrap());
+            assert_eq!(obj1.as_buf(), obj2.as_buf());
+        }
+
+        let keys = store.keys();
+        for key in keys.iter() {
+            assert!(store.load(&key, &mut obj1).unwrap());
+        }
+        store.reindex(&mut obj1).unwrap();
     }
 }
 

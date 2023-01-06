@@ -3,7 +3,7 @@ use blake3;
 use tub::util::*;
 use tub::dbase32::{db32enc, isdb32, db32enc_into, db32dec_into};
 use tub::base::*;
-use seahash;
+
 
 pub fn hash_blake3(data: &[u8]) -> TubHash {
     let mut h = blake3::Hasher::new();
@@ -29,17 +29,6 @@ fn bm_hash2(c: &mut Criterion) {
     c.bench_function("blake3 64 KiB", |b| b.iter(|| hash_blake3(black_box(&buf[..]))));
 }
 
-fn bm_seahash(c: &mut Criterion) {
-    let mut buf = vec![0_u8; 4096];
-    getrandom(&mut buf[..]);
-    c.bench_function("seahash 4 KiB", |b| b.iter(|| seahash::hash(black_box(&buf[..]))));
-}
-
-fn bm_seahash_64k(c: &mut Criterion) {
-    let mut buf = vec![0_u8; 65536];
-    getrandom(&mut buf[..]);
-    c.bench_function("seahash 64 KiB", |b| b.iter(|| seahash::hash(black_box(&buf[..]))));
-}
 
 
 fn bm_isdb32(c: &mut Criterion) {
@@ -69,7 +58,7 @@ fn bm_db32dec_into(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_random_id, bm_hash, bm_hash2, bm_seahash, bm_seahash_64k, bm_isdb32, bm_db32enc_into, bm_db32dec_into
+    targets = bm_random_id, bm_hash, bm_hash2, bm_isdb32, bm_db32enc_into, bm_db32dec_into
 }
 
 criterion_main!(benches);

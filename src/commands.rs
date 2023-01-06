@@ -118,7 +118,7 @@ enum Commands {
     #[command(about = "🔗 Verify all objects and blockchains 💵")]
     Check {},
 
-    #[command(about = "Compare 🛁 hashing performance with git hash-object! 😜")]
+    #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
         #[arg(help="Path of input file")]
         path: PathBuf,

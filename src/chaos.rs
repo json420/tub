@@ -1,6 +1,20 @@
 //! Content Hash Addressable Object Store (START HERE).
 //!
-//! Dead simple.
+//! An Object's wire format be all like this, yo:
+//!
+//! | Hash | Size | Type | DATA       |
+//! |------|------|------|------------|
+//! |   30 |    3 |    1 | 1-16777216 |
+//!
+//! This is the foundation of Bathtub DB.  It's already fast as fuck, but let's
+//! try to squeeze even more performance out of it.  How fast?  Jason is getting
+//! close to a million small object loads per second (when backing file is in
+//! memory cuz it was read prior, where "small" is between 1 and 256 bytes,
+//! and when running on Jason's i5-1240P Darter Pro).
+//!
+//! We should see if we can make a custom `HashMap` like thing that is faster
+//! than `HashMap`.
+//!
 
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
@@ -11,23 +25,16 @@ use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
 use std::io::prelude::*;
-/*
-
-Current protocol V0 object format:
-
-| HASH | INFO | PAYLOAD             |
-|   30 |    4 | 1 - MAX_OBJECT_SIZE |
-
-*/
 
 
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
+/// N byte long Tub name (content hash or random ID).
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct TubName<const N: usize> {
+pub struct Name<const N: usize> {
     pub buf: [u8; N],
 }
 
-impl<const N: usize> TubName<N> {
+impl<const N: usize> Name<N> {
     pub fn new() -> Self {
         Self {buf: [0_u8; N]}
     }
@@ -55,13 +62,13 @@ impl<const N: usize> TubName<N> {
 
 }
 
-impl<const N: usize> fmt::Display for TubName<N> {
+impl<const N: usize> fmt::Display for Name<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.to_string())
     }
 }
 
-pub type TubId2 = TubName<15>;
+pub type TubId2 = Name<15>;
 
 
 /// Packs 24-bit `size` and 8-bit `kind` into a `u32`.
@@ -129,7 +136,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     // FIXME: We should not have this in the API, but super handy for testing and play
-    pub fn randomize(&mut self, small: bool) -> TubName<N> {
+    pub fn randomize(&mut self, small: bool) -> Name<N> {
         getrandom(&mut self.buf[N..N + INFO_LEN]);
         if small {
             self.buf[N + 1] = 0;
@@ -140,8 +147,8 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.finalize()
     }
 
-    pub fn compute(&self) -> TubName<N> {
-        let mut hash: TubName<N> = TubName::new();
+    pub fn compute(&self) -> Name<N> {
+        let mut hash: Name<N> = Name::new();
         self.hasher.hash_into(
             self.info().raw(), self.as_data(),
             hash.as_mut_buf()
@@ -153,22 +160,22 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.hash() == self.compute()
     }
 
-    pub fn validate_against(&self, hash: &TubName<N>) -> bool {
+    pub fn validate_against(&self, hash: &Name<N>) -> bool {
         self.is_valid() && hash == &self.hash()
     }
 
-    pub fn finalize(&mut self) -> TubName<N> {
+    pub fn finalize(&mut self) -> Name<N> {
         assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
         hash
     }
 
-    pub fn hash(&self) -> TubName<N> {
-        TubName::from(&self.buf[0..N])
+    pub fn hash(&self) -> Name<N> {
+        Name::from(&self.buf[0..N])
     }
 
-    pub fn set_hash(&mut self, hash: TubName<N>) {
+    pub fn set_hash(&mut self, hash: Name<N>) {
         self.buf[0..N].copy_from_slice(hash.as_buf());
     }
 
@@ -227,7 +234,7 @@ pub fn open_for_store(path: &path::Path) -> io::Result<fs::File> {
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
     _hasher: H,
-    map: HashMap<TubName<N>, Entry>,
+    map: HashMap<Name<N>, Entry>,
     offset: u64,
 }
 
@@ -249,7 +256,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         self.map.len()
     }
 
-    pub fn keys(&self) -> Vec<TubName<N>> {
+    pub fn keys(&self) -> Vec<Name<N>> {
         Vec::from_iter(self.map.keys().cloned())
     }
 
@@ -273,7 +280,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn load(&mut self, hash: &TubName<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+    pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
             obj.resize(entry.info.size());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
@@ -302,7 +309,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn delete(&mut self, _hash: TubName<N>) -> io::Result<bool> {
+    pub fn delete(&mut self, _hash: Name<N>) -> io::Result<bool> {
         // FIXME: Decide how tombstones should work with new new
         Ok(true)
     }
@@ -320,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_tubname() {
-        let mut n = TubName::<30>::new();
+        let mut n = Name::<30>::new();
         assert_eq!(n.len(), 30);
         assert_eq!(n.as_buf(), [0_u8; 30]);
         assert_eq!(n.as_mut_buf(), [0_u8; 30]);
@@ -331,7 +338,7 @@ mod tests {
         assert_eq!(n.as_mut_buf(), [255_u8; 30]);
         assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
 
-        let mut n = TubName::<20>::new();
+        let mut n = Name::<20>::new();
         assert_eq!(n.len(), 20);
         assert_eq!(n.as_buf(), [0_u8; 20]);
         assert_eq!(n.as_mut_buf(), [0_u8; 20]);

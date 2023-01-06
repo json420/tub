@@ -15,6 +15,9 @@
 //! We should see if we can make a custom `HashMap` like thing that is faster
 //! than `HashMap`.
 //!
+//! FIXME: Should we handle fixed size blocks (like in the branch chains) in
+//! a special way?
+
 
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};

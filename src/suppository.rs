@@ -15,7 +15,7 @@ macro_rules! other_err {
 
 
 /// Insert a suppository layout into an empty DOTDIR directory.
-pub fn init_suppository(path: &Path) -> io::Result<Suppository>
+pub fn init_suppository(path: &Path) -> io::Result<fs::File>
 {
     let mut pb = PathBuf::from(path);
 
@@ -45,19 +45,18 @@ pub fn init_suppository(path: &Path) -> io::Result<Suppository>
     f.write_all(README_CONTENTS)?;
     pb.pop();
 
-    Suppository::new(pb)
+    pb.push(PACKFILE);
+    create_store(&pb)
 }
 
 
-pub fn create_for_store(path: &Path) -> io::Result<fs::File> {
-    fs::File::options().read(true).append(true).create_new(true).open(path)
+pub fn create_dotdir(path: &Path) -> io::Result<PathBuf>
+{
+    let mut pb = PathBuf::from(path);
+    pb.push(DOTDIR);
+    fs::create_dir(&pb)?;
+    Ok(pb)
 }
-
-
-pub fn open_for_store(path: &Path) -> io::Result<fs::File> {
-    fs::File::options().read(true).append(true).open(path)
-}
-
 
 pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
     let mut pb = PathBuf::from(path);
@@ -71,6 +70,14 @@ pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
             return None;
         }
     }
+}
+
+pub fn create_store(path: &Path) -> io::Result<fs::File> {
+    fs::File::options().read(true).append(true).create_new(true).open(path)
+}
+
+pub fn open_store(path: &Path) -> io::Result<fs::File> {
+    fs::File::options().read(true).append(true).open(path)
 }
 
 
@@ -92,41 +99,50 @@ mod tests {
     use crate::helpers::TestTempDir;
 
     #[test]
-    fn test_open_for_store() {
+    fn test_create_dotdir() {
+        let tmp = TestTempDir::new();
+        let r = create_dotdir(tmp.path());
+        assert!(r.is_ok());
+        assert_eq!(r.unwrap(), tmp.build(&[DOTDIR]));
+        assert_eq!(tmp.list_root(), &[DOTDIR]);
+    }
+
+    #[test]
+    fn test_open_store() {
         let tmp = TestTempDir::new();
         let pb = tmp.build(&["a_store_file"]);
         let empty: Vec<String> = vec![];
 
         // Should fail if file is missing (and should not create anything)
-        let r = open_for_store(&pb);
+        let r = open_store(&pb);
         assert!(r.is_err());
         assert_eq!(tmp.list_root(), empty);
 
         // Now try when file exists
         tmp.touch(&["a_store_file"]);
-        let r = open_for_store(&pb);
+        let r = open_store(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
     }
 
     #[test]
-    fn test_create_for_store() {
+    fn test_create_store() {
         let tmp = TestTempDir::new();
         let pb = tmp.build(&["a_store_file"]);
         let empty: Vec<String> = vec![];
 
-        let r = create_for_store(&pb);
+        let r = create_store(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
         assert_eq!(tmp.list_root(), &["a_store_file"]);
 
         // Should fail if file already exists
-        let r = create_for_store(&pb);
+        let r = create_store(&pb);
         assert!(r.is_err());
         assert_eq!(tmp.list_root(), &["a_store_file"]);
 
-        // Make sure we can open with open_for_store()
-        let r = open_for_store(&pb);
+        // Make sure we can open with open_store()
+        let r = open_store(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
     }
@@ -180,7 +196,7 @@ mod tests {
         let tmp = TestTempDir::new();
         let mut pb = PathBuf::from(tmp.pathbuf());
         init_suppository(&mut pb).unwrap();
-        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README];//, PACKFILE];
+        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
         expected.sort();
         assert_eq!(tmp.list_root(), expected);
         let dirs = tmp.list_dir(&[OBJECTDIR]);

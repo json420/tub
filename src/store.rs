@@ -1,4 +1,7 @@
 //! Low-level object store.
+//!
+//! This module is dead to me, the only further change I will make is to delete
+//! this POS.  Long live chaos + suppository!
 
 /* FIXME:
 

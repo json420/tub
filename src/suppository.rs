@@ -5,6 +5,8 @@ use std::{io, fs};
 use std::io::prelude::*;
 use crate::base::*;
 use crate::dbase32::DirNameIter;
+use crate::protocol::Hasher;
+use crate::chaos::Store;
 
 
 
@@ -40,13 +42,15 @@ pub fn open_store(path: &Path) -> io::Result<fs::File> {
 
 
 /// Suppository: short for "Superior Repository".
-pub struct Suppository {
+pub struct Suppository<H: Hasher, const N: usize> {
     dir: PathBuf,
+    store: Store<H, N>,
 }
 
-impl Suppository {
+impl<H: Hasher, const N: usize> Suppository<H, N> {
     pub fn new(dir: PathBuf) -> io::Result<Self> {
-        Ok(Self {dir: dir})
+        let file = create_store(&dir)?;
+        Ok(Self {dir: dir, store: Store::new(file)})
     }
 }
 

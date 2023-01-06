@@ -188,17 +188,15 @@ mod tests {
         let dotdir = tmp.build(&[DOTDIR]);
 
         // Should fail if DOTDIR doesn't exist
-        let r = TestSuppository::open(dotdir.clone());
-        assert!(r.is_err());
+        assert!(TestSuppository::open(dotdir.clone()).is_err());
 
         // Should likewise fail if PACKFILE doesnt' exist
         tmp.mkdir(&[DOTDIR]);
-        let r = TestSuppository::open(dotdir.clone());
-        assert!(r.is_err());
+        assert!(TestSuppository::open(dotdir.clone()).is_err());
 
         // Now it should work
         tmp.touch(&[DOTDIR, PACKFILE]);
-        let s = TestSuppository::open(dotdir.clone()).unwrap();
+        assert!(TestSuppository::open(dotdir.clone()).is_ok());
     }
 }
 

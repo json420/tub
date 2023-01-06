@@ -7,48 +7,6 @@ use crate::base::*;
 use crate::dbase32::DirNameIter;
 
 
-macro_rules! other_err {
-    ($msg:literal) => {
-        Err(io::Error::new(io::ErrorKind::Other, $msg))
-    }
-}
-
-
-/// Insert a suppository layout into an empty DOTDIR directory.
-pub fn init_suppository(path: &Path) -> io::Result<fs::File>
-{
-    let mut pb = PathBuf::from(path);
-
-    // objects directory and sub-directories
-    pb.push(OBJECTDIR);
-    fs::create_dir(pb.as_path())?;
-    for name in DirNameIter::new() {
-        pb.push(name);
-        fs::create_dir(pb.as_path())?;
-        pb.pop();
-    }
-    pb.pop();
-
-    // partial directory:
-    pb.push(PARTIALDIR);
-    fs::create_dir(pb.as_path())?;
-    pb.pop();
-
-    // tmp directory:
-    pb.push(TMPDIR);
-    fs::create_dir(pb.as_path())?;
-    pb.pop();
-
-    // REAMDE file  :-)
-    pb.push(README);
-    let mut f = fs::File::create(pb.as_path())?;
-    f.write_all(README_CONTENTS)?;
-    pb.pop();
-
-    pb.push(PACKFILE);
-    create_store(&pb)
-}
-
 
 pub fn create_dotdir(path: &Path) -> io::Result<PathBuf>
 {
@@ -190,22 +148,5 @@ mod tests {
         assert!(find_dotdir(&foo).is_some());
         assert!(find_dotdir(&bar).is_some());
     }
-
-    #[test]
-    fn test_init_supository() {
-        let tmp = TestTempDir::new();
-        let mut pb = PathBuf::from(tmp.pathbuf());
-        init_suppository(&mut pb).unwrap();
-        let mut expected = vec![OBJECTDIR, PARTIALDIR, TMPDIR, README, PACKFILE];
-        expected.sort();
-        assert_eq!(tmp.list_root(), expected);
-        let dirs = tmp.list_dir(&[OBJECTDIR]);
-        assert_eq!(dirs.len(), 1024);
-        let expected: Vec<String> = DirNameIter::new().collect();
-        assert_eq!(dirs, expected);
-        assert_eq!(dirs[0], "33");
-        assert_eq!(dirs[1], "34");
-        assert_eq!(dirs[1022], "YX");
-        assert_eq!(dirs[1023], "YY");
-    }
 }
+

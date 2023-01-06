@@ -229,11 +229,6 @@ impl Entry {
 }
 
 
-pub fn open_for_store(path: &path::Path) -> io::Result<fs::File> {
-    fs::File::options().read(true).append(true).create(true).open(path)
-}
-
-
 /// Organizes objects in an append-only file.
 pub struct Store<H: Hasher, const N: usize> {
     file: fs::File,
@@ -441,7 +436,7 @@ mod tests {
     fn test_store() {
         let tmp = TestTempDir::new();
         let path = tmp.build(&["foo"]);
-        let file = open_for_store(&path).unwrap();
+        let file = fs::File::options().read(true).append(true).create(true).open(&path).unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
         let mut obj = store.new_object();
         store.reindex(&mut obj).unwrap();

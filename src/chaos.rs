@@ -30,7 +30,22 @@ use std::fmt;
 use std::io::prelude::*;
 
 
+
 // FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
+// These two are gonna fix it nicely:
+
+macro_rules! b_to_n {
+    ($b:ident) => {
+        (($b + 1) * 5) as usize
+    }
+}
+
+macro_rules! n_to_b {
+    ($n:ident) => {
+        ($n / 5 - 1) as u8
+    }
+}
+
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Name<const N: usize> {

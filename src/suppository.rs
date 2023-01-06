@@ -74,8 +74,6 @@ mod tests {
     use crate::helpers::TestTempDir;
     use crate::protocol::Blake3;
 
-    type TestSuppository = Suppository<Blake3, 30>;
-
     #[test]
     fn test_create_dotdir() {
         let tmp = TestTempDir::new();
@@ -169,17 +167,19 @@ mod tests {
         assert!(find_dotdir(&bar).is_some());
     }
 
+    type TestSuppository = Suppository<Blake3, 30>;
+
     #[test]
     fn test_suppository_create() {
         let tmp = TestTempDir::new();
-        let s = Suppository::<Blake3, 30>::create(tmp.pathbuf()).unwrap();
+        assert!(TestSuppository::create(tmp.pathbuf()).is_ok());
 
         // Should fail if it already exists:
-        let r = Suppository::<Blake3, 30>::create(tmp.pathbuf());
+        let r = TestSuppository::create(tmp.pathbuf());
         assert!(r.is_err());
 
         // Make sure we can open what we created
-        //assert!(Suppository::<Blake3, 30>::open(
+        assert!(TestSuppository::open(tmp.build(&[DOTDIR])).is_ok());
     }
 
     #[test]
@@ -188,17 +188,17 @@ mod tests {
         let dotdir = tmp.build(&[DOTDIR]);
 
         // Should fail if DOTDIR doesn't exist
-        let r = Suppository::<Blake3, 30>::open(dotdir.clone());
+        let r = TestSuppository::open(dotdir.clone());
         assert!(r.is_err());
 
         // Should likewise fail if PACKFILE doesnt' exist
         tmp.mkdir(&[DOTDIR]);
-        let r = Suppository::<Blake3, 30>::open(dotdir.clone());
+        let r = TestSuppository::open(dotdir.clone());
         assert!(r.is_err());
 
         // Now it should work
         tmp.touch(&[DOTDIR, PACKFILE]);
-        let s = Suppository::<Blake3, 30>::open(dotdir.clone()).unwrap();
+        let s = TestSuppository::open(dotdir.clone()).unwrap();
     }
 }
 

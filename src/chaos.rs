@@ -63,7 +63,6 @@ impl<const N: usize> Name<N> {
     pub fn to_string(&self) -> String {
         db32enc(&self.buf)
     }
-
 }
 
 impl<const N: usize> fmt::Display for Name<N> {

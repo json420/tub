@@ -59,17 +59,16 @@ pub fn open_for_store(path: &Path) -> io::Result<fs::File> {
 }
 
 
-pub fn find_suppository(path: &Path) -> io::Result<Suppository>
-{
+pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
     let mut pb = PathBuf::from(path);
     loop {
         pb.push(DOTDIR);
         if pb.is_dir() {
-            return Ok(Suppository::new(pb)?);
+            return Some(pb);
         }
         pb.pop();
         if !pb.pop() {
-            return other_err!("cannot find control directory");
+            return None;
         }
     }
 }
@@ -133,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn test_find_suppository() {
+    fn test_find_dotdir() {
         let tmp = TestTempDir::new();
 
         // We're gonna use these over and over:
@@ -145,11 +144,11 @@ mod tests {
         let empty: Vec<String> = vec![];
 
         // tmp.path() is an empty directory still:
-        assert!(find_suppository(&tree).is_err());
-        assert!(find_suppository(&dotdir).is_err());
-        assert!(find_suppository(&foo).is_err());
-        assert!(find_suppository(&bar).is_err());
-        assert!(find_suppository(&child).is_err());
+        assert!(find_dotdir(&tree).is_none());
+        assert!(find_dotdir(&dotdir).is_none());
+        assert!(find_dotdir(&foo).is_none());
+        assert!(find_dotdir(&bar).is_none());
+        assert!(find_dotdir(&child).is_none());
 
         // Nothing should have been created
         assert_eq!(tmp.list_root(), empty);
@@ -157,23 +156,23 @@ mod tests {
         // create foo/bar, but still no DOTDIR
         assert_eq!(tmp.makedirs(&["foo", "bar"]), bar);
 
-        assert!(find_suppository(&tree).is_err());
-        assert!(find_suppository(&dotdir).is_err());
-        assert!(find_suppository(&foo).is_err());
-        assert!(find_suppository(&bar).is_err());
-        assert!(find_suppository(&child).is_err());
+        assert!(find_dotdir(&tree).is_none());
+        assert!(find_dotdir(&dotdir).is_none());
+        assert!(find_dotdir(&foo).is_none());
+        assert!(find_dotdir(&bar).is_none());
+        assert!(find_dotdir(&child).is_none());
 
-        // Still nothing should have been created by find_suppository():
+        // Still nothing should have been created by find_dotdir():
         assert_eq!(tmp.list_root(), ["foo"]);
         assert_eq!(tmp.list_dir(&["foo"]), ["bar"]);
         assert_eq!(tmp.list_dir(&["foo", "bar"]), empty);
 
         // create DOTDIR
         assert_eq!(tmp.makedirs(&[DOTDIR]), dotdir);
-        assert!(find_suppository(&tree).is_ok());
-        assert!(find_suppository(&dotdir).is_ok());
-        assert!(find_suppository(&foo).is_ok());
-        assert!(find_suppository(&bar).is_ok());
+        assert!(find_dotdir(&tree).is_some());
+        assert!(find_dotdir(&dotdir).is_some());
+        assert!(find_dotdir(&foo).is_some());
+        assert!(find_dotdir(&bar).is_some());
     }
 
     #[test]

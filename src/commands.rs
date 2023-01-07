@@ -7,6 +7,8 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use crate::chaos::DefaultObject;
 use crate::tub::{find_dotdir, DefaultTub};
+use crate::dvcs::Scanner;
+use crate::protocol::Blake3;
 
 
 type OptPath = Option<PathBuf>;
@@ -70,6 +72,9 @@ enum Commands {
 
     #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
+        #[arg(help="Tree directory (defaults to current CWD)")]
+        source: Option<PathBuf>,
+
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
@@ -142,8 +147,8 @@ pub fn run() -> io::Result<()> {
         Commands::Dif {} => {
             not_yet()
         }
-        Commands::Status {tub} => {
-            not_yet()
+        Commands::Status {source, tub} => {
+            cmd_status(source, tub)
         }
         Commands::Commit {source, tub} => {
             cmd_commit(source, tub)
@@ -237,6 +242,18 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
     eprintln!("🛁 Writing commit...");
     //println!("{}", db32enc(&root));
     eprintln!("🛁 Wow, great job on that one! 💋");
+    Ok(())
+}
+
+fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
+{
+    let source = dir_or_cwd(source)?;
+    let mut scanner: Scanner<Blake3, 30> = Scanner::new();
+    eprintln!("🛁 Scanning tree state, wont take long...");
+    if let Some(root) = scanner.scan_tree(&source)? {
+        println!("{}", root);
+    }
+    eprintln!("🛁 Status: it's complicated!");
     Ok(())
 }
 

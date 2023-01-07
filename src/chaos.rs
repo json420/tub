@@ -243,7 +243,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
             let mut tree: Object<H, N> = Object::new();
             let mut remaining = size;
             while remaining > 0 {
-                println!("Remaining {}", remaining);
                 let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
                 remaining -= s;
                 self.reset(s as usize, 0);

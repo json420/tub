@@ -213,7 +213,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
     fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>
     {
         if depth >= MAX_DEPTH {
-            panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+            //panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         let mut tree = Tree::new();
         for entry in fs::read_dir(dir)? {
@@ -227,6 +227,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 self.obj.clear();
                 self.obj.as_mut_vec().extend_from_slice(&data);
                 let hash = self.obj.finalize();
+                //println!("S {} {:?}", hash, path);
                 tree.add_symlink(name, hash);
             }
             else if ft.is_file() {
@@ -236,22 +237,26 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     let file = fs::File::open(&path)?;
                     let hash = self.obj.hash_file(file, size)?;
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
+                        //println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash);
                     }
                     else {
+                        //println!("F {} {:?}", hash, path);
                         tree.add_file(name, hash);
                     }
                 }
                 else {
+                    println!("Empty File: {:?}", path);
                     tree.add_empty_file(name);
                 }
             }
             else if ft.is_dir() {
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
+                    //println!("D {} {:?}", hash, path);
                     tree.add_dir(name, hash);
                 }
                 else {
-                    //println!("empty dir: {:?}", path);
+                    //println!("Empty Dir: {:?}", path);
                     tree.add_empty_dir(name);
                 }
             }

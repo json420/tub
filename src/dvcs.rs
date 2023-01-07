@@ -201,6 +201,7 @@ impl<const N: usize> Tree<N> {
 }
 
 
+#[derive(Debug, PartialEq)]
 pub enum ScanMode {
     Scan,
     Import,
@@ -236,15 +237,24 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 self.obj.clear();
                 self.obj.as_mut_vec().extend_from_slice(&data);
                 let hash = self.obj.finalize();
-                //println!("S {} {:?}", hash, path);
                 tree.add_symlink(name, hash);
+                if self.mode == ScanMode::Scan {
+                    self.store.save(&self.obj)?;
+                }
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
                 let size = meta.len();
                 if size > 0 {
                     let file = fs::File::open(&path)?;
-                    let hash = self.obj.hash_file(file, size)?;
+                    let hash = match self.mode {
+                        ScanMode::Scan => {
+                            self.obj.hash_file(file, size)?
+                        }
+                        ScanMode::Import => {
+                            self.store.import_file(&mut self.obj, file, size)?
+                        }
+                    };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
                         //println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash);
@@ -274,6 +284,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
             let hash = self.obj.finalize();
+            if self.mode == ScanMode::Scan {
+                self.store.save(&self.obj)?;
+            }
             Ok(Some(hash))
         }
         else {

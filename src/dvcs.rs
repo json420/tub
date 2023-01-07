@@ -9,8 +9,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
 use std::io::prelude::*;
 
-use crate::leaf_io::TubBuf;
-use crate::store::Store;
+use crate::protocol::Hasher;
+use crate::chaos::{Object, Store, Name};
 use crate::base::*;
 
 
@@ -105,27 +105,25 @@ impl TrackingList {
 
 
 #[derive(Debug, PartialEq)]
-pub struct TreeEntry {
-    kind: Kind,
-    hash: TubHash,
+pub struct TreeEntry<const N: usize> {
+    pub kind: Kind,
+    pub hash: Name<N>,
 }
 
-impl TreeEntry {
-    pub fn new(kind: Kind, hash: TubHash) -> Self {
+impl<const N: usize> TreeEntry<N> {
+    pub fn new(kind: Kind, hash: Name<N>) -> Self {
         Self {kind: kind, hash: hash}
     }
 }
 
-pub type TreeMap = HashMap<String, TreeEntry>;
-
 
 /// Stores entries in a directory
 #[derive(Debug, PartialEq)]
-pub struct Tree {
-    map: TreeMap,
+pub struct Tree<const N: usize> {
+    map: HashMap<String, TreeEntry<N>>,
 }
 
-impl Tree {
+impl<const N: usize> Tree<N> {
     pub fn new() -> Self {
         Self {map: HashMap::new()}
     }
@@ -134,12 +132,12 @@ impl Tree {
         self.map.len()
     }
 
-    pub fn as_map(&self) -> &TreeMap {
+    pub fn as_map(&self) -> &HashMap<String, TreeEntry<N>> {
         &self.map
     }
 
     pub fn deserialize(buf: &[u8]) -> Self {
-        let mut map: TreeMap = HashMap::new();
+        let mut map: HashMap<String, TreeEntry<N>> = HashMap::new();
         let mut offset = 0;
         while offset < buf.len() {
             let kind: Kind = buf[offset].into();
@@ -150,7 +148,7 @@ impl Tree {
             let name = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
             offset += size;
 
-            let h: TubHash = buf[offset..offset + TUB_HASH_LEN].try_into().expect("oops");
+            let h = Name::from(&buf[offset..offset + TUB_HASH_LEN]);
             offset += h.len();
 
             map.insert(name, TreeEntry::new(kind, h));
@@ -169,100 +167,50 @@ impl Tree {
             buf.push(entry.kind as u8);
             buf.push(size);
             buf.extend_from_slice(path);
-            buf.extend_from_slice(&entry.hash);
+            buf.extend_from_slice(entry.hash.as_buf());
         }
     }
 
-    fn add(&mut self, name: String, kind: Kind, hash: TubHash) {
+    fn add(&mut self, name: String, kind: Kind, hash: Name<N>) {
         self.map.insert(name, TreeEntry::new(kind, hash));
     }
 
     pub fn add_empty_dir(&mut self, name: String) {
-        self.add(name, Kind::EmptyDir, [0_u8; TUB_HASH_LEN]);
+        self.add(name, Kind::EmptyDir, Name::<N>::new());
     }
 
     pub fn add_empty_file(&mut self, name: String) {
-        self.add(name, Kind::EmptyFile, [0_u8; TUB_HASH_LEN]);
+        self.add(name, Kind::EmptyFile, Name::<N>::new());
     }
 
-    pub fn add_dir(&mut self, name: String, hash: TubHash) {
+    pub fn add_dir(&mut self, name: String, hash: Name<N>) {
         self.add(name, Kind::Dir, hash);
     }
 
-    pub fn add_file(&mut self, name: String, hash: TubHash) {
+    pub fn add_file(&mut self, name: String, hash: Name<N>) {
         self.add(name, Kind::File, hash);
     }
 
-    pub fn add_exefile(&mut self, name: String, hash: TubHash) {
+    pub fn add_exefile(&mut self, name: String, hash: Name<N>) {
         self.add(name, Kind::ExeFile, hash);
     }
 
-    pub fn add_symlink(&mut self, name: String, hash: TubHash) {
+    pub fn add_symlink(&mut self, name: String, hash: Name<N>) {
         self.add(name, Kind::SymLink, hash);
     }
 }
 
 
-pub struct Commit {
-    tree: TubHash,
-    msg: String,
+pub struct Scanner<H: Hasher, const N: usize> {
+    obj: Object<H, N>,
 }
 
-impl Commit {
-    pub fn new(tree: TubHash, msg: String) -> Self {
-        Self {tree: tree, msg: msg}
-    }
-
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut buf = Vec::new();
-        buf.extend_from_slice(&self.tree);
-        buf.extend_from_slice(&self.msg.as_bytes());
-        buf
-    }
-
-    pub fn deserialize(buf: &Vec<u8>) -> Self {
-        let tree: TubHash = buf[0..TUB_HASH_LEN].try_into().expect("oops");
-        let msg = String::from_utf8(buf[TUB_HASH_LEN..].to_vec()).unwrap();
-        Self {tree: tree, msg: msg}
-    }
-}
-
-
-pub struct TreeFile {
-    pub path: PathBuf,
-    pub size: u64,
-    pub hash: TubHash,
-}
-
-impl TreeFile {
-    pub fn new(path: PathBuf, size: u64, hash: TubHash) -> Self {
-        Self {path: path, size: size, hash: hash}
-    }
-
-    pub fn is_large(&self) -> bool {
-        self.size > LEAF_SIZE
-    }
-
-    pub fn open(&self) -> io::Result<fs::File> {
-        fs::File::open(&self.path)
-    }
-}
-
-
-pub struct Scanner {
-    tbuf: TubBuf,
-    obuf: Vec<u8>,
-}
-
-impl Scanner {
+impl<H: Hasher, const N: usize> Scanner<H, N> {
     pub fn new() -> Self {
-        Self {
-            tbuf: TubBuf::new(),
-            obuf: Vec::new(),
-        }
+        Self {obj: Object::<H, N>::new()}
     }
 
-    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<TubHash>>
+    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>
     {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
@@ -276,7 +224,9 @@ impl Scanner {
             if ft.is_symlink() {
                 let value = fs::read_link(&path)?;
                 let data = value.to_str().unwrap().as_bytes();
-                let hash = self.tbuf.hash_data(ObjectType::Data, &data);
+                self.obj.clear();
+                self.obj.as_mut_vec().extend_from_slice(&data);
+                let hash = self.obj.finalize();
                 tree.add_symlink(name, hash);
             }
             else if ft.is_file() {
@@ -284,7 +234,7 @@ impl Scanner {
                 let size = meta.len();
                 if size > 0 {
                     let file = fs::File::open(&path)?;
-                    let hash = self.tbuf.hash_file(file, size)?;
+                    let hash = self.obj.hash_file(file, size)?;
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
                         tree.add_exefile(name, hash);
                     }
@@ -307,10 +257,9 @@ impl Scanner {
             }
         }
         if tree.len() > 0 {
-            self.obuf.clear();
-            tree.serialize(&mut self.obuf);
-            let hash = self.tbuf.hash_data(ObjectType::Tree, &self.obuf);
-            //eprintln!("{} {:?}", hash, dir);
+            self.obj.clear();
+            tree.serialize(self.obj.as_mut_vec());
+            let hash = self.obj.finalize();
             Ok(Some(hash))
         }
         else {
@@ -318,13 +267,13 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tree(&mut self, dir: &Path) -> io::Result<Option<TubHash>> {
+    pub fn scan_tree(&mut self, dir: &Path) -> io::Result<Option<Name<N>>> {
         self.scan_tree_inner(dir, 0)
     }
 }
 
-
-fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Option<TubHash>>
+/*
+fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Option<Name<N>>>
 {
     if depth >= MAX_DEPTH {
         panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
@@ -379,7 +328,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
     }
 }
 
-pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
+pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<Name<N>> {
     if let Some(root_hash) = commit_tree_inner(tub, dir, 0)? {
         Ok(root_hash)
     }
@@ -389,7 +338,7 @@ pub fn commit_tree(tub: &mut Store, dir: &Path) -> io::Result<TubHash> {
 }
 
 
-fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usize) -> io::Result<()> {
+fn restore_tree_inner(store: &mut Store, root: &Name<N>, path: &Path, depth: usize) -> io::Result<()> {
     if depth >= MAX_DEPTH {
         panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
     }
@@ -447,7 +396,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
     Ok(())
 }
 
-pub fn restore_tree(store: &mut Store, root: &TubHash, path: &Path) -> io::Result<()> {
+pub fn restore_tree(store: &mut Store, root: &Name<N>, path: &Path) -> io::Result<()> {
     restore_tree_inner(store, root, path, 0)
 }
 
@@ -489,6 +438,7 @@ impl WorkingTree {
         Ok(())
     }
 }
+*/
 
 
 #[cfg(test)]
@@ -497,6 +447,7 @@ mod tests {
     use crate::store::Store;
     use crate::util::random_hash;
 
+/*
     #[test]
     fn test_working_tree() {
         let (_tmp, store) = Store::new_tmp();
@@ -507,7 +458,7 @@ mod tests {
         let tl = wt.load_tracking_list().unwrap();
         assert_eq!(tl.len(), 0);
     }
-
+*/
     #[test]
     fn test_kind() {
         for k in 0..4 {
@@ -596,6 +547,7 @@ mod tests {
         assert_eq!(TrackingList::deserialize(&buf), tl);
     }
 
+/*
     #[test]
     #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
     fn test_commit_tree_depth_panic() {
@@ -603,6 +555,7 @@ mod tests {
         let pb = PathBuf::from("word");
         commit_tree_inner(&mut store, &pb, MAX_DEPTH).unwrap();
     }
+
 
     #[test]
     #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
@@ -615,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_serialize_deserialize() {
-        /*
+
         let mut map: TreeMap = HashMap::new();
 
         let pb = PathBuf::from("bar");
@@ -637,6 +590,7 @@ mod tests {
         let buf = serialize(&map);
         let map2 = deserialize(&buf);
         assert_eq!(map2, map);
-        */
+
     }
+*/
 }

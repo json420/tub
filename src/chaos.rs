@@ -134,10 +134,16 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.buf.resize(N + INFO_LEN + size, 0);
         self.set_info(Info::new(size, kind));
     }
-
+    
+    // FIXME: remove this soon
     pub fn resize(&mut self, size: usize) {
         self.buf.clear();
         self.buf.resize(N + INFO_LEN + size, 0);
+    }
+
+    pub fn clear(&mut self) {
+        self.buf.clear();
+        self.buf.resize(N + INFO_LEN, 0);
     }
 
     pub fn resize_to_info(&mut self) {
@@ -212,6 +218,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
         &mut self.buf
     }
+
+    pub fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+        &mut self.buf
+    }   
 
     pub fn as_mut_header(&mut self) -> &mut [u8] {
         &mut self.buf[0..N + INFO_LEN]
@@ -351,8 +361,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 }
 
 
+pub type DefaultStore = Store<Blake3, 30>;
 
-pub type StoreHblake3N30 = Store<Blake3, 30>;
 
 
 #[cfg(test)]

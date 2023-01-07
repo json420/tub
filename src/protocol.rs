@@ -107,6 +107,8 @@ impl Hasher for Blake3 {
     }
 }
 
+pub type DefaultHasher = Blake3;
+
 
 pub trait Protocol {
     fn new() -> Self;

@@ -6,9 +6,12 @@ use std::io::prelude::*;
 use crate::base::*;
 use crate::dbase32::DirNameIter;
 use crate::protocol::Hasher;
+use crate::protocol::DefaultHasher;
 use crate::chaos::Store;
 
 
+
+pub type DefaultSuppository = Suppository<DefaultHasher, 30>;
 
 pub fn create_dotdir(path: &Path) -> io::Result<PathBuf>
 {
@@ -72,7 +75,6 @@ impl<H: Hasher, const N: usize> Suppository<H, N> {
 mod tests {
     use super::*;
     use crate::helpers::TestTempDir;
-    use crate::protocol::Blake3;
 
     #[test]
     fn test_create_dotdir() {
@@ -167,19 +169,17 @@ mod tests {
         assert!(find_dotdir(&bar).is_some());
     }
 
-    type TestSuppository = Suppository<Blake3, 30>;
-
     #[test]
     fn test_suppository_create() {
         let tmp = TestTempDir::new();
-        assert!(TestSuppository::create(tmp.pathbuf()).is_ok());
+        assert!(DefaultSuppository::create(tmp.pathbuf()).is_ok());
 
         // Should fail if it already exists:
-        let r = TestSuppository::create(tmp.pathbuf());
+        let r = DefaultSuppository::create(tmp.pathbuf());
         assert!(r.is_err());
 
         // Make sure we can open what we created
-        assert!(TestSuppository::open(tmp.build(&[DOTDIR])).is_ok());
+        assert!(DefaultSuppository::open(tmp.build(&[DOTDIR])).is_ok());
     }
 
     #[test]
@@ -188,15 +188,15 @@ mod tests {
         let dotdir = tmp.build(&[DOTDIR]);
 
         // Should fail if DOTDIR doesn't exist
-        assert!(TestSuppository::open(dotdir.clone()).is_err());
+        assert!(DefaultSuppository::open(dotdir.clone()).is_err());
 
         // Should likewise fail if PACKFILE doesnt' exist
         tmp.mkdir(&[DOTDIR]);
-        assert!(TestSuppository::open(dotdir.clone()).is_err());
+        assert!(DefaultSuppository::open(dotdir.clone()).is_err());
 
         // Now it should work
         tmp.touch(&[DOTDIR, PACKFILE]);
-        assert!(TestSuppository::open(dotdir.clone()).is_ok());
+        assert!(DefaultSuppository::open(dotdir.clone()).is_ok());
     }
 }
 

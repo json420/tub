@@ -4,10 +4,8 @@ use std::io;
 use std::fs;
 use std::process::exit;
 use std::time::Instant;
-
 use clap::{Parser, Subcommand};
-
-use crate::base::*;
+use crate::suppository::{find_dotdir, DefaultSuppository};
 
 
 type OptPath = Option<PathBuf>;
@@ -20,16 +18,6 @@ struct Cli {
     command: Commands,
 }
 
-
-/*
-impl Cli {
-    pub fn get_tub(&self) -> io::Result<Store>
-    {
-        let target = dir_or_cwd(self.tub)?;
-        find_store(&target)
-    }
-}
-*/
 
 #[derive(Debug, Subcommand)]
 enum Commands {
@@ -188,10 +176,16 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
     Ok(pb.canonicalize()?)
 }
 
-fn get_tub(target: OptPath) -> io::Result<()>
+fn get_sup(target: OptPath) -> io::Result<DefaultSuppository>
 {
-    eprintln!("🛁❗ Could not find Tub in {:?}", &target);
-    exit(42);
+    let target = dir_or_cwd(target)?;
+    if let Some(dotdir) = find_dotdir(&target) {
+        DefaultSuppository::open(dotdir)
+    }
+    else {
+        eprintln!("🛁❗ Could not find Tub in {:?}", &target);
+        exit(42);
+    }
 }
 
 
@@ -209,7 +203,7 @@ fn not_yet() -> io::Result<()>
 
 fn cmd_init(target: OptPath) -> io::Result<()>
 {
-    if false {
+    if let Ok(sup) = get_sup(target) {
         eprintln!("🛁❗ Tub already exists: {:?}", "fixme");
         exit(42);
     }

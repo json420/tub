@@ -87,7 +87,7 @@ pub struct Info {
 impl Info {
     fn new(size: usize, kind: u8) -> Self {
         if size < 1 || size > OBJECT_MAX_SIZE {
-            panic!("Need 1 <= size <= {}; got size={}", OBJECT_MAX_SIZE, size);
+            panic!("Info: Need 1 <= size <= {}; got size={}", OBJECT_MAX_SIZE, size);
         }
         Self {val: (size - 1) as u32 | (kind as u32) << 24}
     }
@@ -182,6 +182,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn finalize(&mut self) -> Name<N> {
+        self.set_info(Info::new(self.as_data().len(), 69));
         assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
@@ -232,6 +233,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
             let mut tree: Object<H, N> = Object::new();
             let mut remaining = size;
             while remaining > 0 {
+                println!("Remaining {}", remaining);
                 let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
                 remaining -= s;
                 self.reset(s as usize, 0);

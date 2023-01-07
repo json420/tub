@@ -201,13 +201,22 @@ impl<const N: usize> Tree<N> {
 }
 
 
+pub enum ScanMode {
+    Scan,
+    Import,
+}
+
+
 pub struct Scanner<H: Hasher, const N: usize> {
+    mode: ScanMode,
     obj: Object<H, N>,
+    store: Store<H, N>,
+    
 }
 
 impl<H: Hasher, const N: usize> Scanner<H, N> {
-    pub fn new() -> Self {
-        Self {obj: Object::<H, N>::new()}
+    pub fn new(store: Store<H, N>) -> Self {
+        Self {obj: Object::<H, N>::new(), store: store, mode: ScanMode::Scan}
     }
 
     fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>
@@ -222,7 +231,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             let path = entry.path();
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
             if ft.is_symlink() {
-                let value = fs::read_link(&path)?;
+                let value = fs::read_link(&path)?;  // FIXME: Let's just store this value in the tree
                 let data = value.to_str().unwrap().as_bytes();
                 self.obj.clear();
                 self.obj.as_mut_vec().extend_from_slice(&data);
@@ -246,7 +255,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     }
                 }
                 else {
-                    println!("Empty File: {:?}", path);
+                    //println!("Empty File: {:?}", path);
                     tree.add_empty_file(name);
                 }
             }

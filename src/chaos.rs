@@ -357,6 +357,32 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         // FIXME: Decide how tombstones should work with new new
         Ok(true)
     }
+
+    pub fn import_file(&mut self, obj: &mut Object<H, N>, mut file: fs::File, size: u64) -> io::Result<Name<N>> {
+        if size == 0 {
+            panic!("No good, yo, your size is ZERO!");
+        }
+        if size > OBJECT_MAX_SIZE as u64 {
+            let mut tree = self.new_object();
+            let mut remaining = size;
+            while remaining > 0 {
+                let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
+                remaining -= s;
+                obj.reset(s as usize, 0);
+                file.read_exact(obj.as_mut_data())?;
+                tree.extend_from_slice(obj.finalize().as_buf());
+                self.save(&obj)?;
+            }
+            let root = tree.finalize();
+            self.save(&tree)?;
+            Ok(root)
+        }
+        else {
+            obj.reset(size as usize, 0);
+            file.read_exact(obj.as_mut_data())?;
+            Ok(obj.finalize())
+        }
+    }
 }
 
 

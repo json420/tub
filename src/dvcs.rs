@@ -9,7 +9,6 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
 use std::io::prelude::*;
 
-use crate::dbase32::db32enc;
 use crate::leaf_io::TubBuf;
 use crate::store::Store;
 use crate::base::*;
@@ -311,7 +310,7 @@ impl Scanner {
             self.obuf.clear();
             tree.serialize(&mut self.obuf);
             let hash = self.tbuf.hash_data(ObjectType::Tree, &self.obuf);
-            //eprintln!("{} {:?}", db32enc(&hash), dir);
+            //eprintln!("{} {:?}", hash, dir);
             Ok(Some(hash))
         }
         else {
@@ -372,7 +371,7 @@ fn commit_tree_inner(tub: &mut Store, dir: &Path, depth: usize)-> io::Result<Opt
         let mut obj = Vec::new();
         tree.serialize(&mut obj);
         let (hash, _new) = tub.add_tree(&obj)?;
-        //eprintln!("Tree: {} {:?}", db32enc(&hash), dir);
+        //eprintln!("Tree: {} {:?}", hash, dir);
         Ok(Some(hash))
     }
     else {
@@ -423,7 +422,7 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         }
                         object.write_to_file(&mut file)?;
                     } else {
-                        panic!("could not find object {}", db32enc(&entry.hash));
+                        panic!("could not find object"); // {}") FIXME , hash);
                     }
                 }
                 Kind::SymLink => {
@@ -437,13 +436,13 @@ fn restore_tree_inner(store: &mut Store, root: &TubHash, path: &Path, depth: usi
                         let target = PathBuf::from(s);
                         unix::fs::symlink(&target, &pb)?;
                     } else {
-                        panic!("could not find symlink object {}", db32enc(&entry.hash));
+                        panic!("could not find symlink object");// FIXME, &entry.hash));
                     }
                 },
             }
         }
     } else {
-        panic!("Could not find tree object {}", db32enc(root));
+        panic!("Could not find tree object");  //FIXME {}", root);
     }
     Ok(())
 }

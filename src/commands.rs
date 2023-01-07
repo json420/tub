@@ -220,12 +220,12 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(tub) = get_tub(&target) {
-        eprintln!("🛁❗ Tub already exists: {:?}", target);
+        eprintln!("🛁❗ Tub already exists: {:?}", tub.dotdir());
         exit(42);
     }
     else {
-        DefaultTub::create(&target)?;
-        eprintln!("🛁 Created new Tub repository: {:?}", &target);
+        let tub = DefaultTub::create(&target)?;
+        eprintln!("🛁 Created new Tub repository: {:?}", tub.dotdir());
         eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
         Ok(())
     }

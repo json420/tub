@@ -52,6 +52,10 @@ pub struct Tub<H: Hasher, const N: usize> {
 }
 
 impl<H: Hasher, const N: usize> Tub<H, N> {
+    pub fn dotdir(&self) -> &Path {
+        &self.dotdir
+    }
+
     pub fn create(parent: &Path) -> io::Result<Self> {
         let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();

@@ -5,6 +5,7 @@ use std::fs;
 use std::process::exit;
 use std::time::Instant;
 use clap::{Parser, Subcommand};
+use crate::chaos::DefaultObject;
 use crate::tub::{find_dotdir, DefaultTub};
 
 
@@ -231,7 +232,6 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     }
 }
 
-
 fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     eprintln!("🛁 Writing commit...");
@@ -242,11 +242,13 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 
 fn cmd_hash(path: &Path) -> io::Result<()>
 {
+    let start = Instant::now();
     let pb = path.canonicalize()?;
     let size = fs::metadata(&pb)?.len();
     let file = fs::File::open(&pb)?;
+    let mut obj = DefaultObject::new();
     eprintln!("🛁 Computing TubHash, this wont take long...");
-    let start = Instant::now();
+    println!("{}", obj.hash_file(file, size)?);
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (size as f64 / elapsed) as u64;
     eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, rate);

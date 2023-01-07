@@ -48,6 +48,10 @@ impl<const N: usize> Name<N> {
         Self {buf: buf}
     }
 
+    pub fn into_buf(self) -> [u8; N] {
+        self.buf
+    }
+
     pub fn len(&self) -> usize {
         self.buf.len()
     }
@@ -150,6 +154,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.finalize()
     }
 
+    pub fn extend_from_slice(&mut self, newstuff: &[u8]) {
+        self.buf.extend_from_slice(newstuff);
+    }
+
     pub fn compute(&self) -> Name<N> {
         let mut hash: Name<N> = Name::new();
         self.hasher.hash_into(
@@ -195,10 +203,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
-        &mut self.buf
-    }
-
-    pub fn as_mut_vec(&mut self) -> &Vec<u8> {
         &mut self.buf
     }
 

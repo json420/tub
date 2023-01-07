@@ -1,13 +1,12 @@
 //! Higher level repository built on `chaos`.
 
 use std::path::{Path, PathBuf};
-use std::{io, fs};
+use std::{cmp, io, fs};
 use std::io::prelude::*;
 use crate::base::*;
 use crate::dbase32::DirNameIter;
-use crate::protocol::Hasher;
-use crate::protocol::DefaultHasher;
-use crate::chaos::Store;
+use crate::protocol::{Hasher, DefaultHasher};
+use crate::chaos::{Object, Store, Name};
 
 
 
@@ -43,8 +42,14 @@ pub fn open_store(path: &Path) -> io::Result<fs::File> {
     fs::File::options().read(true).append(true).open(path)
 }
 
+pub struct HashingFileReaderIter {
+    size: u64,
+    remaining: u64,
+    file: fs::File,
+}
 
-/// Tub: controls control directory; a repository.
+
+/// Put all your 🏴‍☠️ treasure in here, matey! 💰💵🦓
 pub struct Tub<H: Hasher, const N: usize> {
     dotdir: PathBuf,
     filename: PathBuf,
@@ -71,6 +76,48 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let file = open_store(&filename)?;
         let store = Store::<H, N>::new(file);
         Ok( Self {dotdir: dotdir, filename: filename, store: store} )
+    }
+
+    pub fn import_file(&mut self, mut file: fs::File, size: u64, obj: &mut Object<H, N>) -> io::Result<Name<N>> {
+        if size == 0 {
+            panic!("No good, yo, your size is ZERO!");
+        }
+        let mut remaining = size;
+        obj.resize(0);
+        while remaining > 0 {
+            let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
+            remaining -= s;
+            obj.resize(s as usize);
+            file.read_exact(obj.as_mut_data())?;
+            obj.finalize();
+            self.store.save(&obj)?;
+        }
+        Ok(obj.hash())
+    }
+
+    pub fn hash_file(&mut self, mut file: fs::File, size: u64, obj: &mut Object<H, N>) -> io::Result<Name<N>> {
+        if size == 0 {
+            panic!("No good, yo, your size is ZERO!");
+        }
+        if size > OBJECT_MAX_SIZE as u64 {
+            let mut tree = self.store.new_object();
+            let mut remaining = size;
+            obj.resize(0);
+            while remaining > 0 {
+                let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
+                remaining -= s;
+                obj.resize(s as usize);
+                file.read_exact(obj.as_mut_data())?;
+                tree.extend_from_slice(obj.finalize().as_buf());
+                obj.finalize();
+            }
+            Ok(tree.finalize())
+        }
+        else {
+            obj.resize(size as usize);
+            file.read_exact(obj.as_mut_data())?;
+            Ok(obj.finalize())
+        }
     }
 }
 

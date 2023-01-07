@@ -5,7 +5,7 @@ use std::fs;
 use std::process::exit;
 use std::time::Instant;
 use clap::{Parser, Subcommand};
-use crate::suppository::{find_dotdir, DefaultSuppository};
+use crate::tub::{find_dotdir, DefaultTub};
 
 
 type OptPath = Option<PathBuf>;
@@ -186,10 +186,10 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 }
 
 
-fn get_tub(target: &Path) -> io::Result<DefaultSuppository>
+fn get_tub(target: &Path) -> io::Result<DefaultTub>
 {
     if let Some(dotdir) = find_dotdir(&target) {
-        DefaultSuppository::open(dotdir)
+        DefaultTub::open(dotdir)
     }
     else {
         other_err!("Could not find Tub")
@@ -197,7 +197,7 @@ fn get_tub(target: &Path) -> io::Result<DefaultSuppository>
 }
 
 
-fn get_tub_exit(target: &Path) -> io::Result<DefaultSuppository>
+fn get_tub_exit(target: &Path) -> io::Result<DefaultTub>
 {
     if let Ok(tub) = get_tub(&target) {
         Ok(tub)
@@ -224,7 +224,7 @@ fn cmd_init(target: OptPath) -> io::Result<()>
         exit(42);
     }
     else {
-        DefaultSuppository::create(&target)?;
+        DefaultTub::create(&target)?;
         eprintln!("🛁 Created new Tub repository: {:?}", &target);
         eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
         Ok(())

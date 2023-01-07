@@ -110,7 +110,7 @@ impl Info {
 }
 
 
-/// Buffer containing containing a single object's header plus data.
+/// Buffer containing a single object's header plus data.
 #[derive(Debug)]
 pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
@@ -324,7 +324,7 @@ mod tests {
     use crate::helpers::{TestTempDir, flip_bit_in};
 
     #[test]
-    fn test_tubname() {
+    fn test_name() {
         let mut n = Name::<30>::new();
         assert_eq!(n.len(), 30);
         assert_eq!(n.as_buf(), [0_u8; 30]);

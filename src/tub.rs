@@ -1,4 +1,4 @@
-//! A far Superior *pository.
+//! Higher level repository built on `chaos`.
 
 use std::path::{Path, PathBuf};
 use std::{io, fs};
@@ -11,7 +11,7 @@ use crate::chaos::Store;
 
 
 
-pub type DefaultSuppository = Suppository<DefaultHasher, 30>;
+pub type DefaultTub = Tub<DefaultHasher, 30>;
 
 pub fn create_dotdir(path: &Path) -> io::Result<PathBuf>
 {
@@ -44,14 +44,14 @@ pub fn open_store(path: &Path) -> io::Result<fs::File> {
 }
 
 
-/// Suppository: short for "Superior Repository" or ""Super Repository".
-pub struct Suppository<H: Hasher, const N: usize> {
+/// Tub: controls control directory; a repository.
+pub struct Tub<H: Hasher, const N: usize> {
     dotdir: PathBuf,
     filename: PathBuf,
     store: Store<H, N>,
 }
 
-impl<H: Hasher, const N: usize> Suppository<H, N> {
+impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn create(parent: &Path) -> io::Result<Self> {
         let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();
@@ -170,33 +170,33 @@ mod tests {
     }
 
     #[test]
-    fn test_suppository_create() {
+    fn test_tub_create() {
         let tmp = TestTempDir::new();
-        assert!(DefaultSuppository::create(tmp.path()).is_ok());
+        assert!(DefaultTub::create(tmp.path()).is_ok());
 
         // Should fail if it already exists:
-        let r = DefaultSuppository::create(tmp.path());
+        let r = DefaultTub::create(tmp.path());
         assert!(r.is_err());
 
         // Make sure we can open what we created
-        assert!(DefaultSuppository::open(tmp.build(&[DOTDIR])).is_ok());
+        assert!(DefaultTub::open(tmp.build(&[DOTDIR])).is_ok());
     }
 
     #[test]
-    fn test_suppository_open() {
+    fn test_tub_open() {
         let tmp = TestTempDir::new();
         let dotdir = tmp.build(&[DOTDIR]);
 
         // Should fail if DOTDIR doesn't exist
-        assert!(DefaultSuppository::open(dotdir.clone()).is_err());
+        assert!(DefaultTub::open(dotdir.clone()).is_err());
 
         // Should likewise fail if PACKFILE doesnt' exist
         tmp.mkdir(&[DOTDIR]);
-        assert!(DefaultSuppository::open(dotdir.clone()).is_err());
+        assert!(DefaultTub::open(dotdir.clone()).is_err());
 
         // Now it should work
         tmp.touch(&[DOTDIR, PACKFILE]);
-        assert!(DefaultSuppository::open(dotdir.clone()).is_ok());
+        assert!(DefaultTub::open(dotdir.clone()).is_ok());
     }
 }
 

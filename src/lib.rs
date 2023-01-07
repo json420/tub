@@ -12,5 +12,5 @@ pub mod leaf_io;
 pub mod dvcs;
 pub mod blockchain;
 pub mod chaos;
-pub mod suppository;
+pub mod tub;
 

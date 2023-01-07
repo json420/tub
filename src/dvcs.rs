@@ -238,7 +238,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 self.obj.as_mut_vec().extend_from_slice(&data);
                 let hash = self.obj.finalize();
                 tree.add_symlink(name, hash);
-                if self.mode == ScanMode::Scan {
+                if self.mode == ScanMode::Import {
                     self.store.save(&self.obj)?;
                 }
             }
@@ -284,7 +284,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
             let hash = self.obj.finalize();
-            if self.mode == ScanMode::Scan {
+            if self.mode == ScanMode::Import {
                 self.store.save(&self.obj)?;
             }
             Ok(Some(hash))

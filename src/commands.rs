@@ -248,13 +248,12 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
-    //let mut scanner: Scanner<Blake3, 30> = Scanner::new();
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut scanner: Scanner<Blake3, 30> = Scanner::new(tub.into_store());
     eprintln!("🛁 Scanning tree state, wont take long...");
-    /*
     if let Some(root) = scanner.scan_tree(&source)? {
         println!("{}", root);
     }
-    */
     eprintln!("🛁 Status: it's complicated!");
     Ok(())
 }

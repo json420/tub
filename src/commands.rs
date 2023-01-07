@@ -239,8 +239,17 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 
 fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 {
+    let source = dir_or_cwd(source)?;
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut store = tub.into_store();
+    let mut obj = store.new_object();
+    store.reindex(&mut obj)?;
+    let mut scanner: Scanner<Blake3, 30> = Scanner::new(store);
+    scanner.enable_import();
     eprintln!("🛁 Writing commit...");
-    //println!("{}", db32enc(&root));
+    if let Some(root) = scanner.scan_tree(&source)? {
+        println!("{}", root);
+    }
     eprintln!("🛁 Wow, great job on that one! 💋");
     Ok(())
 }

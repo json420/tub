@@ -220,10 +220,15 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         Self {obj: Object::<H, N>::new(), store: store, mode: ScanMode::Scan}
     }
 
+    pub fn enable_import(&mut self) {
+        self.mode = ScanMode::Import;
+    }
+
     fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>
     {
+        println!("{} {:?}", depth, dir);
         if depth >= MAX_DEPTH {
-            //panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+            panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         let mut tree = Tree::new();
         for entry in fs::read_dir(dir)? {
@@ -256,11 +261,11 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                         }
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
-                        //println!("X {} {:?}", hash, path);
+                        println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash);
                     }
                     else {
-                        //println!("F {} {:?}", hash, path);
+                        println!("F {} {:?}", hash, path);
                         tree.add_file(name, hash);
                     }
                 }

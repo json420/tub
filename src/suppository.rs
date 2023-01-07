@@ -52,8 +52,8 @@ pub struct Suppository<H: Hasher, const N: usize> {
 }
 
 impl<H: Hasher, const N: usize> Suppository<H, N> {
-    pub fn create(parent: PathBuf) -> io::Result<Self> {
-        let dotdir = create_dotdir(&parent)?;
+    pub fn create(parent: &Path) -> io::Result<Self> {
+        let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
         let file = create_store(&filename)?;
@@ -172,10 +172,10 @@ mod tests {
     #[test]
     fn test_suppository_create() {
         let tmp = TestTempDir::new();
-        assert!(DefaultSuppository::create(tmp.pathbuf()).is_ok());
+        assert!(DefaultSuppository::create(tmp.path()).is_ok());
 
         // Should fail if it already exists:
-        let r = DefaultSuppository::create(tmp.pathbuf());
+        let r = DefaultSuppository::create(tmp.path());
         assert!(r.is_err());
 
         // Make sure we can open what we created

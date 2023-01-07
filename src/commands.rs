@@ -163,34 +163,49 @@ pub fn run() -> io::Result<()> {
 }
 
 
+macro_rules! other_err {
+    ($msg:literal) => {
+        Err(io::Error::new(io::ErrorKind::Other, $msg))
+    }
+}
+
+
 fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 {
     let pb = match target {
         Some(dir) => dir,
         None => env::current_dir()?,
     };
-    if ! pb.is_dir() {
-        eprintln!("🛁❗ Not a directory: {:?}", pb);
-        exit(42);
+    if pb.is_dir() {
+        pb.canonicalize()
     }
-    Ok(pb.canonicalize()?)
+    else {
+        eprintln!("🛁❗ Not a directory: {:?}", pb);
+        other_err!("Not a dir")
+    }
 }
 
-fn get_sup(target: OptPath) -> io::Result<DefaultSuppository>
+
+fn get_tub(target: &Path) -> io::Result<DefaultSuppository>
 {
-    let target = dir_or_cwd(target)?;
     if let Some(dotdir) = find_dotdir(&target) {
         DefaultSuppository::open(dotdir)
+    }
+    else {
+        other_err!("Could not find Tub")
+    }
+}
+
+
+fn get_tub_exit(target: &Path) -> io::Result<DefaultSuppository>
+{
+    if let Ok(tub) = get_tub(&target) {
+        Ok(tub)
     }
     else {
         eprintln!("🛁❗ Could not find Tub in {:?}", &target);
         exit(42);
     }
-}
-
-
-fn get_reindexed_tub(target: OptPath) -> io::Result<()> {
-    Ok(())
 }
 
 
@@ -203,13 +218,17 @@ fn not_yet() -> io::Result<()>
 
 fn cmd_init(target: OptPath) -> io::Result<()>
 {
-    if let Ok(sup) = get_sup(target) {
-        eprintln!("🛁❗ Tub already exists: {:?}", "fixme");
+    let target = dir_or_cwd(target)?;
+    if let Ok(tub) = get_tub(&target) {
+        eprintln!("🛁❗ Tub already exists: {:?}", target);
         exit(42);
     }
-    eprintln!("🛁 Created new Tub repository: {:?}", "fixme");
-    eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
-    Ok(())
+    else {
+        DefaultSuppository::create(&target)?;
+        eprintln!("🛁 Created new Tub repository: {:?}", &target);
+        eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
+        Ok(())
+    }
 }
 
 

@@ -339,7 +339,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     }
 
     pub fn save(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
-        println!("save {}", obj.hash());
         assert!(obj.is_valid());
         let hash = obj.hash();
         let info = obj.info();

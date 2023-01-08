@@ -305,71 +305,71 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
     pub fn scan_tree(&mut self, dir: &Path) -> io::Result<Option<Name<N>>> {
         self.scan_tree_inner(dir, 0)
     }
+
+    fn restore_tree_inner(&mut self, root: &Name<N>, path: &Path, depth: usize) -> io::Result<()> {
+        if depth >= MAX_DEPTH {
+            panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+        }
+        if self.store.load(root, &mut self.obj)? {
+            let tree = Tree::deserialize(&self.obj.as_data());
+            fs::create_dir_all(&path)?;
+            for (name, entry) in tree.as_map() {
+                let mut pb = path.to_path_buf();
+                pb.push(name);
+                match entry.kind {
+                    Kind::EmptyDir => {
+                        fs::create_dir_all(&pb)?;
+                    },
+                    Kind::Dir => {
+                        eprintln!("D {:?}", pb);
+                        self.restore_tree_inner(&entry.hash, &pb, depth + 1)?;
+                    },
+                    Kind::EmptyFile => {
+                        fs::File::create(&pb)?;
+                    },
+                    Kind::File | Kind::ExeFile => {
+                        if self.store.load(&entry.hash, &mut self.obj)? {
+                            let mut file = fs::File::create(&pb)?;
+                            if entry.kind == Kind::ExeFile {
+                                file.set_permissions(fs::Permissions::from_mode(0o755))?;
+                                eprintln!("X {:?}", pb);
+                            }
+                            else {
+                                eprintln!("F {:?}", pb);
+                            }
+                            //object.write_to_file(&mut file)?;  FIXME
+                        } else {
+                            panic!("could not find object"); // {}") FIXME , hash);
+                        }
+                    }
+                    Kind::SymLink => {
+                        if self.store.load(&entry.hash, &mut self.obj)? {
+                            eprintln!("S {:?}", &pb);
+                            if let Ok(_) = fs::remove_file(&pb) {
+                                // FIXME: handle this more better
+                                eprintln!("Deleted old {:?}", &pb);
+                            }
+                            let s = String::from_utf8(self.obj.as_data().to_vec()).unwrap();
+                            let target = PathBuf::from(s);
+                            unix::fs::symlink(&target, &pb)?;
+                        } else {
+                            panic!("could not find symlink object");// FIXME, &entry.hash));
+                        }
+                    },
+                }
+            }
+        } else {
+            panic!("Could not find tree object");  //FIXME {}", root);
+        }
+        Ok(())
+    }
+
+    pub fn restore_tree(&mut self, root: &Name<N>, path: &Path) -> io::Result<()> {
+        self.restore_tree_inner(root, path, 0)
+    }
 }
 
 /*
-fn restore_tree_inner(store: &mut Store, root: &Name<N>, path: &Path, depth: usize) -> io::Result<()> {
-    if depth >= MAX_DEPTH {
-        panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
-    }
-    if let Some(data) = store.get_object(root, false)? {
-        let tree = Tree::deserialize(&data);
-        fs::create_dir_all(&path)?;
-        for (name, entry) in tree.as_map() {
-            let mut pb = path.to_path_buf();
-            pb.push(name);
-            match entry.kind {
-                Kind::EmptyDir => {
-                    fs::create_dir_all(&pb)?;
-                },
-                Kind::Dir => {
-                    eprintln!("D {:?}", pb);
-                    restore_tree_inner(store, &entry.hash, &pb, depth + 1)?;
-                },
-                Kind::EmptyFile => {
-                    fs::File::create(&pb)?;
-                },
-                Kind::File | Kind::ExeFile => {
-                    if let Some(mut object) = store.open(&entry.hash)? {
-                        let mut file = fs::File::create(&pb)?;
-                        if entry.kind == Kind::ExeFile {
-                            file.set_permissions(fs::Permissions::from_mode(0o755))?;
-                            eprintln!("X {:?}", pb);
-                        }
-                        else {
-                            eprintln!("F {:?}", pb);
-                        }
-                        object.write_to_file(&mut file)?;
-                    } else {
-                        panic!("could not find object"); // {}") FIXME , hash);
-                    }
-                }
-                Kind::SymLink => {
-                    if let Some(buf) = store.get_object(&entry.hash, false)? {
-                        eprintln!("S {:?}", &pb);
-                        if let Ok(_) = fs::remove_file(&pb) {
-                            // FIXME: handle this more better
-                            eprintln!("Deleted old {:?}", &pb);
-                        }
-                        let s = String::from_utf8(buf).unwrap();
-                        let target = PathBuf::from(s);
-                        unix::fs::symlink(&target, &pb)?;
-                    } else {
-                        panic!("could not find symlink object");// FIXME, &entry.hash));
-                    }
-                },
-            }
-        }
-    } else {
-        panic!("Could not find tree object");  //FIXME {}", root);
-    }
-    Ok(())
-}
-
-pub fn restore_tree(store: &mut Store, root: &Name<N>, path: &Path) -> io::Result<()> {
-    restore_tree_inner(store, root, path, 0)
-}
-
 
 #[derive(Debug)]
 pub struct WorkingTree {

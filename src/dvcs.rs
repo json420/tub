@@ -7,7 +7,6 @@ use std::io;
 use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
-use std::io::prelude::*;
 
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};

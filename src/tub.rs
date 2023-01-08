@@ -1,10 +1,8 @@
 //! Higher level repository built on `chaos`.
 
 use std::path::{Path, PathBuf};
-use std::{cmp, io, fs};
-use std::io::prelude::*;
+use std::{io, fs};
 use crate::base::*;
-use crate::dbase32::DirNameIter;
 use crate::protocol::{Hasher, DefaultHasher};
 use crate::chaos::Store;
 

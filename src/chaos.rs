@@ -27,12 +27,11 @@ use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::db32enc;
 use crate::util::getrandom;
-use std::{fs, io, path, cmp};
+use std::{fs, io};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
 use std::io::prelude::*;
-use std::slice::Iter;
 
 
 

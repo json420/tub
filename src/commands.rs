@@ -274,7 +274,7 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let start = Instant::now();
     let pb = path.canonicalize()?;
     let size = fs::metadata(&pb)?.len();
-    let mut file = fs::File::open(&pb)?;
+    let file = fs::File::open(&pb)?;
     let mut obj = DefaultObject::new();
     eprintln!("🛁 Computing TubHash, this wont take long...");
     println!("{}", hash_file(&mut obj, file, size)?);

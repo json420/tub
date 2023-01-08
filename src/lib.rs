@@ -7,7 +7,6 @@ pub mod commands;
 pub mod dbase32;
 pub mod dvcs;
 pub mod helpers;
-pub mod importer;
 pub mod inception;
 pub mod protocol;
 pub mod tub;

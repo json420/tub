@@ -220,6 +220,10 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         Self {obj: Object::<H, N>::new(), store: store, mode: ScanMode::Scan}
     }
 
+    pub fn into_store(self) -> Store<H, N> {
+        self.store
+    }
+
     pub fn enable_import(&mut self) {
         self.mode = ScanMode::Import;
     }

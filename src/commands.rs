@@ -250,6 +250,8 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
     if let Some(root) = scanner.scan_tree(&source)? {
         println!("{}", root);
     }
+    let mut store = scanner.into_store();
+    store.reindex(&mut obj)?;
     eprintln!("🛁 Wow, great job on that one! 💋");
     Ok(())
 }

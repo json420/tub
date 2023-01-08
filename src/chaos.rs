@@ -317,10 +317,14 @@ impl<H: Hasher, const N: usize> Store<H, N> {
                     let entry = Entry::new(obj.info(), self.offset);
                     self.map.insert(hash, entry);
                 }
+                else {
+                    panic!("shitballs {}", offset);
+                }
                 self.offset += (N + INFO_LEN + obj.info().size()) as u64;
             }
             obj.resize(0);
         }
+        eprintln!("Reindexed {} objects", self.map.len());
         Ok(())
     }
 
@@ -380,7 +384,9 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         else {
             obj.reset(size as usize, 0);
             file.read_exact(obj.as_mut_data())?;
-            Ok(obj.finalize())
+            let hash = obj.finalize();
+            self.save(&obj)?;
+            Ok(hash)
         }
     }
 }

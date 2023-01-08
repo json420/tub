@@ -1,0 +1,57 @@
+    tub·i·fi·ca·tion
+
+    /tʌbəfəˈkāSH(ə)n/
+
+noun: tubification; plural noun: tubifications 
+
+    1.  The process of migrating from legacy data stores and tooling within an
+        organization to a hyper modern, unified data system called Bathtub DB
+        (or Tub for short).
+
+    2.  Early 21st century software design trend in which content addressable
+        storage became way more awesome; sometimes called Gitification, in
+        reference to Tub's predecessor, Git.
+
+The goal of Tub isn't to replace Git.  The goal of Tub is to bring Git-like
+technology into every last market corner where Git-like technology can and
+should be used but isn't yet being used.  And to replace Git.
+
+
+HELP SPREAD THE MIND VIRUS!
+===========================
+
+Tub 💖 Git
+----------
+
+Obviously Linus Torvalds could today write something that could kick Git's ass.
+
+Jason just wants to make the point that he can too :D
+
+
+Tub 💖 Rust
+-----------
+
+Jason feels that Rust is highly stratetic for Tub, so much so that any
+competitor that isn't written in Rust... we're gonna kick their ass, haha!
+
+
+Tub 💖 Blake3
+-------------
+
+The extraordinary performance of Blake3 has competely changed Jason's mind about
+where content addressable storage can be used.
+
+We can definitely build a high-perforance documented oriented database on top of
+that kind of hashing speed.  As Blake3 is likewise fast on 32-bit, we can get
+into embedded and IoT spaces we couldn't otherwise.
+
+Yo Blake3 devs, thanks for doing your reference implementation in Rust!  You
+rock!
+
+
+Tub 💖 Linux
+------------
+
+If you want to work on Tub, you should probably do so on Linux... otherwise we
+will definitely make fun of you.  Or you could use Redox, we like that too!
+

@@ -324,7 +324,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             }
             obj.resize(0);
         }
-        eprintln!("Reindexed {} objects", self.map.len());
         Ok(())
     }
 

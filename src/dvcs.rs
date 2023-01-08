@@ -11,7 +11,7 @@ use std::io::prelude::*;
 
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
-use crate::inception::FileStream;
+use crate::inception::{import_file, restore_file};
 use crate::base::*;
 
 
@@ -264,7 +264,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                             self.obj.hash_file(file, size)?
                         }
                         ScanMode::Import => {
-                            self.store.import_file(&mut self.obj, file, size)?
+                            import_file(&mut self.store, &mut self.obj, file, size)?
                         }
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
@@ -336,7 +336,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                             if entry.kind == Kind::ExeFile {
                                 file.set_permissions(fs::Permissions::from_mode(0o755))?;
                             }
-                            self.store.restore_file(&entry.hash, &mut self.obj, &mut file)?;
+                            restore_file(
+                                &mut self.store, &mut self.obj, &mut file, &entry.hash
+                            )?;
                         } else {
                             panic!("could not find object {}", entry.hash);
                         }

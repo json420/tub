@@ -54,78 +54,72 @@ impl<const N: usize> LeafHashes<N> {
 }
 
 
-
-pub struct FileStream<H: Hasher, const N: usize> {
-    store: Store<H, N>,
+pub fn import_file<H: Hasher, const N: usize>(
+        store: &mut Store<H, N>,
+        obj: &mut Object<H, N>,
+        mut file: fs::File,
+        size: u64
+    ) -> io::Result<Name<N>> {
+    if size == 0 {
+        panic!("No good, yo, your size is ZERO!");
+    }
+    if size > OBJECT_MAX_SIZE as u64 {
+        let mut leaves = LeafHashes::<N>::new();
+        let mut remaining = size;
+        while remaining > 0 {
+            let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
+            remaining -= s;
+            obj.reset(s as usize, 0);
+            file.read_exact(obj.as_mut_data())?;
+            leaves.append_leaf(obj.finalize(), obj.info().size());
+            store.save(&obj)?;
+        }
+        obj.clear();
+        leaves.serialize(obj.as_mut_vec());
+        let root = obj.finalize();
+        store.save(&obj)?;
+        Ok(root)
+    }
+    else {
+        obj.reset(size as usize, 0);
+        file.read_exact(obj.as_mut_data())?;
+        let hash = obj.finalize();
+        store.save(&obj)?;
+        Ok(hash)
+    }
 }
 
-impl<H: Hasher, const N: usize> FileStream<H, N> {
-    pub fn new(store: Store<H, N>) -> Self {
-        Self {store: store}
-    }
-
-    pub fn import_file(&mut self, obj: &mut Object<H, N>, mut file: fs::File, size: u64) -> io::Result<Name<N>> {
-        if size == 0 {
-            panic!("No good, yo, your size is ZERO!");
-        }
-        if size > OBJECT_MAX_SIZE as u64 {
-            let mut leaves = LeafHashes::<N>::new();
-            let mut remaining = size;
-            while remaining > 0 {
-                let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
-                remaining -= s;
-                obj.reset(s as usize, 0);
-                file.read_exact(obj.as_mut_data())?;
-                leaves.append_leaf(obj.finalize(), obj.info().size());
-                self.store.save(&obj)?;
-            }
-            obj.clear();
-            leaves.serialize(obj.as_mut_vec());
-            let root = obj.finalize();
-            self.store.save(&obj)?;
-            Ok(root)
-        }
-        else {
-            obj.reset(size as usize, 0);
-            file.read_exact(obj.as_mut_data())?;
-            let hash = obj.finalize();
-            self.store.save(&obj)?;
-            Ok(hash)
-        }
-    }
-
-    pub fn restore_file(
-        &mut self,
-        root: &Name<N>,
+pub fn restore_file<H: Hasher, const N: usize> (
+        store: &mut Store<H, N>,
         obj: &mut Object<H, N>,
-        file: &mut fs::File) -> io::Result<bool>
-    {
-        if self.store.load(root, obj)? {
-            let kind = obj.info().kind();
-            match kind {
-                0 => {
-                    file.write_all(obj.as_data())?;
-                }
-                1 => {
-                    let hashes = LeafHashes::<N>::deserialize(obj.as_data());
-                    for hash in hashes.iter() {
-                        if self.store.load(&hash, obj)? {
-                            file.write_all(obj.as_data())?;
-                        }
-                        else {
-                            panic!("Cannot find {} leaf {}", root, hash);
-                        }
+        file: &mut fs::File,
+        root: &Name<N>,
+    ) -> io::Result<bool> {
+    if store.load(root, obj)? {
+        let kind = obj.info().kind();
+        match kind {
+            0 => {
+                file.write_all(obj.as_data())?;
+            }
+            1 => {
+                let hashes = LeafHashes::<N>::deserialize(obj.as_data());
+                for hash in hashes.iter() {
+                    if store.load(&hash, obj)? {
+                        file.write_all(obj.as_data())?;
+                    }
+                    else {
+                        panic!("Cannot find {} leaf {}", root, hash);
                     }
                 }
-                _ => {
-                    panic!("No good, yo, no good at all! 😵‍💫");
-                }
             }
-            Ok(true)
+            _ => {
+                panic!("No good, yo, no good at all! 😵‍💫");
+            }
         }
-        else {
-            Ok(false)
-        }
+        Ok(true)
+    }
+    else {
+        Ok(false)
     }
 }
 

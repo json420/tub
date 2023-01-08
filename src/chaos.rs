@@ -20,10 +20,7 @@
 //! module is low level, does not handle things like large object encoding and
 //! compression.  For that see `tub::inception`.
 //!
-//! This layer is already smokin' fast 🚀, but we could squeeze a bit more out
-//! if we replace the `HashMap` with something custom.  We already have a hash!
-//! Note that for DOS attack mitigation we still need to XOR the hash with a
-//! runtime random key and lookup by that.
+//! This layer is smokin' fast. 🚀
 
 
 use crate::base::*;

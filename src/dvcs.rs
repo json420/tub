@@ -413,8 +413,6 @@ impl WorkingTree {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::store::Store;
-    use crate::util::random_hash;
 
 /*
     #[test]

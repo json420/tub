@@ -6,7 +6,7 @@ use std::io::prelude::*;
 use crate::base::*;
 use crate::dbase32::DirNameIter;
 use crate::protocol::{Hasher, DefaultHasher};
-use crate::chaos::{Object, Store, Name};
+use crate::chaos::Store;
 
 
 
@@ -120,7 +120,6 @@ mod tests {
     fn test_create_store() {
         let tmp = TestTempDir::new();
         let pb = tmp.build(&["a_store_file"]);
-        let empty: Vec<String> = vec![];
 
         let r = create_store(&pb);
         assert!(r.is_ok());

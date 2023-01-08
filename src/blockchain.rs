@@ -108,9 +108,11 @@ impl BlockChain {
         &self.buf[BLOCK_SIGNATURE_RANGE]
     }
 
+    /*
     fn set_pubkey(&mut self, hash: &TubHash) {
         self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(hash);
     }
+    */
 
     pub fn as_pubkey(&self) -> &[u8] {
         &self.buf[BLOCK_PUBKEY_RANGE]

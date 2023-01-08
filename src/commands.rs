@@ -265,7 +265,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     if let Some(root) = scanner.scan_tree(&source)? {
         println!("{}", root);
     }
-    eprintln!("🛁 Status: it's complicated!");
+    eprintln!("🛁 Status: it's complicated! 🤣");
     Ok(())
 }
 

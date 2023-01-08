@@ -1,22 +1,22 @@
 //! Content Hash Addressable Object Store (START HERE).
 //!
-//! An Object's wire format be all like this, yo:
+//! An Object's wire format contains just for fields of the following sizes in
+//! bytes:
 //!
-//! | Hash | Size | Type | DATA       |
+//! | Hash | Size | Kind | DATA       |
 //! |------|------|------|------------|
 //! |   30 |    3 |    1 | 1-16777216 |
 //!
-//! This is the foundation of Bathtub DB.  It's already fast as fuck, but let's
-//! try to squeeze even more performance out of it.  How fast?  Jason is getting
-//! close to a million small object loads per second (when backing file is in
-//! memory cuz it was read prior, where "small" is between 1 and 256 bytes,
-//! and when running on Jason's i5-1240P Darter Pro).
+//! All objects start with a fixed size header (generic on `<N>`) followed by
+//! 1 to 16777216 bytes of object data.  An object with a size of zero is not
+//! allow and is not even expressible in the header.
 //!
-//! We should see if we can make a custom `HashMap` like thing that is faster
-//! than `HashMap`.
+//! The size is "size minus one" encoded into 24 bits by first subtracting one
+//! from the size.  In 24 bits you can store values from 0-16777215, but what
+//! we actually want is 1-16777216, both so the zero value is not possible
+//! to represent, and so the high value is that nice power of 2.
 //!
-//! FIXME: Should we handle fixed size blocks (like in the branch chains) in
-//! a special way?
+//!
 
 
 use crate::base::*;
@@ -32,7 +32,6 @@ use std::slice::Iter;
 
 
 
-// FIXME: Can we put compile time contraints on N such that N > 0 && N % 5 == 0?
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Name<const N: usize> {

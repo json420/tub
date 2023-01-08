@@ -461,7 +461,7 @@ impl<const N: usize> LeafHashes<N> {
             hashes.push(hash);
             offset += N;
         }
-        assert_eq!(offset, buf.len());
+        assert_eq!(offset, buf.len() + 8);
         Self {total: total, hashes: hashes}
     }
 }

@@ -54,6 +54,34 @@ impl<const N: usize> LeafHashes<N> {
 }
 
 
+pub fn hash_file<H: Hasher, const N: usize> (
+        obj: &mut Object<H, N>,
+        mut file: fs::File,
+        size: u64
+    ) -> io::Result<Name<N>> {
+    if size == 0 {
+        panic!("No good, yo, your size is ZERO!");
+    }
+    if size > OBJECT_MAX_SIZE as u64 {
+        let mut tree: Object<H, N> = Object::new();
+        let mut remaining = size;
+        while remaining > 0 {
+            let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
+            remaining -= s;
+            obj.reset(s as usize, 0);
+            file.read_exact(obj.as_mut_data())?;
+            tree.extend_from_slice(obj.finalize().as_buf());
+        }
+        Ok(tree.finalize())
+    }
+    else {
+        obj.reset(size as usize, 0);
+        file.read_exact(obj.as_mut_data())?;
+        Ok(obj.finalize())
+    }
+}
+
+
 pub fn import_file<H: Hasher, const N: usize>(
         store: &mut Store<H, N>,
         obj: &mut Object<H, N>,

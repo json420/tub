@@ -9,7 +9,7 @@ use crate::chaos::DefaultObject;
 use crate::tub::{find_dotdir, DefaultTub};
 use crate::dvcs::Scanner;
 use crate::protocol::Blake3;
-
+use crate::inception::hash_file;
 
 type OptPath = Option<PathBuf>;
 
@@ -274,10 +274,10 @@ fn cmd_hash(path: &Path) -> io::Result<()>
     let start = Instant::now();
     let pb = path.canonicalize()?;
     let size = fs::metadata(&pb)?.len();
-    let file = fs::File::open(&pb)?;
+    let mut file = fs::File::open(&pb)?;
     let mut obj = DefaultObject::new();
     eprintln!("🛁 Computing TubHash, this wont take long...");
-    println!("{}", obj.hash_file(file, size)?);
+    println!("{}", hash_file(&mut obj, file, size)?);
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (size as f64 / elapsed) as u64;
     eprintln!("🛁 Hashed {} bytes in {}s, {} bytes/s", size, elapsed, rate);

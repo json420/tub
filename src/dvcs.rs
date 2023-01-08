@@ -11,7 +11,7 @@ use std::io::prelude::*;
 
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
-use crate::inception::{import_file, restore_file};
+use crate::inception::{import_file, restore_file, hash_file};
 use crate::base::*;
 
 
@@ -261,7 +261,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     let file = fs::File::open(&path)?;
                     let hash = match self.mode {
                         ScanMode::Scan => {
-                            self.obj.hash_file(file, size)?
+                            hash_file(&mut self.obj, file, size)?
                         }
                         ScanMode::Import => {
                             import_file(&mut self.store, &mut self.obj, file, size)?

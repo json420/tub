@@ -236,29 +236,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn as_mut_data(&mut self) -> &mut [u8] {
         &mut self.buf[N + INFO_LEN..]
     }
-
-    pub fn hash_file(&mut self, mut file: fs::File, size: u64) -> io::Result<Name<N>> {
-        if size == 0 {
-            panic!("No good, yo, your size is ZERO!");
-        }
-        if size > OBJECT_MAX_SIZE as u64 {
-            let mut tree: Object<H, N> = Object::new();
-            let mut remaining = size;
-            while remaining > 0 {
-                let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
-                remaining -= s;
-                self.reset(s as usize, 0);
-                file.read_exact(self.as_mut_data())?;
-                tree.extend_from_slice(self.finalize().as_buf());
-            }
-            Ok(tree.finalize())
-        }
-        else {
-            self.reset(size as usize, 0);
-            file.read_exact(self.as_mut_data())?;
-            Ok(self.finalize())
-        }
-    }
 }
 
 pub type DefaultObject = Object<Blake3, 30>;

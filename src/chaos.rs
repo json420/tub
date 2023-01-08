@@ -79,8 +79,6 @@ impl<const N: usize> fmt::Display for Name<N> {
     }
 }
 
-pub type TubId2 = Name<15>;
-
 
 /// Packs 24-bit `size` and 8-bit `kind` into a `u32`.
 #[derive(Debug, PartialEq, Eq)]

@@ -11,6 +11,7 @@ use std::io::prelude::*;
 
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
+use crate::inception::FileStream;
 use crate::base::*;
 
 
@@ -212,12 +213,15 @@ pub struct Scanner<H: Hasher, const N: usize> {
     mode: ScanMode,
     obj: Object<H, N>,
     store: Store<H, N>,
-    
 }
 
 impl<H: Hasher, const N: usize> Scanner<H, N> {
     pub fn new(store: Store<H, N>) -> Self {
-        Self {obj: Object::<H, N>::new(), store: store, mode: ScanMode::Scan}
+        Self {
+            obj: Object::<H, N>::new(),
+            store: store,
+            mode: ScanMode::Scan,
+        }
     }
 
     pub fn into_store(self) -> Store<H, N> {

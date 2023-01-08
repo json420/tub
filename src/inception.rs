@@ -54,13 +54,15 @@ impl<const N: usize> LeafHashes<N> {
 }
 
 
+
 pub struct FileStream<H: Hasher, const N: usize> {
     store: Store<H, N>,
-
 }
 
-
 impl<H: Hasher, const N: usize> FileStream<H, N> {
+    pub fn new(store: Store<H, N>) -> Self {
+        Self {store: store}
+    }
 
     pub fn import_file(&mut self, obj: &mut Object<H, N>, mut file: fs::File, size: u64) -> io::Result<Name<N>> {
         if size == 0 {

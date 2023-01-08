@@ -1,6 +1,6 @@
 //! Content Hash Addressable Object Store (START HERE).
 //!
-//! An Object's wire format contains just for fields of the following sizes in
+//! An Object's wire format contains just four fields of the following sizes in
 //! bytes:
 //!
 //! | Hash | Size | Kind | DATA       |
@@ -13,10 +13,17 @@
 //!
 //! The size is "size minus one" encoded into 24 bits by first subtracting one
 //! from the size.  In 24 bits you can store values from 0-16777215, but what
-//! we actually want is 1-16777216, both so the zero value is not possible
-//! to represent, and so the high value is that nice power of 2.
+//! we actually want is 1-16777216, both so the zero value is not possible to
+//! represent, and so the high value is that nice power of 2.
 //!
+//! Everything in Tub is framed within this object structure.  However, this
+//! module is low level, does not handle things like large object encoding and
+//! compression.  For that see `tub::inception`.
 //!
+//! This layer is already smokin' fast 🚀, but we could squeeze a bit more out
+//! we replace the `HashMap` with something custom.  We already have a hash!
+//! Note that for DOS attack mitigation we still need to XOR the hash with a
+//! runtime random key and lookup by that.
 
 
 use crate::base::*;

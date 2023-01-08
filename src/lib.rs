@@ -1,4 +1,4 @@
-//! # Bathtub DB
+//! Tub: Relaxing version control for everyone! 🛁
 
 pub mod base;
 pub mod blockchain;

@@ -1,4 +1,4 @@
-//! Put references to objects in other objects in an object.  Builds on `chaos`.
+//! Put references to objects in other objects... in an object.
 //!
 //! This builds high level encodings on top of `chaos`, things like large object
 //! storage, compression, delta compression, and encryption.  All these high

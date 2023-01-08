@@ -1,4 +1,4 @@
-//! Content Hash Addressable Object Store (START HERE).
+//! 💖 Content Hash Addressable Object Store (START HERE).
 //!
 //! An Object's wire format contains just four fields of the following sizes in
 //! bytes:

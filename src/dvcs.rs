@@ -320,40 +320,33 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     Kind::EmptyDir => {
                         fs::create_dir_all(&pb)?;
                     },
-                    Kind::Dir => {
-                        eprintln!("D {:?}", pb);
-                        self.restore_tree_inner(&entry.hash, &pb, depth + 1)?;
-                    },
                     Kind::EmptyFile => {
                         fs::File::create(&pb)?;
+                    },
+                    Kind::Dir => {
+                        self.restore_tree_inner(&entry.hash, &pb, depth + 1)?;
                     },
                     Kind::File | Kind::ExeFile => {
                         if self.store.load(&entry.hash, &mut self.obj)? {
                             let mut file = fs::File::create(&pb)?;
                             if entry.kind == Kind::ExeFile {
                                 file.set_permissions(fs::Permissions::from_mode(0o755))?;
-                                eprintln!("X {:?}", pb);
                             }
-                            else {
-                                eprintln!("F {:?}", pb);
-                            }
-                            //object.write_to_file(&mut file)?;  FIXME
+                            self.store.restore_file(&entry.hash, &mut self.obj, &mut file)?;
                         } else {
-                            panic!("could not find object"); // {}") FIXME , hash);
+                            panic!("could not find object {}", entry.hash);
                         }
                     }
                     Kind::SymLink => {
                         if self.store.load(&entry.hash, &mut self.obj)? {
-                            eprintln!("S {:?}", &pb);
                             if let Ok(_) = fs::remove_file(&pb) {
-                                // FIXME: handle this more better
-                                eprintln!("Deleted old {:?}", &pb);
+                                eprintln!("Deleted old {:?}", &pb);  // FIXME: handle this more better
                             }
                             let s = String::from_utf8(self.obj.as_data().to_vec()).unwrap();
                             let target = PathBuf::from(s);
                             unix::fs::symlink(&target, &pb)?;
                         } else {
-                            panic!("could not find symlink object");// FIXME, &entry.hash));
+                            panic!("could not find symlink object: {}", &entry.hash);
                         }
                     },
                 }

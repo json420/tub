@@ -291,7 +291,7 @@ impl Entry {
 
 
 pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
-    phantom1: PhantomData<R>,
+    phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
     inner: &'a mut R,
 }
@@ -307,13 +307,17 @@ impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
 
     pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
         obj.clear();
-        self.inner.read_exact(obj.as_mut_header())?;
-        obj.resize_to_info();
-        self.inner.read_exact(obj.as_mut_header())?;
-        if ! obj.is_valid() {
-            panic!("crap");
+        if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
+            obj.resize_to_info();
+            self.inner.read_exact(obj.as_mut_data())?;
+            if ! obj.is_valid() {
+                panic!("Not valid {}", obj.hash());
+            }
+            Ok(true)
         }
-        Ok(true)
+        else {
+            Ok(false)
+        }
     }
 }
 

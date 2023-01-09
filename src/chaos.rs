@@ -8,13 +8,11 @@
 //! |   30 |    3 |    1 | 1-16777216 |
 //!
 //! All objects start with a fixed size header (generic on `<N>`) followed by
-//! 1 to 16777216 bytes of object data.  An object with a size of zero is not
-//! allow and is not even expressible in the header.
+//! 1 to 16777216 bytes of object data.  Empty (size=0) objects are not allowed.
 //!
 //! The size is "size minus one" encoded into 24 bits by first subtracting one
 //! from the size.  In 24 bits you can store values from 0-16777215, but what
-//! we actually want is 1-16777216, both so the zero value is not possible to
-//! represent, and so the high value is that nice power of 2.
+//! we actually want is 1-16777216.  So it works out just perfectly.
 //!
 //! Everything in Tub is framed within this object structure.  However, this
 //! module is low level, does not handle things like large object encoding and
@@ -168,10 +166,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.resize_to_info();
         getrandom(self.as_mut_data());
         self.finalize()
-    }
-
-    pub fn extend_from_slice(&mut self, newstuff: &[u8]) {
-        self.buf.extend_from_slice(newstuff);
     }
 
     pub fn compute(&self) -> Name<N> {

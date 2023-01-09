@@ -63,16 +63,18 @@ pub fn hash_file<H: Hasher, const N: usize> (
         panic!("No good, yo, your size is ZERO!");
     }
     if size > OBJECT_MAX_SIZE as u64 {
-        let mut tree: Object<H, N> = Object::new();
+        let mut leaves = LeafHashes::<N>::new();
         let mut remaining = size;
         while remaining > 0 {
             let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
             remaining -= s;
             obj.reset(s as usize, 0);
             file.read_exact(obj.as_mut_data())?;
-            tree.extend_from_slice(obj.finalize().as_buf());
+            leaves.append_leaf(obj.finalize(), obj.info().size());
         }
-        Ok(tree.finalize())
+        obj.clear();
+        leaves.serialize(obj.as_mut_vec());
+        Ok(obj.finalize())
     }
     else {
         obj.reset(size as usize, 0);

@@ -197,7 +197,16 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn finalize(&mut self) -> Name<N> {
-        self.set_info(Info::new(self.as_data().len(), 69));
+        let kind = self.info().kind();
+        self.set_info(Info::new(self.as_data().len(), kind));
+        assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
+        let hash = self.compute();
+        self.buf[0..N].copy_from_slice(hash.as_buf());
+        hash
+    }
+
+    pub fn finalize_with_kind(&mut self, kind: u8) -> Name<N> {
+        self.set_info(Info::new(self.as_data().len(), kind));
         assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());

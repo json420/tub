@@ -59,7 +59,6 @@ pub fn hash_file<H: Hasher, const N: usize> (
         mut file: fs::File,
         size: u64
     ) -> io::Result<Name<N>> {
-    println!("{:?}", file);
     if size == 0 {
         panic!("No good, yo, your size is ZERO!");
     }
@@ -75,7 +74,7 @@ pub fn hash_file<H: Hasher, const N: usize> (
         }
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
-        Ok(obj.finalize())
+        Ok(obj.finalize_with_kind(1))
     }
     else {
         obj.reset(size as usize, 0);
@@ -107,7 +106,7 @@ pub fn import_file<H: Hasher, const N: usize>(
         }
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
-        let root = obj.finalize();
+        let root = obj.finalize_with_kind(1);
         store.save(&obj)?;
         Ok(root)
     }

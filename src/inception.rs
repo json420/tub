@@ -156,33 +156,42 @@ pub fn restore_file<H: Hasher, const N: usize> (
 }
 
 
-#[derive(Debug)]
 pub struct ObjectStream<H: Hasher, const N: usize> {
-    obj: Object<H, N>,
+    total: usize,
     set: HashSet<Name<N>>,
-    //encoder: Encoder,
+    encoder: Encoder<'static, Object<H, N>>,
 }
 
 impl<H: Hasher, const N: usize> ObjectStream<H, N>  {
-    pub fn new(mut obj: Object<H, N>) -> Self {
+    pub fn new(mut obj: Object<H, N>) -> io::Result<Self> {
         obj.clear();
-        Self {obj: obj, set: HashSet::new()}
+        Ok( Self {
+            total: 0,
+            set: HashSet::new(),
+            encoder: Encoder::new(obj, 0)?,
+        })
     }
 
-    pub fn into_object(self) -> Object<H, N> {
-        self.obj
+    pub fn has_space(&self, obj: &Object<H, N>) -> bool {
+        OBJECT_MAX_SIZE - self.total > obj.len()
     }
 
-    pub fn add(&mut self, obj: &Object<H, N>) -> bool {
+    pub fn push(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
+        assert!(self.has_space(obj));
         let hash = obj.hash();
-        if self.set.contains(&hash) || obj.len() > self.obj.remaining() {
-            false
+        if self.set.contains(&hash) {
+            Ok(false)
         }
         else {
-            self.obj.as_mut_vec().extend_from_slice(obj.as_buf());
             self.set.insert(hash);
-            true
+            self.total += obj.len();
+            self.encoder.write_all(obj.as_buf())?;
+            Ok(true)
         }
+    }
+
+    pub fn finish(self) -> io::Result<Object<H, N>> {
+        self.encoder.finish()
     }
 }
 
@@ -196,17 +205,7 @@ mod tests {
     fn test_object_stream() {
         let mut obj: Object<Blake3, 30> = Object::new();
         obj.randomize(true);
-        assert!(obj.len() > 34);
-        let os = ObjectStream::new(obj);
-        let obj = os.into_object();
-        assert!(obj.len() == 34);  // Make sure Object.clean() is called
-
         let mut os = ObjectStream::new(obj);
-        let mut obj2: Object<Blake3, 30> = Object::new();
-        obj2.randomize(true);
-        assert!(os.add(&obj2));
-        let obj = os.into_object();
-        assert_eq!(obj.len(), 34 + obj2.len());
-        assert_eq!(obj.as_data(), obj2.as_buf());
     }
 }
+

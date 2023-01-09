@@ -34,6 +34,9 @@ use std::fmt;
 use std::io::prelude::*;
 
 
+pub type DefaultObject = Object<Blake3, 30>;
+pub type DefaultStore = Store<Blake3, 30>;
+
 
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -237,7 +240,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 }
 
-pub type DefaultObject = Object<Blake3, 30>;
+
 
 /// A value in the `Store.map` HashMap index.
 pub struct Entry {
@@ -339,9 +342,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(true)
     }
 }
-
-
-pub type DefaultStore = Store<Blake3, 30>;
 
 
 

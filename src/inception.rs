@@ -59,6 +59,7 @@ pub fn hash_file<H: Hasher, const N: usize> (
         mut file: fs::File,
         size: u64
     ) -> io::Result<Name<N>> {
+    println!("{:?}", file);
     if size == 0 {
         panic!("No good, yo, your size is ZERO!");
     }

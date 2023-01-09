@@ -23,7 +23,7 @@
 
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
-use crate::dbase32::db32enc;
+use crate::dbase32::{db32enc, db32dec_into};
 use crate::util::getrandom;
 use std::{fs, io};
 use std::collections::HashMap;
@@ -32,6 +32,7 @@ use std::fmt;
 use std::io::prelude::*;
 
 
+pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
 
@@ -50,6 +51,16 @@ impl<const N: usize> Name<N> {
     pub fn from(src: &[u8]) -> Self {
         let buf: [u8; N] = src.try_into().expect("oops");
         Self {buf: buf}
+    }
+
+    pub fn from_string(txt: String) -> Self {
+        let mut buf = [0_u8; N];
+        if db32dec_into(txt.as_bytes(), &mut buf) {
+            Self {buf: buf}
+        }
+        else {
+            panic!("Handle this better, yo");
+        }
     }
 
     pub fn into_buf(self) -> [u8; N] {
@@ -297,8 +308,12 @@ impl<H: Hasher, const N: usize> Store<H, N> {
                 }
                 self.offset += (N + INFO_LEN + obj.info().size()) as u64;
             }
+            else {
+                panic!("cannot read {}", offset);
+            }
             obj.resize(0);
         }
+        eprintln!("{} objects", self.map.len());
         Ok(())
     }
 

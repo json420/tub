@@ -8,13 +8,14 @@ use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
 
-use crate::protocol::Hasher;
+use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
 use crate::inception::{import_file, restore_file, hash_file};
 use crate::base::*;
 
 
 const MAX_DEPTH: usize = 32;
+pub type DefaultScanner = Scanner<Blake3, 30>;
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]

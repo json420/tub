@@ -7,9 +7,9 @@ use std::fs;
 use std::process::exit;
 use std::time::Instant;
 use clap::{Parser, Subcommand};
-use crate::chaos::DefaultObject;
+use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::Scanner;
+use crate::dvcs::DefaultScanner;
 use crate::protocol::Blake3;
 use crate::inception::hash_file;
 
@@ -156,7 +156,7 @@ pub fn run() -> io::Result<()> {
             cmd_commit(source, tub)
         }
         Commands::Revert {hash, dst, tub} => {
-            not_yet()
+            cmd_revert(hash, dst, tub)
         }
         Commands::Log {} => {
             not_yet()
@@ -246,7 +246,7 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
     let mut store = tub.into_store();
     let mut obj = store.new_object();
     store.reindex(&mut obj)?;
-    let mut scanner: Scanner<Blake3, 30> = Scanner::new(store);
+    let mut scanner = DefaultScanner::new(store);
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree(&source)? {
@@ -258,11 +258,12 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+
 fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut scanner: Scanner<Blake3, 30> = Scanner::new(tub.into_store());
+    let mut scanner = DefaultScanner::new(tub.into_store());
     eprintln!("🛁 Scanning tree state, wont take long...");
     if let Some(root) = scanner.scan_tree(&source)? {
         println!("{}", root);
@@ -270,6 +271,21 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     eprintln!("🛁 Status: it's complicated! 🤣");
     Ok(())
 }
+
+
+fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
+    let hash = DefaultName::from_string(txt);
+    let dst = dir_or_cwd(dst)?;
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut store = tub.into_store();
+    let mut obj = store.new_object();
+    store.reindex(&mut obj)?;
+    let mut scanner = DefaultScanner::new(store);
+    scanner.restore_tree(&hash, &dst)?;
+    eprintln!("🛁 yo from revert");
+    Ok(())
+}
+
 
 fn cmd_hash(path: &Path) -> io::Result<()>
 {

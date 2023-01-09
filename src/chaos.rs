@@ -30,6 +30,7 @@ use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
 use std::io::prelude::*;
+use std::marker::PhantomData;
 
 pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
@@ -287,6 +288,35 @@ impl Entry {
         Self {info: info, offset: offset}
     }
 }
+
+
+pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
+    phantom1: PhantomData<R>,
+    phantom2: PhantomData<H>,
+    inner: &'a mut R,
+}
+
+impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
+    pub fn new(reader: &'a mut R) -> Self {
+        Self {
+            phantom1: PhantomData,
+            phantom2: PhantomData,
+            inner: reader,
+        }
+    }
+
+    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
+        obj.clear();
+        self.inner.read_exact(obj.as_mut_header())?;
+        obj.resize_to_info();
+        self.inner.read_exact(obj.as_mut_header())?;
+        if ! obj.is_valid() {
+            panic!("crap");
+        }
+        Ok(true)
+    }
+}
+
 
 
 /// Organizes objects in an append-only file.

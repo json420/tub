@@ -356,27 +356,16 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        obj.resize(0);
-        while let Ok(_) = self.file.read_exact_at(obj.as_mut_header(), self.offset) {
-            obj.resize_to_info();
-            let offset = self.offset + (N + INFO_LEN) as u64;
-            if let Ok(_) = self.file.read_exact_at(obj.as_mut_data(), offset) {
-                if obj.is_valid() {
-                    let hash = obj.hash();
-                    let entry = Entry::new(obj.info(), self.offset);
-                    self.map.insert(hash, entry);
-                }
-                else {
-                    panic!("shitballs {}", offset);
-                }
-                self.offset += (N + INFO_LEN + obj.info().size()) as u64;
-            }
-            else {
-                panic!("cannot read {}", offset);
-            }
-            obj.resize(0);
+        let mut reader: ObjectReader<fs::File, H, N> = ObjectReader::new(&mut self.file);
+        while reader.read_next(obj)? {
+            self.map.insert(
+                obj.hash(),
+                Entry::new(obj.info(), self.offset)
+            );
+            self.offset += obj.len() as u64;
         }
-        eprintln!("{} objects", self.map.len());
+        obj.clear();
+        //eprintln!("{} objects", self.map.len());
         Ok(())
     }
 

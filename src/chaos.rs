@@ -31,7 +31,6 @@ use std::os::unix::fs::FileExt;
 use std::fmt;
 use std::io::prelude::*;
 
-
 pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
@@ -261,6 +260,17 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn as_mut_data(&mut self) -> &mut [u8] {
         &mut self.buf[N + INFO_LEN..]
+    }
+}
+
+impl<H: Hasher, const N: usize> io::Write for Object<H, N> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.buf.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 

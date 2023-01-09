@@ -8,7 +8,7 @@ use std::slice::Iter;
 use std::io::prelude::*;
 use std::collections::HashSet;
 use std::{io, fs, cmp};
-use zstd::bulk::compress_to_buffer;
+use zstd::stream::{Encoder, Decoder};
 use crate::base::*;
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
@@ -160,6 +160,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
 pub struct ObjectStream<H: Hasher, const N: usize> {
     obj: Object<H, N>,
     set: HashSet<Name<N>>,
+    //encoder: Encoder,
 }
 
 impl<H: Hasher, const N: usize> ObjectStream<H, N>  {

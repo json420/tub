@@ -1,3 +1,18 @@
+Understanding (and hacking on) Bathtub DB
+=========================================
+
+Tub (or Bathtub DB, your pick) is a lot like Git, so if you understand how Git
+works under the hood, you're a long way toward understanding Tub.  Basically
+this is the aspect of Git you need to understand:
+
+    https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+
+To start hacking, read `src/chaos.rs` first.  That's the low-level object store,
+in which everything in Tub is encapsulated.  Then look at `src/inception.rs`.
+That's where large objects are encoded across multiple small objects, and where
+compression happens.
+
+
 Guidelines for making Tub all like kickass and shit, yo
 =======================================================
 
@@ -77,32 +92,21 @@ Guidelines for making Tub all like kickass and shit, yo
             algorithms and get lots of iterations on that problem before the
             protocols are finalized
 
-        -   So obivously our default compressor should be zstd, because holly
-            fuck balls its performance is amazing; FYI, because zstd is *so*
-            much faster (and even has better compression!) than zlib, Tub
-            absolutely kicks Git's ass in this area (like ~11.7x faster and
-            1.27x better compression ratio when compressing a 1.9GB append.tub
-            file contaiting lots of text files and some binaries all stored as a
-            Tub trees... fucking impressive!)
-
-        -   But it could be very useful to also have a slow but highly effective
-            archival compressor, maybe even something super heavy like xz
-            (note: Jason is open to adding additional compression agorithms
-            later, but he will absouletly keep it at 2 max till we stabilize
-            the protcols)
-
         -   Hash function and hashing protocols need to be configurable and
             upgradeable; Jason knows this is pain city because he tried to work
             through this problem preemptively in the Dmedia (Novacut) file
             hashing protocols[1], and despite his best efforts, he never
             actually got the code paths to support mulitple protcols at once
             (because when it tried, it exploded into such a mess he felt he
-            couldn't justify the time investment at the moment)
+            couldn't justify the time investment at the moment).  UPDATE: Yo,
+            Jason is already almost done with this!  All the key code paths are
+            now generic on <H, N>, the hashing protocol H and the digest size in
+            bytes N.
 
         *   Git's CLI is, hmmm... let's try to improve on that quite a lot.
             Jason thinks the Bazaar CLI is quite well done, worth looking at if
             you've never played with it.  But really we're going to de a clean
-            slate design, considering all that's changed since get was desgined.
+            slate design, considering all that's changed since Git was desgined.
 
     *   Needless complexity is to nut cancer what the devil is to diarrhea.  It
         doesn't make sense, it's fucking stupid, and it should be avoided at all
@@ -111,156 +115,4 @@ Guidelines for making Tub all like kickass and shit, yo
 
 [1] Dmedia file hashing protocol:
     https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
-
-Understanding (and hacking on) Bathtub DB
-=========================================
-
-
-Tub (or Bathtub DB, your pick) is a lot like Git, so if you understand how Git
-works under the hood, you're a long way toward understanding Tub.  Basically
-this is the aspect of Git you need to understand:
-
-    https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
-
-Like Git, Tub is built on a content addressable object store.  Everything goes
-in the object store:
-
-    (1) Data objects containing the actual data you want to store
-    (2) Tree objects that reference data objects and organize them in
-        whatever way the specific application needs
-    (3) Commit objects that reference top-level tree objects plus contain
-        metadata about the state (e.g., a commit message)
-    (4) Block objects that reference commit objects and organize them into a
-        sequence of changes over time (note in that in Tub, the Git equivalent
-        of a Commit object is split into a Commit plus Block object)
-
-In the code, the object store is implemented in the `leaf_io` and `store`
-modules.
-
-Tub has built-in "large object support" (up to 16 EiB).  Large objects can
-be incrementally verified in `LEAF_SIZE` increments.  Anything less than or
-equal to `LEAF_SIZE` is a small object and its payload hash is a hash of the
-object content itself.  Anything larger than `LEAF_SIZE` is a large object and
-its payload hash is a hash of the leaf hashes.
-
-Small objects are stored in something similar to Git's packfile (an append-only
-file).  Large objects are stored separately in a file named using the Dbase32
-encoded `TubHash`.  This is in, e.g., DOTDIR/objects/33/333333....
-
-The large object protocol is very similar to what Jason developed for Dmedia:
-
-    https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
-
-Some key differences between Tub and Git (developers should have these in mind):
-
-    *   Tub is an actual database, not just database like.  This means there are
-        performance demands on Tub's storage layer that Git doesn't necessarily
-        have.  In particular, Tub's small object read performance needs to be
-        as fast as possible.  We have a budget of 1 syscall per small object
-        read or write.  In order to do this, we use an in-memory index.
-        Worth it!
-
-    *   Like above, we want to keep space requirements as small as possible,
-        minimize CPU time spent encoding/decoding.  In places where Git uses a
-        "friendly" human readable encoding (as it does in tree and commit
-        objects), Tub uses a compact binary format.  Remember that when used as
-        a document oriented database, these tree-like and commit-like objects
-        are rather high-frequency objects (as opposed to use as a DVCS).
-
-    *   Typically there will be a Tub process running that the Tub DVCS CLI
-        talks to over an AF_UNIX socket (not implement yet!) so things like
-        `Store.reindex()` wont be runing at each CLI command invocation.
-        The current plan is that this Tub server process will automatically do
-        the equivalent of git push when network connectivity is available.
-
-
-Tub is best understood as three layers:
-
-Layer 0: Object Storage
------------------------
-
-Like Git, Tub is built on a content addressable object store.  The key used to
-look up an object is the hash of that object's content.  You can't pick the key,
-the object's content plus the protocol picks it for you.
-
-In the code, that key is represented with the `TubHash` type (currently a
-`[u8; 30]`, but the length might change).
-
-
-Layer 1: Object Versioning
---------------------------
-
-You can't pick your `TubHash`, but you can pick your `TubId` (well, with some
-exacting constraints).
-
-A `TubId` is a random 120-bit value that points to a `TubHash`.  Think of it
-like a non-human-readable Git tag.
-
-The document oriented database (below) takes a lot of inspiration from CouchDB,
-and these are semantically equivalent:
-
-    Tub        CouchDB
-    ======================
-    TubId   => doc["_id"]
-    TubHash => doc["_rev"]
-
-
-Layer 3: Application Layer
---------------------------
-
-
-
-
-OLD Brain Dump on Bathtub DB.
-
-Object Storage
-==============
-
-At it's core, BTDB is content addressable object store.  There are two somewhat
-conflicting goals for this layer of BTDB:
-
-    1.  We want to aggressively delta compress sequences of changes to small
-        objects (source control, document updates, etc).  Small objects are
-        appended to the bathtub.db file and then will be periodically repacked
-
-    2.  We want to store very large objects, including large objects that
-        generally don't change and can't be delta compressed (video files)
-
-Performance goals:
-
-    *   Small object reads need to be very fast
-
-    *   Reading the latest state needs to be fast (ie, delta compressed
-        documents, source code)
-
-    *   Hash algorithm needs to be as fast as possible while still being
-        cryptographically robust
-
-
-Object Versioning
-=================
-
-Versioning is a mapping of Abstract IDs (random) to Concrete IDs (derived from
-content):
-
-    abstract_id => concrete_id
-
-A given Abstract ID can only point to a single Concrete IDs at a time, but
-the same Concrete ID can be pointed to by multiple Abstract IDs.
-
-
-Branches
-========
-
-A branch is a history of changes to the state.  Branches are stored as a signed
-block chain.  Signed use used for access control (you can write to a branch if
-you have the private key).  The hash chain is used for long term preservation
-of history.
-
-Branches are identified by an Abstract ID.  It's tempting to use the content
-hash of the public key to identify a branch (since each branch has a unique
-one).  But this breaks re-keying.
-
-However, the hash chain this allows of to validate the history chain as long
-as we know the current history entry.
 

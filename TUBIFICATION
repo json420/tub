@@ -31,15 +31,15 @@ Jason just wants to make the point that he can too :D
 Tub 💖 Rust
 -----------
 
-Jason feels that Rust is highly stratetic for Tub, so much so that any
+Jason feels that Rust is highly strategic for Tub, so much so that any
 competitor that isn't written in Rust... we're gonna kick their ass, haha!
 
 
 Tub 💖 Blake3
 -------------
 
-The extraordinary performance of Blake3 has competely changed Jason's mind about
-where content addressable storage can be used.
+The extraordinary performance of Blake3 has completely changed Jason's mind
+about where content addressable storage can be used.
 
 We can definitely build a high-perforance documented oriented database on top of
 that kind of hashing speed.  As Blake3 is likewise fast on 32-bit, we can get

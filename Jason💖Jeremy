@@ -1,6 +1,9 @@
 Jeremy,
 
-Holy shit Rust is fucking awesome.
+Holy shit Rust is fucking awesome.  I wrote some Rust for you so we can be BFF.
+
+`src/chaos.rs` is the low-level object store.  It's my best Rust yet.  Generics
+are extra kickass, OMG!
 
 Hey, let's start an employee owned tech mega company and build an empire
 together.  How does that sound?
@@ -8,6 +11,12 @@ together.  How does that sound?
 Let's talk about Rust, life, and making 💲💲💲
 
 Seriously, give me a call whenever you have a free moment.
+
+Oh, we should aggressively use Git's sha1 situation in our favor:
+
+    https://lwn.net/Articles/898522/
+
+Guess what, my object store is already generic on the hash and digest size.
 
 I 💖 you.
 

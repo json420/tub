@@ -8,7 +8,7 @@
 //! |   30 |    3 |    1 | 1-16777216 |
 //!
 //! All objects start with a fixed size header (generic on `<N>`) followed by
-//! 1 to 16777216 bytes of object data.  Empty (size=0) objects are not allowed.
+//! 1 to 16777216 bytes of object data.  Empty objects (size=0) are not allowed.
 //!
 //! The size is "size minus one" encoded into 24 bits by first subtracting one
 //! from the size.  In 24 bits you can store values from 0-16777215, but what

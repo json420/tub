@@ -32,9 +32,31 @@ pub type DefaultHasher = Blake3;
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::*;
     use crate::util::getrandom;
+    use crate::helpers::flip_bit_in;
+    use std::collections::HashSet;
 
+    #[test]
+    fn test_blake3() {
+        let mut hash = [0_u8; 30];
+        let mut data = [0_u8; 69];
+        getrandom(&mut data);
+        let b3 = Blake3::new();
+        b3.hash_into(0, &data, &mut hash);
+        let mut set: HashSet<[u8; 30]> = HashSet::new();
+        let og = hash.clone();
+        set.insert(hash.clone());
+        for bit in 0..data.len() * 8 {
+            flip_bit_in(&mut data, bit);
+            b3.hash_into(0, &data, &mut hash);
+            assert_ne!(hash, og);
+            assert!(set.insert(hash.clone()));
+            flip_bit_in(&mut data, bit);  // Flip bit back
+            b3.hash_into(0, &data, &mut hash);
+            assert_eq!(hash, og);
+        }
+        assert_eq!(set.len(), 69 * 8 + 1);
+    }
 }
 

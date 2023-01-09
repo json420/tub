@@ -1,3 +1,5 @@
+//! CLI commands for WIP version control tool `tub`.
+
 use std::path::{Path, PathBuf};
 use std::env;
 use std::io;

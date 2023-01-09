@@ -283,11 +283,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             }
             else if ft.is_dir() {
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
-                    //println!("D {} {:?}", hash, path);
                     tree.add_dir(name, hash);
                 }
                 else {
-                    //println!("Empty Dir: {:?}", path);
                     tree.add_empty_dir(name);
                 }
             }

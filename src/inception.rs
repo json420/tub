@@ -6,7 +6,9 @@
 
 use std::slice::Iter;
 use std::io::prelude::*;
+use std::collections::HashSet;
 use std::{io, fs, cmp};
+use zstd::bulk::compress_to_buffer;
 use crate::base::*;
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
@@ -154,10 +156,56 @@ pub fn restore_file<H: Hasher, const N: usize> (
 }
 
 
+#[derive(Debug)]
+pub struct ObjectStream<H: Hasher, const N: usize> {
+    obj: Object<H, N>,
+    set: HashSet<Name<N>>,
+}
+
+impl<H: Hasher, const N: usize> ObjectStream<H, N>  {
+    pub fn new(mut obj: Object<H, N>) -> Self {
+        obj.clear();
+        Self {obj: obj, set: HashSet::new()}
+    }
+
+    pub fn into_object(self) -> Object<H, N> {
+        self.obj
+    }
+
+    pub fn add(&mut self, obj: &Object<H, N>) -> bool {
+        let hash = obj.hash();
+        if self.set.contains(&hash) || obj.len() > self.obj.remaining() {
+            false
+        }
+        else {
+            self.obj.as_mut_vec().extend_from_slice(obj.as_buf());
+            self.set.insert(hash);
+            true
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::protocol::Blake3;
+
     #[test]
-    fn test_stuff() {
-    
+    fn test_object_stream() {
+        let mut obj: Object<Blake3, 30> = Object::new();
+        obj.randomize(true);
+        assert!(obj.len() > 34);
+        let os = ObjectStream::new(obj);
+        let obj = os.into_object();
+        assert!(obj.len() == 34);  // Make sure Object.clean() is called
+
+        let mut os = ObjectStream::new(obj);
+        let mut obj2: Object<Blake3, 30> = Object::new();
+        obj2.randomize(true);
+        assert!(os.add(&obj2));
+        let obj = os.into_object();
+        assert_eq!(obj.len(), 34 + obj2.len());
+        assert_eq!(obj.as_data(), obj2.as_buf());
     }
 }

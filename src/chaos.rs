@@ -167,6 +167,16 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.buf.len()
     }
 
+    pub fn remaining(&self) -> usize {
+        let max = N + INFO_LEN + OBJECT_MAX_SIZE;
+        if self.len() > max {
+            0
+        }
+        else {
+            max - self.len()
+        }
+    }
+
     // FIXME: We should not have this in the API, but super handy for testing and play
     pub fn randomize(&mut self, small: bool) -> Name<N> {
         getrandom(&mut self.buf[N..N + INFO_LEN]);

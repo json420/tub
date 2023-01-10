@@ -18,7 +18,13 @@
 //! module is low level, does not handle things like large object encoding and
 //! compression.  For that see `tub::inception`.
 //!
-//! This layer is smokin' fast. 🚀
+//! This layer is smokin' fast. 🚀 Let's keep it that way!  We have a strict
+//! budget for `Store.save()`, `Store.load()`, and `Store.delete()`:
+//!
+//! 1.  A single system call to `write()` or `pread64()`
+//! 2.  Zero heap allocations
+//!
+//! If we stick to the above, this should stay fast!
 
 
 use crate::base::*;
@@ -132,6 +138,7 @@ impl Info {
 pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
     buf: Vec<u8>,
+    cur: usize,
 }
 
 impl<H: Hasher, const N: usize> Object<H, N> {
@@ -139,6 +146,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         Self {
             buf: vec![0; N + INFO_LEN],
             hasher: H::new(),
+            cur: 0,
         }
     }
 
@@ -157,6 +165,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn clear(&mut self) {
         self.buf.clear();
         self.buf.resize(N + INFO_LEN, 0);
+        self.cur = 0;
     }
 
     pub fn resize_to_info(&mut self) {
@@ -275,6 +284,23 @@ impl<H: Hasher, const N: usize> io::Write for Object<H, N> {
     }
 }
 
+impl<H: Hasher, const N: usize> io::Read for Object<H, N> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        Ok(0)
+    }
+}
+
+
+impl<H: Hasher, const N: usize> io::BufRead for Object<H, N> {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        Ok(self.as_data())
+    }
+
+    fn consume(&mut self, amount: usize) {
+    }
+}
+        
+
 
 
 /// A value in the `Store.map` HashMap index.
@@ -291,13 +317,13 @@ impl Entry {
 
 
 // Read objects from an object stream.
-pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
+pub struct ObjectReader<'a, R: io::BufRead, H: Hasher, const N: usize> {
     phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
     inner: &'a mut R,
 }
 
-impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
+impl<'a, R: io::BufRead, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
     pub fn new(reader: &'a mut R) -> Self {
         Self {
             phantom1: PhantomData,
@@ -357,7 +383,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        let mut reader: ObjectReader<fs::File, H, N> = ObjectReader::new(&mut self.file);
+        let mut bf = io::BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut bf);
         while reader.read_next(obj)? {
             self.map.insert(
                 obj.hash(),

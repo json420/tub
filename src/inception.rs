@@ -12,6 +12,7 @@ use zstd::stream::{Encoder, Decoder};
 use crate::base::*;
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name};
+use std::marker::PhantomData;
 
 
 #[derive(Debug)]
@@ -203,6 +204,29 @@ impl<H: Hasher, const N: usize> Compress<H, N>  {
         self.encoder.finish()
     }
 }
+
+
+pub struct Decompress<R: io::BufRead, H: Hasher, const N: usize> {
+    phantom: PhantomData<H>,
+    decoder: Decoder<'static, R>,
+}
+
+impl<R: io::BufRead, H: Hasher, const N: usize> Decompress<R, H, N>
+{
+/*
+    pub fn new(mut inner: R) -> io::Result<Self> {
+        let decoder: Decoder<'static, R> = Decoder::new(inner)?;
+        Ok( Self {
+            phantom: PhantomData,
+            decoder: decoder,
+        })
+    }
+*/
+    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
+        Ok(true)
+    }
+}
+
 
 
 #[cfg(test)]

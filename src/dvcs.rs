@@ -356,7 +356,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 }
             }
         } else {
-            panic!("Could not find tree object");  //FIXME {}", root);
+            panic!("Could not find tree object {}", root);
         }
         Ok(())
     }

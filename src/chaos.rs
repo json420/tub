@@ -290,6 +290,7 @@ impl Entry {
 }
 
 
+// Read objects from an object stream.
 pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
     phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
@@ -311,7 +312,7 @@ impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
             obj.resize_to_info();
             self.inner.read_exact(obj.as_mut_data())?;
             if ! obj.is_valid() {
-                panic!("Not valid {}", obj.hash());
+                panic!("Not valid {}", obj.hash());  // FIXME: handle more better
             }
             Ok(true)
         }

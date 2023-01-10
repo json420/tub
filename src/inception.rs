@@ -156,13 +156,20 @@ pub fn restore_file<H: Hasher, const N: usize> (
 }
 
 
-pub struct ObjectStream<H: Hasher, const N: usize> {
+/// Compress an object stream and store in inside of an object.
+/// 
+/// 16 MiB is a lot of compressed source code, so typically all objects in a
+/// DVCS commit will fit within a single object.  We can beat git on initial
+/// space efficiency this way: objects will compress much better back to back
+/// in the same compression stream.  It also means we can write a commit with a
+/// single call to `Store.save()`.
+pub struct Compress<H: Hasher, const N: usize> {
     total: usize,
     set: HashSet<Name<N>>,
     encoder: Encoder<'static, Object<H, N>>,
 }
 
-impl<H: Hasher, const N: usize> ObjectStream<H, N>  {
+impl<H: Hasher, const N: usize> Compress<H, N>  {
     pub fn new(mut obj: Object<H, N>) -> io::Result<Self> {
         obj.clear();
         Ok( Self {
@@ -173,6 +180,8 @@ impl<H: Hasher, const N: usize> ObjectStream<H, N>  {
     }
 
     pub fn has_space(&self, obj: &Object<H, N>) -> bool {
+        // FIXME: what we really want is the free space in the underlying object,
+        // but the currest Rust zstd API doen't seem to offer this
         OBJECT_MAX_SIZE - self.total > obj.len()
     }
 
@@ -202,10 +211,20 @@ mod tests {
     use crate::protocol::Blake3;
 
     #[test]
-    fn test_object_stream() {
+    fn test_compress() {
+        let inner: Object<Blake3, 30> = Object::new();
+        let mut comp = Compress::new(inner).unwrap();
         let mut obj: Object<Blake3, 30> = Object::new();
-        obj.randomize(true);
-        let mut os = ObjectStream::new(obj);
+        while comp.has_space(&obj) {
+            obj.as_mut_vec().extend_from_slice(
+                b"It's all about control systems, baby."
+            );
+            obj.finalize();
+            comp.push(&obj);
+        }
+        let inner = comp.finish().unwrap();
+        assert!(inner.as_data().len() < OBJECT_MAX_SIZE);
+        assert_eq!(inner.as_data().len(), 38071);
     }
 }
 

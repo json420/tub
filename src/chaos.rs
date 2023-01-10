@@ -18,8 +18,10 @@
 //! module is low level, does not handle things like large object encoding and
 //! compression.  For that see `tub::inception`.
 //!
-//! This layer is smokin' fast. 🚀 Let's keep it that way!  We have a strict
-//! budget for `Store.save()`, `Store.load()`, and `Store.delete()`:
+//! This layer is smokin' fast. 🚀 Let's keep it that way!
+//!
+//! We have a strict budget for `Store.save()`, `Store.load()`, and
+//! `Store.delete()`:
 //!
 //! 1.  A single system call to `write()` or `pread64()`
 //! 2.  Zero heap allocations
@@ -148,6 +150,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
             hasher: H::new(),
             cur: 0,
         }
+    }
+
+    pub fn into_buf(self) -> Vec<u8> {
+        self.buf
     }
 
     pub fn reset(&mut self, size: usize, kind: u8) {
@@ -317,13 +323,13 @@ impl Entry {
 
 
 // Read objects from an object stream.
-pub struct ObjectReader<'a, R: io::BufRead, H: Hasher, const N: usize> {
+pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
     phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
     inner: &'a mut R,
 }
 
-impl<'a, R: io::BufRead, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
+impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
     pub fn new(reader: &'a mut R) -> Self {
         Self {
             phantom1: PhantomData,

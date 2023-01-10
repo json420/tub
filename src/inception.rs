@@ -206,22 +206,22 @@ impl<H: Hasher, const N: usize> Compress<H, N>  {
 }
 
 
-pub struct Decompress<R: io::BufRead, H: Hasher, const N: usize> {
+pub struct Decompress<R: io::Read, H: Hasher, const N: usize> {
     phantom: PhantomData<H>,
-    decoder: Decoder<'static, R>,
+    decoder: Decoder<'static, io::BufReader<R>>,
 }
 
-impl<R: io::BufRead, H: Hasher, const N: usize> Decompress<R, H, N>
+impl<R: io::Read, H: Hasher, const N: usize> Decompress<R, H, N>
 {
-/*
+
     pub fn new(mut inner: R) -> io::Result<Self> {
-        let decoder: Decoder<'static, R> = Decoder::new(inner)?;
+        let decoder: Decoder<'static, io::BufReader<R>> = Decoder::new(inner)?;
         Ok( Self {
             phantom: PhantomData,
             decoder: decoder,
         })
     }
-*/
+
     pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
         Ok(true)
     }

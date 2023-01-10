@@ -383,8 +383,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        let mut bf = io::BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut bf);
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
                 obj.hash(),

@@ -161,12 +161,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.buf.resize(N + INFO_LEN + size, 0);
         self.set_info(Info::new(size, kind));
     }
-    
-    // FIXME: remove this soon
-    pub fn resize(&mut self, size: usize) {
-        self.buf.clear();
-        self.buf.resize(N + INFO_LEN + size, 0);
-    }
 
     pub fn clear(&mut self) {
         self.buf.clear();
@@ -405,7 +399,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
     pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
-            obj.resize(entry.info.size());
+            obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
             if ! obj.validate_against(hash) {
                 panic!("{} hash does not match", hash);
@@ -513,7 +507,7 @@ mod tests {
     fn test_object() {
         let mut obj: Object<Blake3, 30> = Object::new();
         assert_eq!(obj.len(), 34);
-        obj.resize(0);
+        obj.clear();
         assert_eq!(obj.len(), 34);
 
         assert_eq!(obj.info().size(), 1);
@@ -527,7 +521,7 @@ mod tests {
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[255; 34]);
 
-        obj.resize(0);
+        obj.clear();
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
     }
@@ -570,7 +564,7 @@ mod tests {
             let hash1 = obj1.hash();
             assert!(store.save(&obj1).unwrap());
             assert!(store.map.contains_key(&hash1));
-            obj2.resize(0);
+            obj2.clear();
             assert!(store.load(&hash1, &mut obj2).unwrap());
             assert_eq!(obj1.as_buf(), obj2.as_buf());
         }
@@ -579,7 +573,7 @@ mod tests {
             let hash1 = obj1.hash();
             assert!(store.save(&obj1).unwrap());
             assert!(store.map.contains_key(&hash1));
-            obj2.resize(0);
+            obj2.clear();
             assert!(store.load(&hash1, &mut obj2).unwrap());
             assert_eq!(obj1.as_buf(), obj2.as_buf());
         }

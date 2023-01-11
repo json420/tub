@@ -31,9 +31,9 @@ We'll use three bytes to specify the encoding:
 A value of 0 in a field means do nothing (pass through).  A Delta byte of 1
 means general delta, 2 means document delta, and so on.
 
-We'll have at least two types of delta compression: generic (basically what Git
-does) and document (a special high performance content aware delta format used
-to specify changes between document revisions).
+We'll have at least two types of delta compression: "general" (basically what Git
+Git does) and "document" (a special high performance content aware delta format
+used to specify changes between document revisions).
 
 Delta compression should always be combined with general compression.
 Obviously zstd will be the default cuz that algorithm kicks fuckin' ass.  But to

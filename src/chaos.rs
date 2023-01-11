@@ -290,15 +290,6 @@ impl<H: Hasher, const N: usize> io::Read for Object<H, N> {
     }
 }
 
-
-impl<H: Hasher, const N: usize> io::BufRead for Object<H, N> {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> {
-        Ok(self.as_data())
-    }
-
-    fn consume(&mut self, amount: usize) {
-    }
-}
         
 
 

@@ -18,11 +18,18 @@ use std::marker::PhantomData;
 /*
 We want a generalized Container type that stores an encoded object stream,
 where the encoding is any combination of delta compression, general compression,
-and encryption.  We'll use three bytes to specify the encoding:
+and encryption (and chained in that order for encoding, reverse that order
+for decoding).
+
+    Encode: --> Delta   --> Compress   --> Encrypt -->
+    Decode: <-- Dedelta <-- Decompress <-- Decrypt <--
+
+We'll use three bytes to specify the encoding:
 
     | Delta Byte | Compress Byte | Encrypt Byte |
 
-A value of 0 in a field means do nothing (pass through).
+A value of 0 in a field means do nothing (pass through).  A Delta byte of 1
+means general delta, 2 means document delta, and so on.
 
 We'll have at least two types of delta compression: generic (basically what Git
 does) and document (a special high performance content aware delta format used

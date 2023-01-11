@@ -55,6 +55,12 @@ one level deep).
 */
 
 
+#[derive(Debug)]
+pub struct Continer<H: Hasher, const N: usize> {
+    obj: Object<H, N>,
+}
+
+
 
 #[derive(Debug)]
 pub struct LeafHashes<const N: usize> {

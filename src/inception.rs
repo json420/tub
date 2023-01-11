@@ -15,6 +15,40 @@ use crate::chaos::{Object, Store, Name, ObjectReader};
 use std::marker::PhantomData;
 
 
+/*
+We want a generalized Container type that stores an encoded object stream,
+where the encoding is any combination of delta compression, general compression,
+and encryption.  We'll use three bytes to specify the encoding:
+
+    | Delta Byte | Compress Byte | Encrypt Byte |
+
+A value of 0 in a field means do nothing (pass through).
+
+We'll have at least two types of delta compression: generic (basically what Git
+does) and document (a special high performance content aware delta format used
+to specify changes between document revisions).
+
+Delta compression should always be combined with general compression.
+Obviously zstd will be the default cuz that algorithm kicks fuckin' ass.  But to
+make sure the protocols are truly future friendly and allow us add additional
+general compression formats, let's have at least two from the get go to make us
+fully work through the problem.  The other algorithm should offer a better
+compression ratio than zstd (so it's going to be slower), but lets still pick
+the best performance we can get for the compression ratio.
+
+We should also offer a couple of encryption algorithms out of the gate, for the
+same reason.  Let's keep the protocol design iterations well constraining
+within practical engineering realities.  Design through implementation.  If
+the implementation always turns into shit, then the design is shit and we should
+iterate on the design again.
+
+Containers will not be allowed in other containers (the nesting is at most
+one level deep).
+
+*/
+
+
+
 #[derive(Debug)]
 pub struct LeafHashes<const N: usize> {
     total: u64,

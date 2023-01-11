@@ -55,6 +55,19 @@ one level deep).
 */
 
 
+
+/*
+We should probably define a trait for a common object stream interface, one we
+use whether the steam is being decoded out of a container object, read out of
+a file, or recv'd over a socket.  And have the same for the write direction.
+*/
+
+pub trait Stream<R: Read, H: Hasher, const N: usize> {
+    fn new(inner: R) -> Self;
+    fn send(&mut self, obj: &Object<H, N>) -> io::Result<()>;
+    fn recv(&mut self, obj: &mut Object<H, N>) -> io::Result<()>;
+}
+
 #[derive(Debug)]
 pub struct Continer<H: Hasher, const N: usize> {
     obj: Object<H, N>,

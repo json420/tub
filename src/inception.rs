@@ -119,7 +119,7 @@ impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
             let start = self.pos;
             let stop = start + amount;
             self.pos = stop;
-            assert!(self.pos < data.len());
+            assert!(self.pos <= data.len());
             buf[0..amount].copy_from_slice(&data[start..stop]);
             Ok(amount)
         }
@@ -365,12 +365,21 @@ mod tests {
     fn test_read_from_object() {
         let obj: Object<Blake3, 30> = Object::new();
         let mut rfo = ReadFromObject::new(obj);
-        let mut buf = [0_u8; 69];
-        getrandom(&mut buf);
-        let og = buf.clone();
+        let mut buf = [0; 69];
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);
-        assert_eq!(buf, og);
+        assert_eq!(buf, [0; 69]);
+
         let mut obj = rfo.into_inner();
+        let mut data = [0; 42];
+        getrandom(&mut data);
+        obj.as_mut_vec().extend_from_slice(&data);
+        let mut rfo = ReadFromObject::new(obj);
+        assert_eq!(rfo.read(&mut buf).unwrap(), 42);
+        assert_eq!(buf[0..42], data);
+        assert_eq!(buf[42..69], [0; 27]);
+        buf.fill(0);
+        assert_eq!(rfo.read(&mut buf).unwrap(), 0);
+        assert_eq!(buf, [0; 69]);
     }
 
     #[test]

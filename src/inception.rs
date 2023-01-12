@@ -362,14 +362,18 @@ mod tests {
     use crate::protocol::Blake3;
 
     #[test]
-    fn test_read_from_object() {
+    fn test_rfo_empty() {
         let obj: Object<Blake3, 30> = Object::new();
         let mut rfo = ReadFromObject::new(obj);
         let mut buf = [0; 69];
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);
         assert_eq!(buf, [0; 69]);
+    }
 
-        let mut obj = rfo.into_inner();
+    #[test]
+    fn test_rfo_42() {
+        let mut buf = [0; 69];
+        let mut obj: Object<Blake3, 30> = Object::new();
         let mut data = [0; 42];
         getrandom(&mut data);
         obj.as_mut_vec().extend_from_slice(&data);
@@ -380,6 +384,27 @@ mod tests {
         buf.fill(0);
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);
         assert_eq!(buf, [0; 69]);
+    }
+
+    #[test]
+    fn test_rfo_max() {
+        let mut obj: Object<Blake3, 30> = Object::new();
+        obj.reset(OBJECT_MAX_SIZE, 0);
+        getrandom(obj.as_mut_data());
+        let mut rfo = ReadFromObject::new(obj);
+        let mut buf = [0; 69];
+        let mut output = Vec::new();
+        while let Ok(s) = rfo.read(&mut buf) {
+            if s == 0 {
+                break;
+            }
+            output.extend_from_slice(&buf[0..s]);
+        }
+        buf.fill(0);
+        assert_eq!(rfo.read(&mut buf).unwrap(), 0);
+        assert_eq!(buf, [0; 69]);
+        let obj = rfo.into_inner();
+        assert_eq!(&output, obj.as_data());
     }
 
     #[test]

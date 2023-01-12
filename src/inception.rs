@@ -136,6 +136,16 @@ pub struct WriteToObject<H: Hasher, const N: usize> {
     obj: Object<H, N>,
 }
 
+impl<H: Hasher, const N: usize> WriteToObject<H, N> {
+    pub fn new(obj: Object<H, N>) -> Self {
+        Self {obj: obj}
+    }
+
+    pub fn into_inner(self) -> Object<H, N> {
+        self.obj
+    }
+}
+
 impl<H: Hasher, const N: usize> io::Write for WriteToObject<H, N>
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -315,10 +325,11 @@ mod tests {
     use super::*;
     use crate::util::getrandom;
     use crate::protocol::Blake3;
+    use crate::chaos::DefaultObject;
 
     #[test]
     fn test_rfo_empty() {
-        let obj: Object<Blake3, 30> = Object::new();
+        let mut obj = DefaultObject::new();
         let mut rfo = ReadFromObject::new(obj);
         let mut buf = [0; 69];
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);
@@ -328,7 +339,7 @@ mod tests {
     #[test]
     fn test_rfo_42() {
         let mut buf = [0; 69];
-        let mut obj: Object<Blake3, 30> = Object::new();
+        let mut obj = DefaultObject::new();
         let mut data = [0; 42];
         getrandom(&mut data);
         obj.as_mut_vec().extend_from_slice(&data);
@@ -343,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_rfo_max() {
-        let mut obj: Object<Blake3, 30> = Object::new();
+        let mut obj = DefaultObject::new();
         obj.reset(OBJECT_MAX_SIZE, 0);
         getrandom(obj.as_mut_data());
         let mut rfo = ReadFromObject::new(obj);
@@ -360,6 +371,25 @@ mod tests {
         assert_eq!(buf, [0; 69]);
         let obj = rfo.into_inner();
         assert_eq!(&output, obj.as_data());
+    }
+
+    #[test]
+    fn test_wto_till_fill() {
+        let obj = DefaultObject::new();
+        let mut wto = WriteToObject::new(obj);
+        let mut buf = [0; 69];
+        getrandom(&mut buf);
+        let mut expected = Vec::new();
+        while let Ok(s) = wto.write(&buf) {
+            if s == 0 {
+                break;
+            }
+            expected.extend_from_slice(&buf[0..s]);
+            getrandom(&mut buf);
+        }
+        assert_eq!(expected.len(), OBJECT_MAX_SIZE);
+        let obj = wto.into_inner();
+        assert_eq!(obj.as_data(), &expected[..]);
     }
 }
 

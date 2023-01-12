@@ -273,26 +273,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 }
 
-impl<H: Hasher, const N: usize> io::Write for Object<H, N> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.buf.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl<H: Hasher, const N: usize> io::Read for Object<H, N> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        Ok(0)
-    }
-}
-
-        
-
-
 
 /// A value in the `Store.map` HashMap index.
 pub struct Entry {

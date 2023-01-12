@@ -104,16 +104,23 @@ impl<H: Hasher, const N: usize> ReadFromObject<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
         Self {obj: obj, pos: 0}
     }
+
+    pub fn into_inner(self) -> Object<H, N> {
+        self.obj
+    }
 }
 
 impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let amount = cmp::min(self.obj.remaining(), buf.len());
+        let data = self.obj.as_data();
+        let remaining = data.len() - self.pos;
+        let amount = cmp::min(remaining, buf.len());
         if amount > 0 {
             let start = self.pos;
             let stop = start + amount;
             self.pos = stop;
-            buf[0..amount].copy_from_slice(&self.obj.as_data()[start..stop]);
+            assert!(self.pos < data.len());
+            buf[0..amount].copy_from_slice(&data[start..stop]);
             Ok(amount)
         }
         else {
@@ -351,7 +358,20 @@ impl<R: io::Read, H: Hasher, const N: usize> Decompress<R, H, N>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::getrandom;
     use crate::protocol::Blake3;
+
+    #[test]
+    fn test_read_from_object() {
+        let obj: Object<Blake3, 30> = Object::new();
+        let mut rfo = ReadFromObject::new(obj);
+        let mut buf = [0_u8; 69];
+        getrandom(&mut buf);
+        let og = buf.clone();
+        assert_eq!(rfo.read(&mut buf).unwrap(), 0);
+        assert_eq!(buf, og);
+        let mut obj = rfo.into_inner();
+    }
 
     #[test]
     fn test_compress() {

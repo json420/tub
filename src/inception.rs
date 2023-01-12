@@ -95,12 +95,12 @@ impl<H: Hasher, const N: usize> Container<H, N> {
 
 // Wrapper around Object, implements Read trait to read from Object data.
 #[derive(Debug)]
-pub struct ReadFromObject<H: Hasher, const N: usize> {
+pub struct ReadFrom<H: Hasher, const N: usize> {
     obj: Object<H, N>,
     pos: usize,
 }
 
-impl<H: Hasher, const N: usize> ReadFromObject<H, N> {
+impl<H: Hasher, const N: usize> ReadFrom<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
         Self {obj: obj, pos: 0}
     }
@@ -110,7 +110,7 @@ impl<H: Hasher, const N: usize> ReadFromObject<H, N> {
     }
 }
 
-impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
+impl<H: Hasher, const N: usize> io::Read for ReadFrom<H, N> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let data = self.obj.as_data();
         let remaining = data.len() - self.pos;
@@ -132,11 +132,11 @@ impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
 
 // Wrapper around Object, implements Write trait to write into Object data.
 #[derive(Debug)]
-pub struct WriteToObject<H: Hasher, const N: usize> {
+pub struct WriteTo<H: Hasher, const N: usize> {
     obj: Object<H, N>,
 }
 
-impl<H: Hasher, const N: usize> WriteToObject<H, N> {
+impl<H: Hasher, const N: usize> WriteTo<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
         Self {obj: obj}
     }
@@ -146,7 +146,7 @@ impl<H: Hasher, const N: usize> WriteToObject<H, N> {
     }
 }
 
-impl<H: Hasher, const N: usize> io::Write for WriteToObject<H, N>
+impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let remaining = cmp::min(buf.len(), self.obj.remaining());
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn test_rfo_empty() {
         let mut obj = DefaultObject::new();
-        let mut rfo = ReadFromObject::new(obj);
+        let mut rfo = ReadFrom::new(obj);
         let mut buf = [0; 69];
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);
         assert_eq!(buf, [0; 69]);
@@ -343,7 +343,7 @@ mod tests {
         let mut data = [0; 42];
         getrandom(&mut data);
         obj.as_mut_vec().extend_from_slice(&data);
-        let mut rfo = ReadFromObject::new(obj);
+        let mut rfo = ReadFrom::new(obj);
         assert_eq!(rfo.read(&mut buf).unwrap(), 42);
         assert_eq!(buf[0..42], data);
         assert_eq!(buf[42..69], [0; 27]);
@@ -357,7 +357,7 @@ mod tests {
         let mut obj = DefaultObject::new();
         obj.reset(OBJECT_MAX_SIZE, 0);
         getrandom(obj.as_mut_data());
-        let mut rfo = ReadFromObject::new(obj);
+        let mut rfo = ReadFrom::new(obj);
         let mut buf = [0; 69];
         let mut output = Vec::new();
         while let Ok(s) = rfo.read(&mut buf) {
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn test_wto_till_fill() {
         let obj = DefaultObject::new();
-        let mut wto = WriteToObject::new(obj);
+        let mut wto = WriteTo::new(obj);
         let mut buf = [0; 69];
         getrandom(&mut buf);
         let mut expected = Vec::new();

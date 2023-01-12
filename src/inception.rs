@@ -8,7 +8,7 @@ use std::slice::Iter;
 use std::io::prelude::*;
 use std::collections::HashSet;
 use std::{io, fs, cmp};
-//use zstd::stream::{Encoder, Decoder};
+use zstd;
 use crate::base::*;
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name, ObjectReader};
@@ -390,6 +390,29 @@ mod tests {
         assert_eq!(expected.len(), OBJECT_MAX_SIZE);
         let obj = wto.into_inner();
         assert_eq!(obj.as_data(), &expected[..]);
+    }
+
+    #[test]
+    fn test_zstd_roundtrip() {
+        let dst = DefaultObject::new();
+        let wto = WriteTo::new(dst);
+        let mut enc: zstd::Encoder<'static, WriteTo<Blake3, 30>>
+            = zstd::Encoder::new(wto, 0).unwrap();
+        let mut obj = DefaultObject::new();
+        let mut expected = Vec::new();
+        for _ in 0..100 {
+            obj.randomize(true);
+            assert_eq!(enc.write(obj.as_buf()).unwrap(), obj.len());
+            expected.extend_from_slice(obj.as_buf());
+        }
+
+        let src: DefaultObject = enc.finish().unwrap().into_inner();
+        let rfo = ReadFrom::new(src);
+        let mut dec: zstd::Decoder<'static, io::BufReader<ReadFrom<Blake3, 30>>>
+            = zstd::Decoder::new(rfo).unwrap();
+        let mut buf = vec![0; expected.len()];
+        assert_eq!(dec.read(&mut buf).unwrap(), expected.len());
+        assert_eq!(expected, buf);
     }
 }
 

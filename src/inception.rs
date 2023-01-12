@@ -186,9 +186,15 @@ impl<H: Hasher, const N: usize> Encoder<H, N> {
         })
     }
 
-    fn write_next(&mut self, obj: Object<H, N>) -> io::Result<bool> {
+    fn write_next(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
         self.inner.write_all(obj.as_buf());
         Ok(true)  // FIXME
+    }
+
+    fn finish(self) -> io::Result<Object<H, N>> {
+        let mut obj = self.inner.finish()?.into_inner();
+        obj.finalize();  // FIXME: How to handle kind?
+        Ok(obj)
     }
 }
 
@@ -461,6 +467,28 @@ mod tests {
         let mut buf = vec![0; expected.len()];
         assert_eq!(dec.read(&mut buf).unwrap(), expected.len());
         assert_eq!(expected, buf);
+    }
+
+    #[test]
+    fn test_container_roundtrip() {
+        let inner = DefaultObject::new();
+        let mut enc = Encoder::new(inner, 0).unwrap();
+        let mut obj = DefaultObject::new();
+        let mut expected: Vec<Vec<u8>> = Vec::new();
+        for _ in 0..100 {
+            obj.randomize(true);
+            expected.push(Vec::from(obj.as_buf()));
+            enc.write_next(&obj).unwrap();
+        }
+        let inner: DefaultObject = enc.finish().unwrap();
+        assert!(inner.is_valid());
+
+        let mut dec = Decoder::new(inner).unwrap();
+        for i in 0..100 {
+            dec.read_next(&mut obj).unwrap();
+            assert!(obj.is_valid());
+            assert_eq!(obj.as_buf(), &expected[i]);
+        }
     }
 }
 

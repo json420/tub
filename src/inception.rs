@@ -93,8 +93,8 @@ impl<H: Hasher, const N: usize> Container<H, N> {
 }
 
 
-#[derive(Debug)]
 // Wrapper around Object, implements Read trait to read from Object data.
+#[derive(Debug)]
 pub struct ReadFromObject<H: Hasher, const N: usize> {
     obj: Object<H, N>,
     pos: usize,
@@ -126,6 +126,31 @@ impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
         else {
             Ok(0)
         }
+    }
+}
+
+
+// Wrapper around Object, implements Write trait to write into Object data.
+#[derive(Debug)]
+pub struct WriteToObject<H: Hasher, const N: usize> {
+    obj: Object<H, N>,
+}
+
+impl<H: Hasher, const N: usize> io::Write for WriteToObject<H, N>
+{
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let remaining = cmp::min(buf.len(), self.obj.remaining());
+        if remaining > 0 {
+            self.obj.as_mut_vec().extend_from_slice(&buf[0..remaining]);
+            Ok(remaining)
+        }
+        else {
+            Ok(0)
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 

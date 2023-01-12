@@ -165,6 +165,63 @@ impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
 }
 
 
+/// Compress an object stream and store in inside of an object.
+///
+/// 16 MiB is a lot of compressed source code, so typically all objects in a
+/// DVCS commit will fit within a single object.  We can beat git on initial
+/// space efficiency this way when there are mulitple new objects in a commit
+/// (objects will compress much better back to back in the same compression
+/// stream).  It also means we can write a commit with a single call to
+/// `Store.save()`.
+pub struct Encoder<H: Hasher, const N: usize> {
+    phantom: PhantomData<H>,
+    inner: zstd::Encoder<'static, WriteTo<H, N>>,
+}
+
+impl<H: Hasher, const N: usize> Encoder<H, N> {
+    fn new(dst: Object<H, N>, level: i32) -> io::Result<Self> {
+        Ok( Self {
+            phantom: PhantomData,
+            inner: zstd::Encoder::new(WriteTo::new(dst), level)?,
+        })
+    }
+
+    fn write_next(&mut self, obj: Object<H, N>) -> io::Result<bool> {
+        self.inner.write_all(obj.as_buf());
+        Ok(true)  // FIXME
+    }
+}
+
+
+pub struct Decoder<H: Hasher, const N: usize> {
+    phantom: PhantomData<H>,
+    inner: zstd::Decoder<'static, io::BufReader<ReadFrom<H, N>>>,
+}
+
+impl<H: Hasher, const N: usize> Decoder<H, N> {
+    pub fn new(src: Object<H, N>) -> io::Result<Self> {
+        Ok( Self {
+            phantom: PhantomData,
+            inner: zstd::Decoder::new(ReadFrom::new(src))?,
+        })
+    }
+
+    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
+        obj.clear();
+        if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
+            obj.resize_to_info();
+            self.inner.read_exact(obj.as_mut_data())?;
+            if ! obj.is_valid() {
+                panic!("Not valid {}", obj.hash());  // FIXME: handle more better
+            }
+            Ok(true)
+        }
+        else {
+            Ok(false)
+        }
+    }
+}
+
 
 #[derive(Debug)]
 pub struct LeafHashes<const N: usize> {
@@ -308,15 +365,6 @@ pub fn restore_file<H: Hasher, const N: usize> (
 }
 
 
-/// Compress an object stream and store in inside of an object.
-/// 
-/// 16 MiB is a lot of compressed source code, so typically all objects in a
-/// DVCS commit will fit within a single object.  We can beat git on initial
-/// space efficiency this way when there are mulitple new objects in a commit
-/// (objects will compress much better back to back in the same compression
-/// stream).  It also means we can write a commit with a single call to
-/// `Store.save()`.
-
 
 
 
@@ -374,7 +422,7 @@ mod tests {
     }
 
     #[test]
-    fn test_wto_till_fill() {
+    fn test_wto_till_full() {
         let obj = DefaultObject::new();
         let mut wto = WriteTo::new(obj);
         let mut buf = [0; 69];

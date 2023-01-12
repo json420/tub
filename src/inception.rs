@@ -31,7 +31,7 @@ We'll use three bytes to specify the encoding:
 A value of 0 in a field means do nothing (pass through).  A Delta byte of 1
 means general delta, 2 means document delta, and so on.
 
-We'll have at least two types of delta compression: "general" (basically what Git
+We'll have at least two types of delta compression: "general" (basically what
 Git does) and "document" (a special high performance content aware delta format
 used to specify changes between document revisions).
 
@@ -46,12 +46,20 @@ the best performance we can get for the compression ratio.
 We should also offer a couple of encryption algorithms out of the gate, for the
 same reason.  Let's keep the protocol design iterations well constraining
 within practical engineering realities.  Design through implementation.  If
-the implementation always turns into shit, then the design is shit and we should
-iterate on the design again.
+the implementation keeps turning into shit, then the design is shit and we
+should iterate on the design again.
 
 Containers will not be allowed in other containers (the nesting is at most
 one level deep).
 
+Everything is an object.  Put objects back to back (no other framing needed)
+and then you have yourself on objects stream.  Super duper Goddamn elegant and
+simple, yo.
+
+Next we need some kind of tree object to lookup which object contains the
+requested object.  If an object is not directly stored in the store (which we
+can test quickly with Store.load()), then we need lookup in this tree.  We'll be
+aggressively iterating on these details for a while, so hold on, partner!
 */
 
 
@@ -68,9 +76,50 @@ pub trait Stream<R: Read, H: Hasher, const N: usize> {
     fn recv(&mut self, obj: &mut Object<H, N>) -> io::Result<()>;
 }
 
+
 #[derive(Debug)]
-pub struct Continer<H: Hasher, const N: usize> {
+pub struct Container<H: Hasher, const N: usize> {
+    inner: Object<H, N>,
+}
+
+impl<H: Hasher, const N: usize> Container<H, N> {
+    pub fn new(inner: Object<H, N>) -> Self {
+        Self {inner: inner}
+    }
+
+    pub fn has_space(&self, obj: &Object<H, N>) -> bool {
+        obj.len() < self.inner.remaining()
+    }
+}
+
+
+#[derive(Debug)]
+// Wrapper around Object, implements Read trait to read from Object data.
+pub struct ReadFromObject<H: Hasher, const N: usize> {
     obj: Object<H, N>,
+    pos: usize,
+}
+
+impl<H: Hasher, const N: usize> ReadFromObject<H, N> {
+    pub fn new(obj: Object<H, N>) -> Self {
+        Self {obj: obj, pos: 0}
+    }
+}
+
+impl<H: Hasher, const N: usize> io::Read for ReadFromObject<H, N> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let amount = cmp::min(self.obj.remaining(), buf.len());
+        if amount > 0 {
+            let start = self.pos;
+            let stop = start + amount;
+            self.pos = stop;
+            buf[0..amount].copy_from_slice(&self.obj.as_data()[start..stop]);
+            Ok(amount)
+        }
+        else {
+            Ok(0)
+        }
+    }
 }
 
 

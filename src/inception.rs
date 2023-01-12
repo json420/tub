@@ -8,7 +8,7 @@ use std::slice::Iter;
 use std::io::prelude::*;
 use std::collections::HashSet;
 use std::{io, fs, cmp};
-use zstd::stream::{Encoder, Decoder};
+//use zstd::stream::{Encoder, Decoder};
 use crate::base::*;
 use crate::protocol::Hasher;
 use crate::chaos::{Object, Store, Name, ObjectReader};
@@ -306,77 +306,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
 /// (objects will compress much better back to back in the same compression
 /// stream).  It also means we can write a commit with a single call to
 /// `Store.save()`.
-pub struct Compress<H: Hasher, const N: usize> {
-    total: usize,
-    set: HashSet<Name<N>>,
-    encoder: Encoder<'static, Object<H, N>>,
-}
 
-impl<H: Hasher, const N: usize> Compress<H, N>  {
-    pub fn new(mut obj: Object<H, N>) -> io::Result<Self> {
-        obj.clear();
-        Ok( Self {
-            total: 0,
-            set: HashSet::new(),
-            encoder: Encoder::new(obj, 0)?,
-        })
-    }
-
-    pub fn has_space(&self, obj: &Object<H, N>) -> bool {
-        // FIXME: what we really want is the free space in the underlying object,
-        // but the current Rust zstd API doesn't seem to offer this.
-        // Note that because we don't know how much space the compressed
-        // version will take, we need to assume the worse.
-        self.total + obj.len() < OBJECT_MAX_SIZE
-    }
-
-    pub fn push(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
-        assert!(self.has_space(obj));
-        assert_ne!(obj.hash(), Name::<N>::new());
-        let hash = obj.hash();
-        if self.set.contains(&hash) {
-            Ok(false)
-        }
-        else {
-            self.set.insert(hash);
-            self.total += obj.len();
-            self.encoder.write_all(obj.as_buf())?;
-            Ok(true)
-        }
-    }
-
-    pub fn finish(self) -> io::Result<Object<H, N>> {
-        let mut obj = self.encoder.finish()?;
-        obj.finalize();
-        Ok(obj)
-    }
-}
-
-
-pub struct Decompress<R: io::Read, H: Hasher, const N: usize> {
-    phantom: PhantomData<H>,
-    dec: Decoder<'static, io::BufReader<R>>,
-}
-
-impl<R: io::Read, H: Hasher, const N: usize> Decompress<R, H, N>
-{
-    pub fn new(mut inner: R) -> io::Result<Self> {
-        Ok( Self {
-            phantom: PhantomData,
-            dec: Decoder::new(inner)?,
-        })
-    }
-
-    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
-        let mut reader: ObjectReader<Decoder<io::BufReader<R>>, H, N>
-            = ObjectReader::new(&mut self.dec);
-        reader.read_next(obj)
-    }
-
-    pub fn finish(self) -> R {
-        self.dec.finish().into_inner()
-    }
-}
 
 
 
@@ -430,63 +360,6 @@ mod tests {
         assert_eq!(buf, [0; 69]);
         let obj = rfo.into_inner();
         assert_eq!(&output, obj.as_data());
-    }
-
-    #[test]
-    fn test_compress() {
-        let inner: Object<Blake3, 30> = Object::new();
-        let mut comp = Compress::new(inner).unwrap();
-        let mut obj: Object<Blake3, 30> = Object::new();
-        while comp.has_space(&obj) {
-            obj.as_mut_vec().extend_from_slice(
-                b"It's all about control systems, baby."
-            );
-            obj.finalize();
-            comp.push(&obj);
-        }
-        let inner = comp.finish().unwrap();
-        assert!(inner.as_data().len() < OBJECT_MAX_SIZE);
-        assert_eq!(inner.as_data().len(), 38071);
-        //assert_eq!(&inner.as_data()[0..30], &[0; 30]); 
-    }
-
-    #[test]
-    fn test_decompress() {
-        // Test when stream is empty
-        let buf: Vec<u8> = Vec::new();
-        let cur = io::Cursor::new(buf);
-        let mut decomp: Decompress<io::Cursor<Vec<u8>>, Blake3, 30>
-            = Decompress::new(cur).unwrap();
-        let mut obj: Object<Blake3, 30> = Object::new();
-        assert!(! decomp.read_next(&mut obj).unwrap());
-
-        // Now add stuff to a new compressor
-        let inner: Object<Blake3, 30> = Object::new();
-        let mut comp = Compress::new(inner).unwrap();
-        let mut ids: Vec<Name<30>> = Vec::new();
-        let mut obj: Object<Blake3, 30> = Object::new();
-        for _ in 0..100 {
-            obj.randomize(true);
-            ids.push(obj.hash());
-            comp.push(&obj);
-        }
-
-        // This Vec<u8> should now contain the compressed object stream we
-        // wrote above:
-        let buf: Vec<u8> = comp.finish().unwrap().into_buf();
-        assert!(buf.len() > 0);
-
-        let mut cur: io::Cursor<Vec<u8>> = io::Cursor::new(Vec::new());
-        cur.write(&buf).unwrap();
-        cur.set_position(0);
-        let mut decomp: Decompress<io::Cursor<Vec<u8>>, Blake3, 30>
-            = Decompress::new(cur).unwrap();
-
-        let mut i = 0;
-        while decomp.read_next(&mut obj).unwrap() {
-            i += 1;
-        }
-        //assert_eq!(i, 100);  //FIXME
     }
 }
 

@@ -394,6 +394,17 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
+    pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+        if let Some(entry) = self.map.get(hash) {
+            obj.reset(entry.info.size(), entry.info.kind());
+            self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
+            Ok(true)
+        }
+        else {
+            Ok(false)
+        }
+    }
+
     pub fn save(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
         //assert!(obj.is_valid());
         let hash = obj.hash();

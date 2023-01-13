@@ -40,8 +40,6 @@ fn main() -> io::Result<()> {
     println!("🚀 {} validated loads per second", rate as u64);
 
     println!("🛁 Loading same {} unchecked, looping {} times...", COUNT, LOOPS);
-    let keys = store.keys();
-    assert_eq!(keys.len(), COUNT);
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
@@ -51,6 +49,15 @@ fn main() -> io::Result<()> {
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} loads per second", rate as u64);
+
+    println!("🛁 Reindexing same {} objects, looping {} times...", COUNT, LOOPS);
+    let start = Instant::now();
+    for _ in 0..LOOPS {
+        store.reindex(&mut obj)?;
+    }
+    let elapsed = start.elapsed().as_secs_f64();
+    let rate = (COUNT * LOOPS) as f64 / elapsed;
+    println!("🚀 {} indexed per second", rate as u64);
 
     println!("😎 Yes, Tub 🛁 is fast. 🚀");
     Ok(())

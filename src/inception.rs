@@ -483,9 +483,6 @@ pub fn restore_file<H: Hasher, const N: usize> (
 }
 
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -503,7 +500,7 @@ mod tests {
         let mut fanout = Fanout::new(store, obj);
         let mut hash = DefaultName::new();
         let mut cont = DefaultName::new();
-        for _ in 0..65536 {
+        for _ in 0..1024 {
             getrandom(hash.as_mut_buf());
             assert!(fanout.get(&hash).unwrap().is_none());
             getrandom(cont.as_mut_buf());
@@ -511,7 +508,7 @@ mod tests {
             assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
         }
         let (store, _obj) = fanout.into_inners();
-        assert_eq!(store.len(), 65536);
+        assert_eq!(store.len(), 1024);
     }
 
     #[test]

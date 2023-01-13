@@ -374,7 +374,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+    pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
             obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
@@ -382,9 +382,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.file.seek(io::SeekFrom::Start(entry.offset))?;
             self.file.read_exact(obj.as_mut_buf())?;
             */
-            if ! obj.validate_against(hash) {
-                panic!("{} hash does not match", hash);
-            }
             Ok(true)
         }
         else {
@@ -392,10 +389,11 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
-        if let Some(entry) = self.map.get(hash) {
-            obj.reset(entry.info.size(), entry.info.kind());
-            self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
+    pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+        if self.load_unchecked(hash, obj)? {
+            if ! obj.validate_against(hash) {
+                panic!("{} hash does not match", hash);
+            }
             Ok(true)
         }
         else {

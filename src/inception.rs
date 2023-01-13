@@ -500,14 +500,16 @@ mod tests {
         let obj = DefaultObject::new();
         let mut fanout = Fanout::new(store, obj);
         let mut hash = DefaultName::new();
-        getrandom(hash.as_mut_buf());
-        assert!(fanout.get(&hash).unwrap().is_none());
         let mut cont = DefaultName::new();
-        getrandom(cont.as_mut_buf());
-        fanout.insert(hash.clone(), cont.clone()).unwrap();
-        assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
+        for i in 0..1024 {
+            getrandom(hash.as_mut_buf());
+            assert!(fanout.get(&hash).unwrap().is_none());
+            getrandom(cont.as_mut_buf());
+            fanout.insert(hash.clone(), cont.clone()).unwrap();
+            assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
+        }
         let (store, obj) = fanout.into_inners();
-        assert_eq!(store.len(), 1);
+        assert_eq!(store.len(), 1024);
     }
 
     #[test]

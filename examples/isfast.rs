@@ -7,7 +7,7 @@ use tub::util::getrandom;
 
 
 const COUNT: usize = 1_000_000;
-const LOOPS: usize = 2;
+const LOOPS: usize = 3;
 
 fn main() -> io::Result<()> {
     let tmp = TestTempDir::new();
@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
     let rate = COUNT as f64 / elapsed;
     println!("🚀 {} saves per second", rate as u64);
 
-    println!("🛁 Loading same {} objects, looping {} times...", COUNT, LOOPS);
+    println!("🛁 Loading same objects, looping {} times...", LOOPS);
     let keys = store.keys();
     assert_eq!(keys.len(), COUNT);
     let start = Instant::now();
@@ -39,7 +39,7 @@ fn main() -> io::Result<()> {
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} validated loads per second", rate as u64);
 
-    println!("🛁 Loading same {} unchecked, looping {} times...", COUNT, LOOPS);
+    println!("🛁 Loading same objects unchecked, looping {} times...", LOOPS);
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
@@ -50,7 +50,7 @@ fn main() -> io::Result<()> {
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} loads per second", rate as u64);
 
-    println!("🛁 Reindexing same {} objects, looping {} times...", COUNT, LOOPS);
+    println!("🛁 Reindexing same objects, looping {} times...", LOOPS);
     let start = Instant::now();
     for _ in 0..LOOPS {
         store.reindex(&mut obj)?;

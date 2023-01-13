@@ -66,6 +66,11 @@ impl TestTempDir {
         buf
     }
 
+    pub fn create(&self, names: &[&str]) -> fs::File {
+        let pb = self.build(names);
+        fs::File::options().read(true).append(true).create_new(true).open(pb).unwrap()
+    }
+
     pub fn touch(&self, names: &[&str]) {
         fs::File::create(self.build(names)).unwrap();
     }

@@ -226,6 +226,10 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         }
     }
 
+    pub fn into_inners(self) -> (Store<H, N>, Object<H, N>) {
+        (self.store, self.obj)
+    }
+
     pub fn insert(&mut self, key: Name<N>, val: Name<N>) -> io::Result<()> {
         let i = key.as_buf()[0] as usize;
         if let Some(old) = self.table[i] {
@@ -237,9 +241,10 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
                 locmap.serialize(self.obj.as_mut_vec());
                 self.obj.finalize();
                 self.store.save(&mut self.obj)?;
+                self.table[i] = Some(self.obj.hash());
             }
             else {
-                panic!("Crap 💩");
+                panic!("Crap 💩, cannot find {}", old);
             }
         }
         else {
@@ -484,7 +489,26 @@ mod tests {
     use super::*;
     use crate::util::getrandom;
     use crate::protocol::Blake3;
-    use crate::chaos::DefaultObject;
+    use crate::chaos::{DefaultName, DefaultObject, DefaultStore};
+    use crate::helpers::TestTempDir;
+
+    #[test]
+    fn test_fanout() {
+        let tmp = TestTempDir::new();
+        let file = tmp.create(&["some_file.store"]);
+        let store = DefaultStore::new(file);
+        let obj = DefaultObject::new();
+        let mut fanout = Fanout::new(store, obj);
+        let mut hash = DefaultName::new();
+        getrandom(hash.as_mut_buf());
+        assert!(fanout.get(&hash).unwrap().is_none());
+        let mut cont = DefaultName::new();
+        getrandom(cont.as_mut_buf());
+        fanout.insert(hash.clone(), cont.clone()).unwrap();
+        assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
+        let (store, obj) = fanout.into_inners();
+        assert_eq!(store.len(), 1);
+    }
 
     #[test]
     fn test_rfo_empty() {

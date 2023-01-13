@@ -40,11 +40,12 @@ use std::fmt;
 use std::io::prelude::*;
 use std::marker::PhantomData;
 
+
 pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
 
-//Eq, Ord, PartialEq, PartialOrd
+
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
 pub struct Name<const N: usize> {

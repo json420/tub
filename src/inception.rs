@@ -11,7 +11,7 @@ use std::{io, fs, cmp};
 use zstd;
 use crate::base::*;
 use crate::protocol::Hasher;
-use crate::chaos::{Object, Store, Name, ObjectReader};
+use crate::chaos::{Object, Store, Name};
 use std::marker::PhantomData;
 
 
@@ -297,7 +297,7 @@ impl<H: Hasher, const N: usize> Encoder<H, N> {
     }
 
     fn write_next(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
-        self.inner.write_all(obj.as_buf());
+        self.inner.write_all(obj.as_buf())?;
         Ok(true)  // FIXME
     }
 
@@ -501,20 +501,20 @@ mod tests {
         let mut fanout = Fanout::new(store, obj);
         let mut hash = DefaultName::new();
         let mut cont = DefaultName::new();
-        for i in 0..1024 {
+        for _ in 0..1024 {
             getrandom(hash.as_mut_buf());
             assert!(fanout.get(&hash).unwrap().is_none());
             getrandom(cont.as_mut_buf());
             fanout.insert(hash.clone(), cont.clone()).unwrap();
             assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
         }
-        let (store, obj) = fanout.into_inners();
+        let (store, _obj) = fanout.into_inners();
         assert_eq!(store.len(), 1024);
     }
 
     #[test]
     fn test_rfo_empty() {
-        let mut obj = DefaultObject::new();
+        let obj = DefaultObject::new();
         let mut rfo = ReadFrom::new(obj);
         let mut buf = [0; 69];
         assert_eq!(rfo.read(&mut buf).unwrap(), 0);

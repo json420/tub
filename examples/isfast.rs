@@ -14,7 +14,9 @@ fn main() -> io::Result<()> {
     let file = tmp.create(&["some_file.store"]);
     let mut store = DefaultStore::new(file);
     let mut obj = DefaultObject::new();
-    
+
+    println!("🤔 Is Tub 🛁 fast? 🚀");
+    println!("🛁 Saving {} random 1-256 byte sized objects...", COUNT);
     let start = Instant::now();
     for _ in 0..COUNT {
         obj.randomize(true);
@@ -22,8 +24,9 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = COUNT as f64 / elapsed;
-    eprintln!("{}s, {} saves/s", elapsed, rate);
+    println!("🚀 {} saves per second", rate as u64);
 
+    println!("🛁 Loading {} objects, looping {} times...", COUNT, LOOPS);
     let keys = store.keys();
     let start = Instant::now();
     for _ in 0..LOOPS {
@@ -33,6 +36,7 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    eprintln!("{}s, {} loads/s", elapsed, rate);
+    println!("🚀 {} loads per second", rate as u64);
+    println!("😎 Yes, Tub 🛁 is fast. 🚀");
     Ok(())
 }

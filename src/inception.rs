@@ -180,6 +180,10 @@ impl<const N: usize> LocationMap<N> {
         self.map.insert(key, val)
     }
 
+    pub fn get(&self, key: &Name<N>) -> Option<&Name<N>> {
+        self.map.get(key)
+    }
+
     pub fn deserialize(buf: &[u8]) -> Self {
         assert!(buf.len() > 0);
         assert!(buf.len() % (N + N) == 0);
@@ -228,17 +232,40 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             if self.store.load(&old, &mut self.obj)? {
                  let mut locmap: LocationMap<N>
                     = LocationMap::deserialize(self.obj.as_data());    
-                locmap.insert(key, val); 
+                locmap.insert(key, val);
                 self.obj.clear();
                 locmap.serialize(self.obj.as_mut_vec());
                 self.obj.finalize();
                 self.store.save(&mut self.obj)?;
             }
+            else {
+                panic!("Crap 💩");
+            }
         }
         else {
+            let mut locmap: LocationMap<N> = LocationMap::new();
+            locmap.insert(key, val);
             self.obj.clear();
+            locmap.serialize(self.obj.as_mut_vec());
+            self.obj.finalize();
+            self.store.save(&mut self.obj)?;
+            self.table[i] = Some(self.obj.hash());
         }
         Ok(())
+    }
+
+    pub fn get(&mut self, key: &Name<N>) -> io::Result<Option<Name<N>>> {
+        let i = key.as_buf()[0] as usize;
+        if let Some(container) = self.table[i] {
+            if self.store.load(&container, &mut self.obj)? {
+                let locmap: LocationMap<N>
+                    = LocationMap::deserialize(self.obj.as_data());
+                if let Some(val) = locmap.get(key) {
+                    return Ok(Some(val.clone()))
+                }
+            }
+        }
+        Ok(None)
     }
 }
 

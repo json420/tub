@@ -24,7 +24,7 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = COUNT as f64 / elapsed;
-    println!("🚀 {} saves per second", rate as u64);
+    println!("🚀 {} Store.save() calls per second", rate as u64);
 
     println!("🛁 Loading same objects, looping {} times...", LOOPS);
     let keys = store.keys();
@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} validated loads per second", rate as u64);
+    println!("🚀 {} Store.load() calls per second", rate as u64);
 
     println!("🛁 Loading same objects unchecked, looping {} times...", LOOPS);
     let start = Instant::now();
@@ -48,7 +48,7 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} loads per second", rate as u64);
+    println!("🚀 {} Store.load_unchecked() calls per second", rate as u64);
 
     println!("🛁 Reindexing same objects, looping {} times...", LOOPS);
     let start = Instant::now();
@@ -57,7 +57,7 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} indexed per second", rate as u64);
+    println!("🚀 {} objects indexed per second", rate as u64);
     assert_eq!(store.len(), COUNT);
 
     println!("😎 Yes, Tub 🛁 is fast. 🚀");

@@ -175,6 +175,10 @@ impl<const N: usize> LocationMap<N> {
             map: HashMap::new(),
         }
     }
+    
+    pub fn clear(&mut self) {
+        self.map.clear();
+    }
 
     pub fn insert(&mut self, key: Name<N>, val: Name<N>) -> Option<Name<N>> {
         self.map.insert(key, val)
@@ -184,20 +188,19 @@ impl<const N: usize> LocationMap<N> {
         self.map.get(key)
     }
 
-    pub fn deserialize(buf: &[u8]) -> Self {
+    pub fn deserialize(&mut self, buf: &[u8]) {
         assert!(buf.len() > 0);
         assert!(buf.len() % (N + N) == 0);
-        let mut map = HashMap::new();
+        self.map.clear();
         let mut offset = 0;
         while offset < buf.len() {
             let key = Name::from(&buf[offset..offset + N]);
             offset += N;
             let val = Name::from(&buf[offset..offset + N]);
             offset += N;
-            map.insert(key, val);
+            self.map.insert(key, val);
         }
         assert_eq!(offset, buf.len());
-        Self {map: map}
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
@@ -215,6 +218,7 @@ pub struct Fanout<H: Hasher, const N: usize> {
     table: [Option<Name<N>>; 256],
     store: Store<H, N>,
     obj: Object<H, N>,
+    //map: LocationMap<N>,
 }
 
 impl<H: Hasher, const N: usize> Fanout<H, N> {
@@ -234,8 +238,8 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         let i = key.as_buf()[0] as usize;
         if let Some(old) = self.table[i] {
             if self.store.load(&old, &mut self.obj)? {
-                 let mut locmap: LocationMap<N>
-                    = LocationMap::deserialize(self.obj.as_data());    
+                let mut locmap: LocationMap<N> = LocationMap::new();
+                locmap.deserialize(self.obj.as_data());    
                 locmap.insert(key, val);
                 self.obj.clear();
                 locmap.serialize(self.obj.as_mut_vec());
@@ -263,8 +267,8 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         let i = key.as_buf()[0] as usize;
         if let Some(container) = self.table[i] {
             if self.store.load(&container, &mut self.obj)? {
-                let locmap: LocationMap<N>
-                    = LocationMap::deserialize(self.obj.as_data());
+                let mut locmap: LocationMap<N> = LocationMap::new();
+                locmap.deserialize(self.obj.as_data());
                 if let Some(val) = locmap.get(key) {
                     return Ok(Some(val.clone()))
                 }
@@ -501,7 +505,7 @@ mod tests {
         let mut fanout = Fanout::new(store, obj);
         let mut hash = DefaultName::new();
         let mut cont = DefaultName::new();
-        for _ in 0..1024 {
+        for _ in 0..65536 {
             getrandom(hash.as_mut_buf());
             assert!(fanout.get(&hash).unwrap().is_none());
             getrandom(cont.as_mut_buf());
@@ -509,7 +513,7 @@ mod tests {
             assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
         }
         let (store, _obj) = fanout.into_inners();
-        assert_eq!(store.len(), 1024);
+        assert_eq!(store.len(), 65536);
     }
 
     #[test]

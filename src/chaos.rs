@@ -360,8 +360,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
+        self.file.seek(io::SeekFrom::Start(0))?;
         let mut br = io::BufReader::new(self.file.try_clone()?);
-        br.seek(io::SeekFrom::Start(0))?;
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
@@ -371,7 +371,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += obj.len() as u64;
         }
         obj.clear();
-        //eprintln!("{} objects", self.map.len());
         Ok(())
     }
 
@@ -576,6 +575,10 @@ mod tests {
             assert!(store.load(&key, &mut obj1).unwrap());
         }
         store.reindex(&mut obj1).unwrap();
+        assert_eq!(store.len(), keys.len());
+        for key in keys.iter() {
+            assert!(store.load(&key, &mut obj1).unwrap());
+        }
     }
 }
 

@@ -44,9 +44,9 @@ pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
 
-
+//Eq, Ord, PartialEq, PartialOrd
 /// N byte long Tub name (content hash or random ID).
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
 pub struct Name<const N: usize> {
     pub buf: [u8; N],
 }
@@ -184,6 +184,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         else {
             max - self.len()
         }
+    }
+
+    pub fn extend(&mut self, data: &[u8]) {
+        self.buf.extend_from_slice(data);
     }
 
     // FIXME: We should not have this in the API, but super handy for testing and play

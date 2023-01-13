@@ -6,7 +6,7 @@
 
 use std::slice::Iter;
 use std::io::prelude::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::{io, fs, cmp};
 use zstd;
 use crate::base::*;
@@ -160,6 +160,84 @@ impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+
+pub struct LocationMap<const N: usize> {
+    map: HashMap<Name<N>, Name<N>>,
+}
+
+impl<const N: usize> LocationMap<N> {
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, key: Name<N>, val: Name<N>) -> Option<Name<N>> {
+        self.map.insert(key, val)
+    }
+
+    pub fn deserialize(buf: &[u8]) -> Self {
+        assert!(buf.len() > 0);
+        assert!(buf.len() % (N + N) == 0);
+        let mut map = HashMap::new();
+        let mut offset = 0;
+        while offset < buf.len() {
+            let key = Name::from(&buf[offset..offset + N]);
+            offset += N;
+            let val = Name::from(&buf[offset..offset + N]);
+            offset += N;
+            map.insert(key, val);
+        }
+        assert_eq!(offset, buf.len());
+        Self {map: map}
+    }
+
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        let mut items = Vec::from_iter(self.map.iter());
+        items.sort_by(|a, b| b.0.cmp(a.0));
+        for (key, val) in items.iter() {
+            buf.extend_from_slice(key.as_buf());
+            buf.extend_from_slice(val.as_buf());
+        }
+    }
+}
+
+
+pub struct Fanout<H: Hasher, const N: usize> {
+    table: [Option<Name<N>>; 256],
+    store: Store<H, N>,
+    obj: Object<H, N>,
+}
+
+impl<H: Hasher, const N: usize> Fanout<H, N> {
+    pub fn new(store: Store<H, N>, obj: Object<H, N>) -> Self {
+        Self {
+            table: [None; 256],
+            store: store,
+            obj: obj,
+        }
+    }
+
+    pub fn insert(&mut self, key: Name<N>, val: Name<N>) -> io::Result<()> {
+        let i = key.as_buf()[0] as usize;
+        if let Some(old) = self.table[i] {
+            if self.store.load(&old, &mut self.obj)? {
+                 let mut locmap: LocationMap<N>
+                    = LocationMap::deserialize(self.obj.as_data());    
+                locmap.insert(key, val); 
+                self.obj.clear();
+                locmap.serialize(self.obj.as_mut_vec());
+                self.obj.finalize();
+                self.store.save(&mut self.obj)?;
+            }
+        }
+        else {
+            self.obj.clear();
+        }
         Ok(())
     }
 }
@@ -489,6 +567,8 @@ mod tests {
             assert!(obj.is_valid());
             assert_eq!(obj.as_buf(), &expected[i]);
         }
+        assert!(! dec.read_next(&mut obj).unwrap());
+        assert_eq!(obj.as_buf(), &[0; 34]);
     }
 }
 

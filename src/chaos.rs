@@ -361,6 +361,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         self.map.clear();
         self.offset = 0;
         let mut br = io::BufReader::new(self.file.try_clone()?);
+        br.seek(io::SeekFrom::Start(0))?;
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
@@ -378,12 +379,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         if let Some(entry) = self.map.get(hash) {
             obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
-
             /* This is the slow path without pread64():
             self.file.seek(io::SeekFrom::Start(entry.offset))?;
             self.file.read_exact(obj.as_mut_buf())?;
             */
-
             if ! obj.validate_against(hash) {
                 panic!("{} hash does not match", hash);
             }

@@ -7,7 +7,7 @@ use tub::util::getrandom;
 
 
 const COUNT: usize = 1_000_000;
-const LOOPS: usize = 10;
+const LOOPS: usize = 2;
 
 fn main() -> io::Result<()> {
     let tmp = TestTempDir::new();
@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
-            store.load(&hash, &mut obj)?;
+            assert!(store.load(&hash, &mut obj)?);
         }
     }
     let elapsed = start.elapsed().as_secs_f64();
@@ -43,7 +43,7 @@ fn main() -> io::Result<()> {
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
-            store.load_unchecked(&hash, &mut obj)?;
+            assert!(store.load_unchecked(&hash, &mut obj)?);
         }
     }
     let elapsed = start.elapsed().as_secs_f64();
@@ -58,6 +58,7 @@ fn main() -> io::Result<()> {
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} indexed per second", rate as u64);
+    assert_eq!(store.len(), COUNT);
 
     println!("😎 Yes, Tub 🛁 is fast. 🚀");
     Ok(())

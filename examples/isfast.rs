@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     let mut obj = DefaultObject::new();
 
     println!("🤔 Is Tub 🛁 fast? 🚀");
-    println!("🛁 Saving {} random 1-256 byte sized objects...", COUNT);
+    println!("🛁 Saving {} random 16-256 byte sized objects...", COUNT);
     let start = Instant::now();
     for _ in 0..COUNT {
         obj.randomize(true);
@@ -26,12 +26,13 @@ fn main() -> io::Result<()> {
     let rate = COUNT as f64 / elapsed;
     println!("🚀 {} saves per second", rate as u64);
 
-    println!("🛁 Loading {} objects, looping {} times...", COUNT, LOOPS);
+    println!("🛁 Loading same {} objects, looping {} times...", COUNT, LOOPS);
     let keys = store.keys();
+    assert_eq!(keys.len(), COUNT);
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
-            store.load(&hash, &mut obj);
+            store.load(&hash, &mut obj)?;
         }
     }
     let elapsed = start.elapsed().as_secs_f64();

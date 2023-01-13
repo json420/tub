@@ -33,7 +33,7 @@ use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::{db32enc, db32dec_into};
 use crate::util::getrandom;
-use std::{fs, io};
+use std::{fs, io, cmp};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::fmt;
@@ -195,6 +195,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn randomize(&mut self, small: bool) -> Name<N> {
         getrandom(&mut self.buf[N..N + INFO_LEN]);
         if small {
+            self.buf[N] = cmp::max(self.buf[N], 15);
             self.buf[N + 1] = 0;
             self.buf[N + 2] = 0;
         }
@@ -377,6 +378,12 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         if let Some(entry) = self.map.get(hash) {
             obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
+
+            /* This is the slow path without pread64():
+            self.file.seek(io::SeekFrom::Start(entry.offset))?;
+            self.file.read_exact(obj.as_mut_buf())?;
+            */
+
             if ! obj.validate_against(hash) {
                 panic!("{} hash does not match", hash);
             }

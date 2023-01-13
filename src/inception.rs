@@ -165,6 +165,8 @@ impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
 }
 
 
+
+// FIXME: This is currently way the fuck too slow (but is ok for now).
 pub struct LocationMap<const N: usize> {
     map: HashMap<Name<N>, Name<N>>,
 }

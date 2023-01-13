@@ -218,7 +218,7 @@ pub struct Fanout<H: Hasher, const N: usize> {
     table: [Option<Name<N>>; 256],
     store: Store<H, N>,
     obj: Object<H, N>,
-    //map: LocationMap<N>,
+    map: LocationMap<N>,
 }
 
 impl<H: Hasher, const N: usize> Fanout<H, N> {
@@ -227,6 +227,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             table: [None; 256],
             store: store,
             obj: obj,
+            map: LocationMap::new(),
         }
     }
 
@@ -238,11 +239,10 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         let i = key.as_buf()[0] as usize;
         if let Some(old) = self.table[i] {
             if self.store.load(&old, &mut self.obj)? {
-                let mut locmap: LocationMap<N> = LocationMap::new();
-                locmap.deserialize(self.obj.as_data());    
-                locmap.insert(key, val);
+                self.map.deserialize(self.obj.as_data());
+                self.map.insert(key, val);
                 self.obj.clear();
-                locmap.serialize(self.obj.as_mut_vec());
+                self.map.serialize(self.obj.as_mut_vec());
                 self.obj.finalize();
                 self.store.save(&mut self.obj)?;
                 self.table[i] = Some(self.obj.hash());
@@ -252,10 +252,9 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             }
         }
         else {
-            let mut locmap: LocationMap<N> = LocationMap::new();
-            locmap.insert(key, val);
+            self.map.insert(key, val);
             self.obj.clear();
-            locmap.serialize(self.obj.as_mut_vec());
+            self.map.serialize(self.obj.as_mut_vec());
             self.obj.finalize();
             self.store.save(&mut self.obj)?;
             self.table[i] = Some(self.obj.hash());
@@ -267,9 +266,8 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         let i = key.as_buf()[0] as usize;
         if let Some(container) = self.table[i] {
             if self.store.load(&container, &mut self.obj)? {
-                let mut locmap: LocationMap<N> = LocationMap::new();
-                locmap.deserialize(self.obj.as_data());
-                if let Some(val) = locmap.get(key) {
+                self.map.deserialize(self.obj.as_data());
+                if let Some(val) = self.map.get(key) {
                     return Ok(Some(val.clone()))
                 }
             }

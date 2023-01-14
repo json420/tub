@@ -6,7 +6,7 @@ use blake3;
 
 pub trait Hasher {
     fn new() -> Self;
-    fn hash_into(&self, info: u32, data: &[u8], hash: &mut [u8]);
+    fn hash_into(&self, data: &[u8], hash: &mut [u8]);
 }
 
 pub struct Blake3 {
@@ -18,11 +18,10 @@ impl Hasher for Blake3 {
         Self {}
     }
 
-    fn hash_into(&self, info: u32, data: &[u8], hash: &mut [u8]) {
-        assert!(hash.len() > 0 && hash.len() % 5 == 0);
+    fn hash_into(&self, payload: &[u8], hash: &mut [u8]) {
+        !(hash.len() > 0 && hash.len() % 5 == 0);
         let mut h = blake3::Hasher::new();
-        h.update(&info.to_le_bytes());
-        h.update(data);
+        h.update(payload);
         h.finalize_xof().fill(hash);
     }
 }
@@ -43,17 +42,17 @@ mod tests {
         let mut data = [0_u8; 69];
         getrandom(&mut data);
         let b3 = Blake3::new();
-        b3.hash_into(0, &data, &mut hash);
+        b3.hash_into(&data, &mut hash);
         let mut set: HashSet<[u8; 30]> = HashSet::new();
         let og = hash.clone();
         set.insert(hash.clone());
         for bit in 0..data.len() * 8 {
             flip_bit_in(&mut data, bit);
-            b3.hash_into(0, &data, &mut hash);
+            b3.hash_into(&data, &mut hash);
             assert_ne!(hash, og);
             assert!(set.insert(hash.clone()));
             flip_bit_in(&mut data, bit);  // Flip bit back
-            b3.hash_into(0, &data, &mut hash);
+            b3.hash_into(&data, &mut hash);
             assert_eq!(hash, og);
         }
         assert_eq!(set.len(), 69 * 8 + 1);

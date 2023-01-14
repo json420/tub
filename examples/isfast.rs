@@ -65,7 +65,7 @@ fn main() -> io::Result<()> {
     println!("🚀 {} objects indexed per second", rate as u64);
     println!("");
     assert_eq!(store.len(), COUNT);
-    
+
     println!("🛁 Reindexing same objects UNCHECKED, looping {} times...", LOOPS);
     let start = Instant::now();
     for _ in 0..LOOPS {

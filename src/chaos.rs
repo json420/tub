@@ -206,10 +206,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn compute(&self) -> Name<N> {
         let mut hash: Name<N> = Name::new();
-        self.hasher.hash_into(
-            self.info().raw(), self.as_data(),
-            hash.as_mut_buf()
-        );
+        self.hasher.hash_into(self.as_payload(), hash.as_mut_buf());
         hash
     }
 
@@ -276,6 +273,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn as_mut_data(&mut self) -> &mut [u8] {
         &mut self.buf[N + INFO_LEN..]
+    }
+
+    pub fn as_payload(&self) -> &[u8] {
+        &self.buf[N..]
     }
 }
 
@@ -543,6 +544,7 @@ mod tests {
         obj.clear();
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
+        assert_eq!(obj.as_payload(), &[0; 4]);
     }
 
     #[test]

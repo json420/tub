@@ -1,8 +1,5 @@
 //! Constants and types.
 
-use std::ops;
-
-
 pub const INFO_LEN: usize = 4;
 pub const OBJECT_MAX_SIZE: usize = 16777216;
 

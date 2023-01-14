@@ -10,7 +10,6 @@ use clap::{Parser, Subcommand};
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
 use crate::dvcs::DefaultScanner;
-use crate::protocol::Blake3;
 use crate::inception::hash_file;
 
 type OptPath = Option<PathBuf>;

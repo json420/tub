@@ -1,9 +1,7 @@
 use std::io;
 use std::time::Instant;
 use tub::chaos::{DefaultObject, DefaultStore};
-use tub::inception::Fanout;
 use tub::helpers::TestTempDir;
-use tub::util::getrandom;
 
 
 const COUNT: usize = 1_000_000;

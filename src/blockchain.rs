@@ -1,4 +1,4 @@
-//! Super cool crypto in here, yo!
+//! Super cool crypto in here, yo! 💵 💵 💵
 
 use sodiumoxide::crypto::sign;
 
@@ -10,10 +10,15 @@ ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 */
 
 
+pub struct Chain {
+    pk: sign::PublicKey,
+    sk: sign::SecretKey,
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::getrandom;
 
     #[test]
     fn test_ed25519() {

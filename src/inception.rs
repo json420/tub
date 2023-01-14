@@ -6,7 +6,7 @@
 
 use std::slice::Iter;
 use std::io::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::{io, fs, cmp};
 use zstd;
 use crate::base::*;

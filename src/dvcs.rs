@@ -11,7 +11,6 @@ use std::os::unix;
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
 use crate::inception::{import_file, restore_file, hash_file};
-use crate::base::*;
 
 
 const MAX_DEPTH: usize = 32;

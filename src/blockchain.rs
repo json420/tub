@@ -1,16 +1,14 @@
 use sodiumoxide::crypto::sign;
-use blake3;
 use crate::base::*;
+use crate::protocol::{Hasher, DefaultHasher};
 
 
 
 pub fn hash_block(data: &[u8]) -> TubHash {
     //assert!(data.len() > 0);
-    let mut h = blake3::Hasher::new();
-    h.update(b"Tub/block");  // <-- FIXME: Do more better than this
-    h.update(data);
+    let h = DefaultHasher::new();
     let mut hash: TubHash = [0_u8; TUB_HASH_LEN];
-    h.finalize_xof().fill(&mut hash);
+    h.hash_into(data, &mut hash);
     hash
 }
 

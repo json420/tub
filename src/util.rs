@@ -1,8 +1,9 @@
-//! Misc utilities, libc wrappers.
+//! Misc libc wrappers, currently just `getrandom()`.
 
 use libc;
 
 
+/// Make getrandom() syscall via libc.
 pub fn getrandom(buf: &mut [u8]) {
     let size1 = buf.len();
     let p = buf.as_mut_ptr() as *mut libc::c_void;
@@ -15,22 +16,24 @@ pub fn getrandom(buf: &mut [u8]) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use super::*;
 
     #[test]
     fn test_getrandom() {
-        let b1 = &mut [0_u8; 30];
-        assert_eq!(b1[..], [0_u8; 30][..]);
-        getrandom(b1);
-        assert_ne!(b1[..], [0_u8; 30][..]);
-        let b2 = &mut [0_u8; 30];
-        getrandom(b2);
-        assert_ne!(b1[..], b2[..]);
+        let mut buf = [0_u8; 30];
+        getrandom(&mut buf);
+        assert_ne!(buf, [0; 30]);
+        let og = buf.clone();
+        getrandom(&mut buf);
+        assert_ne!(buf, og);
 
-        let b3 = &mut [0_u8; 65536];
-        assert_eq!(b3[..], [0_u8; 65536][..]);
-        getrandom(b3);
-        assert_ne!(b3[..], [0_u8; 65536][..]);
+        let mut set: HashSet<[u8; 30]> = HashSet::new();
+        for _ in 0..6942 {
+            getrandom(&mut buf);
+            set.insert(buf.clone());
+        }
+        assert_eq!(set.len(), 6942);
     }
 }
 

@@ -43,7 +43,7 @@ fn main() -> io::Result<()> {
     println!("🚀 {} Store.load() calls per second", rate as u64);
     println!("");
 
-    println!("🛁 Loading same objects unchecked, looping {} times...", LOOPS);
+    println!("🛁 Loading same objects UNCHECKED, looping {} times...", LOOPS);
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
@@ -63,6 +63,17 @@ fn main() -> io::Result<()> {
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} objects indexed per second", rate as u64);
+    println!("");
+    assert_eq!(store.len(), COUNT);
+    
+    println!("🛁 Reindexing same objects UNCHECKED, looping {} times...", LOOPS);
+    let start = Instant::now();
+    for _ in 0..LOOPS {
+        store.reindex_unchecked(&mut obj)?;
+    }
+    let elapsed = start.elapsed().as_secs_f64();
+    let rate = (COUNT * LOOPS) as f64 / elapsed;
+    println!("🚀 {} objects indexed (but not verified) per second", rate as u64);
     println!("");
     assert_eq!(store.len(), COUNT);
 

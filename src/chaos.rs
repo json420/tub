@@ -323,6 +323,18 @@ impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
             Ok(false)
         }
     }
+
+    pub fn read_next_unchecked(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
+        obj.clear();
+        if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
+            obj.resize_to_info();
+            self.inner.read_exact(obj.as_mut_data())?;
+            Ok(true)
+        }
+        else {
+            Ok(false)
+        }
+    }
 }
 
 
@@ -364,6 +376,23 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         let mut br = io::BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
+            self.map.insert(
+                obj.hash(),
+                Entry::new(obj.info(), self.offset)
+            );
+            self.offset += obj.len() as u64;
+        }
+        obj.clear();
+        Ok(())
+    }
+
+    pub fn reindex_unchecked(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
+        self.map.clear();
+        self.offset = 0;
+        self.file.seek(io::SeekFrom::Start(0))?;
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
+        while reader.read_next_unchecked(obj)? {
             self.map.insert(
                 obj.hash(),
                 Entry::new(obj.info(), self.offset)

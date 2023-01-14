@@ -2,41 +2,6 @@
 
 use std::ops;
 
-pub const TUB_ID_LEN: usize = 15;
-pub const TUB_HASH_LEN: usize = 30;
-
-pub type TubId = [u8; TUB_ID_LEN];
-pub type TubHash = [u8; TUB_HASH_LEN];
-pub type TubHashList = Vec<TubHash>;
-
-pub const TAIL_LEN: usize = 9 + TUB_HASH_LEN;  // Size + Type + Payload Hash
-pub const HEADER_LEN: usize = TUB_HASH_LEN + TAIL_LEN;
-
-//pub const LEAF_SIZE: u64 = 1048576;  // 1 MiB
-//pub const LEAF_SIZE: u64 = 2097152;  // 2 MiB
-pub const LEAF_SIZE: u64 = 8388608;  // 8 MiB
-
-pub const ROOT_HASH_RANGE: ops::Range<usize> = 0..TUB_HASH_LEN;
-pub const TYPE_INDEX: usize = TUB_HASH_LEN;
-pub const SIZE_RANGE: ops::Range<usize> = TUB_HASH_LEN + 1..TUB_HASH_LEN + 9;
-pub const PAYLOAD_HASH_RANGE: ops::Range<usize> = TUB_HASH_LEN + 9..2 * TUB_HASH_LEN + 9;
-
-pub const TAIL_RANGE: ops::Range<usize> = TUB_HASH_LEN..HEADER_LEN;
-
-pub const BLOCK_PREVIOUS_HASH_RANGE: ops::Range<usize> = TUB_HASH_LEN..2 * TUB_HASH_LEN;
-pub const BLOCK_PAYLOAD_HASH_RANGE: ops::Range<usize> = 2 * TUB_HASH_LEN..3 * TUB_HASH_LEN;
-
-
-pub const BLOCK_SIGNATURE_RANGE: ops::Range<usize> = 0..64;
-pub const BLOCK_SIGNABLE_RANGE: ops::Range<usize> = 64..172;
-
-pub const BLOCK_PUBKEY_RANGE: ops::Range<usize> = 64..96;
-pub const BLOCK_PREVIOUS_RANGE: ops::Range<usize> = 96..126;
-pub const BLOCK_TYPE_INDEX: usize = 126;  // 126..127
-pub const BLOCK_COUNTER_RANGE: ops::Range<usize> = 127..135;
-pub const BLOCK_TIMESTAMP_RANGE: ops::Range<usize> = 135..143;
-pub const BLOCK_PAYLOAD_RANGE: ops::Range<usize> = 143..173;
-pub const BLOCK_LEN: usize = 173;
 
 pub const INFO_LEN: usize = 4;
 pub const OBJECT_MAX_SIZE: usize = 16777216;
@@ -96,24 +61,6 @@ impl From<u8> for BlockType {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_lengths() {
-        assert_eq!(TUB_ID_LEN % 5, 0);
-        assert_eq!(TUB_HASH_LEN % 5, 0);
-        assert_eq!(TUB_HASH_LEN % 5, 0);
-        assert!(TUB_HASH_LEN > TUB_ID_LEN);
-        assert_eq!(HEADER_LEN, 69);
-    }
-
-    #[test]
-    fn test_ranges() {
-         // Yes, these break if TUB_HASH_LEN changes, but just to see them clearly:
-         assert_eq!(ROOT_HASH_RANGE, 0..30);
-         assert_eq!(TYPE_INDEX, 30);
-         assert_eq!(SIZE_RANGE, 31..39);
-         assert_eq!(PAYLOAD_HASH_RANGE, 39..69);
-    }
 
     #[test]
     fn test_objtype() {

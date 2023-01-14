@@ -149,7 +149,7 @@ impl<const N: usize> Tree<N> {
             let name = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
             offset += size;
 
-            let h = Name::from(&buf[offset..offset + TUB_HASH_LEN]);
+            let h = Name::from(&buf[offset..offset + N]);
             offset += h.len();
 
             map.insert(name, TreeEntry::new(kind, h));

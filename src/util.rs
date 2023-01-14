@@ -1,8 +1,5 @@
 //! Misc utilities, libc wrappers.
 
-use std::fs::File;
-use crate::base::*;
-use std::os::unix::io::AsRawFd;
 use libc;
 
 
@@ -13,20 +10,6 @@ pub fn getrandom(buf: &mut [u8]) {
         libc::getrandom(p, size1, 0)
     } as usize;
     if size1 != size2 {panic!("something went wrong")}
-}
-
-
-pub fn random_id() -> TubId {
-    let mut id = [0_u8; TUB_ID_LEN];
-    getrandom(&mut id);
-    id
-}
-
-
-pub fn random_hash() -> TubHash {
-    let mut id = [0_u8; TUB_HASH_LEN];
-    getrandom(&mut id);
-    id
 }
 
 

@@ -511,51 +511,5 @@ mod tests {
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
     }
-
-/*
-    #[test]
-    #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
-    fn test_commit_tree_depth_panic() {
-        let (_tmp, mut store) = Store::new_tmp();
-        let pb = PathBuf::from("word");
-        commit_tree_inner(&mut store, &pb, MAX_DEPTH).unwrap();
-    }
-
-
-    #[test]
-    #[should_panic(expected = "Depth 32 is >= MAX_DEPTH 32")]
-    fn test_restore_tree_depth_panic() {
-        let (_tmp, mut store) = Store::new_tmp();
-        let root = random_hash();
-        let pb = PathBuf::from("word");
-        restore_tree_inner(&mut store, &root, &pb, MAX_DEPTH).unwrap();
-    }
-
-    #[test]
-    fn test_serialize_deserialize() {
-
-        let mut map: TreeMap = HashMap::new();
-
-        let pb = PathBuf::from("bar");
-        let hash = [11_u8; TUB_HASH_LEN];
-        map.insert(pb, TreeEntry::new(Kind::File, hash));
-        let buf = serialize(&map);
-        assert_eq!(buf, [3,  3, 98, 97, 114,
-                        11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-                        11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
-                        11, 11]
-        );
-        let map2 = deserialize(&buf);
-        assert_eq!(map2, map);
-
-        let mut map: TreeMap = HashMap::new();
-        map.insert(PathBuf::from("as"), TreeEntry::new(Kind::File, random_hash()));
-        map.insert(PathBuf::from("the"), TreeEntry::new(Kind::File, random_hash()));
-        map.insert(PathBuf::from("world"), TreeEntry::new(Kind::File, random_hash()));
-        let buf = serialize(&map);
-        let map2 = deserialize(&buf);
-        assert_eq!(map2, map);
-
-    }
-*/
 }
+

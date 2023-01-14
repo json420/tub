@@ -312,7 +312,7 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use crate::util::random_hash;
+    use crate::util::getrandom;
     use super::*;
 
     #[test]
@@ -485,17 +485,23 @@ mod tests {
 
     #[test]
     fn test_roundtrip() {
-        for _ in 0..5_000 {
-            let bin = random_hash();
+        let mut bin = [0_u8; 15];
+        let mut set: HashSet<[u8; 15]> = HashSet::new();
+        for _ in 0..4269 {
+            getrandom(&mut bin);
+            set.insert(bin.clone());
             let txt = db32enc(&bin);
             let bin2 = db32dec(&txt.as_bytes()).unwrap();
             assert_eq!(&bin, &bin2[..]);
         }
+        assert_eq!(set.len(), 4269);
     }
 
     #[test]
     fn test_bad_txt() {
-        let bin = random_hash();
+        let mut bin = [0_u8; 15];
+        getrandom(&mut bin);
+        let bin = bin;
         let txt = db32enc(&bin);
         assert_eq!(isdb32(&txt.as_bytes()), true);
         for i in 0..txt.len() {

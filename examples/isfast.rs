@@ -1,6 +1,6 @@
 use std::io;
 use std::time::Instant;
-use tub::chaos::{DefaultName, DefaultObject, DefaultStore};
+use tub::chaos::{DefaultObject, DefaultStore};
 use tub::inception::Fanout;
 use tub::helpers::TestTempDir;
 use tub::util::getrandom;

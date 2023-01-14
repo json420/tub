@@ -268,10 +268,24 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         let i = key.as_buf()[0] as usize;
         if let Some(container) = self.table[i] {
             if self.store.load(&container, &mut self.obj)? {
+                let data = self.obj.as_data();
+                let mut offset = 0;
+                assert!(data.len() > 0 && data.len() % (N * 2) == 0);
+                // FIXME: Make faster and more better
+                while offset < data.len() {
+                    if &data[offset..offset + N] == key.as_buf() {
+                        return Ok( Some(
+                            Name::from(&data[offset + N..offset + N * 2])
+                        ));
+                    }
+                    offset += N * 2;
+                }
+                /*
                 self.map.deserialize(self.obj.as_data());
                 if let Some(val) = self.map.get(key) {
                     return Ok(Some(val.clone()))
                 }
+                */
             }
         }
         Ok(None)

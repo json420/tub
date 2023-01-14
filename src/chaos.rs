@@ -72,6 +72,10 @@ impl<const N: usize> Name<N> {
         }
     }
 
+    pub fn randomize(&mut self) {
+        getrandom(&mut self.buf);
+    }
+
     pub fn into_buf(self) -> [u8; N] {
         self.buf
     }
@@ -458,6 +462,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 mod tests {
     use super::*;
     use crate::helpers::{TestTempDir, flip_bit_in};
+    use std::collections::HashSet;
 
     #[test]
     fn test_name() {
@@ -482,6 +487,17 @@ mod tests {
         assert_eq!(n.as_buf(), [255_u8; 20]);
         assert_eq!(n.as_mut_buf(), [255_u8; 20]);
         assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+    }
+
+    #[test]
+    fn test_name_randomize() {
+        let mut set: HashSet<DefaultName> = HashSet::new();
+        let mut name = DefaultName::new();
+        for _ in 0..777 {
+            name.randomize();
+            set.insert(name.clone());
+        }
+        assert_eq!(set.len(), 777);
     }
 
     #[test]

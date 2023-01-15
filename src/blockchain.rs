@@ -15,9 +15,57 @@ You can think of a Tub blockchain like a namespace or an identity.
 ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 
 
+SIG PREVIOUS PAYLOAD
+
 */
 
 pub type Secret = [u8; 64];
+
+
+pub struct WriteBlock<'a, const N: usize> {
+    inner: &'a mut [u8],
+}
+
+impl<'a, const N: usize> WriteBlock<'a, N> {
+    pub fn new(inner: &'a mut [u8]) -> Self{
+        Self {inner: inner}
+    }
+
+    pub fn as_mut_signature(&mut self) -> &mut [u8] {
+        &mut self.inner[0..64]
+    }
+
+    pub fn as_mut_previous(&mut self) -> &mut [u8] {
+        &mut self.inner[64..64 + N]
+    }
+
+    pub fn as_mut_payload(&mut self) -> &mut [u8] {
+        &mut self.inner[64 + N..64 + N * 2]
+    }
+}
+
+
+pub struct ReadBlock<'a, const N: usize> {
+    inner: &'a [u8],
+}
+
+impl<'a, const N: usize> ReadBlock<'a, N> {
+    pub fn new(inner: &'a [u8]) -> Self{
+        Self {inner: inner}
+    }
+
+    pub fn as_signature(&self) -> &[u8] {
+        &self.inner[0..64]
+    }
+
+    pub fn as_previous(&self) -> &[u8] {
+        &self.inner[64..64 + N]
+    }
+
+    pub fn as_payload(&self) -> &[u8] {
+        &self.inner[64 + N..64 + N * 2]
+    }
+}
 
 
 pub struct Chain {

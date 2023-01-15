@@ -107,12 +107,8 @@ impl Chain {
 }
 
 
-/*
 
-
-header: HASH SIG PUBKEY
-block:  HASH SIG PAYLOAD
-*/
+// HASH SIG PUBKEY
 
 pub struct Header {
     buf: [u8; 30 + 64 + 32],
@@ -189,6 +185,71 @@ impl Header {
 }
 
 
+//          This gets signed
+//          ******************
+// HASH SIG PAYLOAD [PREVIOUS]  <-- [PREV] is used but not stored in block
+//      ^^^^^^^^^^^^^^^^^^^^^^
+//      This get's hashed
+
+pub struct Block {
+    buf: [u8; 154],
+}
+
+impl Block {
+    pub fn new() -> Self {
+        Self {buf: [0; 154]}
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf[0..124]  // Everything except PREVIOUS
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf  // Everything except PREVIOUS
+    }
+
+    pub fn as_signed(&self) -> &[u8] {
+        &self.buf[94..]
+    }
+
+    pub fn as_hashed(&self) -> &[u8] {
+        &self.buf[30..]
+    }
+
+    pub fn set_hash(&mut self, value: &[u8]) {
+        self.buf[0..30].copy_from_slice(value);
+    }
+
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.buf[30..94].copy_from_slice(value);
+    }
+
+    pub fn set_payload(&mut self, value: &[u8]) {
+        self.buf[94..124].copy_from_slice(value);
+    }
+
+    pub fn set_previous(&mut self, value: &[u8]) {
+        self.buf[124..154].copy_from_slice(value);
+    }
+
+    pub fn set_and_sign(&mut self,  sk: &sign::SecretKey,
+        payload: &Name<30>, previous: &Name<30>) -> Name<30>
+    {
+        self.set_payload(payload.as_buf());
+        self.set_previous(previous.as_buf());
+        let sig = sign::sign_detached(self.as_signed(), sk);
+        self.set_signature(sig.as_ref());
+        let hash = self.compute();
+        self.set_hash(hash.as_buf());
+        hash
+    }
+
+    pub fn compute(&self) -> Name<30> {
+        compute_hash(self.as_hashed())
+    }
+}
+
+
 pub struct BlockChain {
     file: fs::File,
     header: [u8; 30 + 64 + 32],
@@ -222,6 +283,7 @@ impl BlockChain {
 mod tests {
     use std::collections::HashSet;
     use crate::util::getrandom;
+    use crate::helpers::flip_bit_in;
     use super::*;
 
     #[test]
@@ -236,6 +298,17 @@ mod tests {
         assert_eq!(hash, header.compute());
         assert_eq!(pk.as_ref(), header.as_pubkey());
         assert!(header.is_valid());
+        for bit in 0..header.as_mut_buf().len() * 8 {
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(! header.is_valid());
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(header.is_valid());
+        }
+    }
+
+    #[test]
+    fn test_block() {
+        let mut block = Block::new();
     }
 
     #[test]

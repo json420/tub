@@ -83,29 +83,6 @@ impl<'a, const N: usize> ReadBlock<'a, N> {
 }
 
 
-pub struct Chain {
-    secret: Secret,
-}
-
-impl Chain {
-    pub fn resume(secret: Secret) -> Self {
-        //let pk = sk.public_key();
-        Self {secret: secret}
-    }
-
-    pub fn get_secret(&self, index: u64, previous: &[u8]) -> Secret {
-        // FIXME: Do proper key derivation, we're just getting a feel...
-        let mut h = blake3::Hasher::new();
-        h.update(&self.secret);
-        h.update(&index.to_le_bytes());
-        h.update(previous);
-        let mut key: Secret = [0_u8; 64];
-        h.finalize_xof().fill(&mut key);
-        key
-        //sign::SecretKey::from_slice(&key).unwrap()
-    }
-}
-
 
 
 // HASH SIG PUBKEY
@@ -268,18 +245,18 @@ impl Block {
 }
 
 
-pub struct BlockChain {
+pub struct Chain {
     file: fs::File,
-    header: [u8; 30 + 64 + 32],
-    block: [u8; 30 + 64 + 30],
+    header: Header,
+    block: Block,
 }
 
-impl BlockChain {
-    pub fn new(file: fs::File) -> Self {
+impl Chain {
+    pub fn new(file: fs::File, pk: sign::PublicKey) -> Self {
         Self {
             file: file,
-            header: [0; 126],
-            block: [0; 124],
+            header: Header::new(),
+            block: Block::new(pk),
 
         }
     }
@@ -287,11 +264,19 @@ impl BlockChain {
     pub fn verify(&mut self) -> io::Result<()> {
         self.file.seek(io::SeekFrom::Start(0))?;
         let mut br = io::BufReader::new(self.file.try_clone()?);
-        if let Ok(_) = br.read_exact(&mut self.header) {
-            while let Ok(_) = br.read_exact(&mut self.block) {}
+        if let Ok(_) = br.read_exact(&mut self.header.as_mut_buf()) {
+            if ! self.header.is_valid() {
+                panic!("Bad chain header, yo");
+            }
+            while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
+                if ! self.block.is_valid() {
+                    panic!("Bad block, yo");
+                }
+            }
         }
         Ok(())
     }
+
 }
 
 
@@ -341,18 +326,6 @@ mod tests {
             flip_bit_in(block.as_mut_raw(), bit);
             assert!(block.is_valid());
         }
-    }
-
-    #[test]
-    fn test_chain() {
-        let mut secret = [0_u8; 64];
-        getrandom(&mut secret);
-        let chain = Chain::resume(secret);
-        let mut set: HashSet<Secret> = HashSet::new();
-        for i in 0..4269 {
-            set.insert(chain.get_secret(i, b""));
-        }
-        assert_eq!(set.len(), 4269);
     }
 
     #[test]

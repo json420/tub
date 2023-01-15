@@ -5,6 +5,7 @@ use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use sodiumoxide::crypto::sign;
 use blake3;
+use crate::chaos::Name;
 
 
 /*
@@ -21,6 +22,17 @@ ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 SIG PREVIOUS PAYLOAD
 
 */
+
+
+// FIXME: lame, just to get things going
+fn compute_hash(payload: &[u8]) -> Name<30> {
+    let mut h = blake3::Hasher::new();
+    h.update(payload);
+    let mut hash = Name::new();
+    h.finalize_xof().fill(hash.as_mut_buf());
+    hash
+}
+
 
 pub type Secret = [u8; 64];
 
@@ -127,22 +139,48 @@ impl Header {
         &self.buf[0..30]
     }
 
-    pub fn as_sig(&self) -> &[u8] {
-        &self.buf[30..94]
-    }
-
     pub fn as_pubkey(&self) -> &[u8] {
         &self.buf[94..126]
+    }
+
+    pub fn set_hash(&mut self, value: &[u8]) {
+        self.buf[0..30].copy_from_slice(value);
+    }
+
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.buf[30..94].copy_from_slice(value);
+    }
+
+    pub fn set_pubkey(&mut self, value: &[u8]) {
+        self.buf[94..126].copy_from_slice(value);
+    }
+
+    pub fn hash(&self) -> Name<30> {
+        Name::from(self.as_hash())
     }
 
     pub fn pubkey(&self) -> sign::PublicKey {
         sign::PublicKey::from_slice(self.as_pubkey()).unwrap()
     }
 
+    pub fn compute(&self) -> Name<30> {
+        compute_hash(self.as_tail())
+    }
+
+    pub fn sign_and_set(&mut self, sk: &sign::SecretKey) -> Name<30> {
+        let pk = sk.public_key();
+        let sig = sign::sign_detached(pk.as_ref(), &sk);
+        self.set_pubkey(pk.as_ref());
+        self.set_signature(sig.as_ref());
+        let hash = self.compute();
+        self.set_hash(hash.as_buf());
+        hash
+    }
+
     pub fn is_valid(&self) -> bool {
         let pk = self.pubkey();
-        if let Ok(_) = sign::verify(self.as_buf(), &pk) {
-            true
+        if let Ok(_) = sign::verify(self.as_tail(), &pk) {
+            self.hash() == self.compute()
         }
         else {
             false
@@ -185,6 +223,20 @@ mod tests {
     use std::collections::HashSet;
     use crate::util::getrandom;
     use super::*;
+
+    #[test]
+    fn test_header() {
+        let mut header = Header::new();
+        getrandom(header.as_mut_buf());
+        assert!(! header.is_valid());
+
+        let (pk, sk) = sign::gen_keypair();
+        let hash = header.sign_and_set(&sk);
+        assert_eq!(hash, header.hash());
+        assert_eq!(hash, header.compute());
+        assert_eq!(pk.as_ref(), header.as_pubkey());
+        assert!(header.is_valid());
+    }
 
     #[test]
     fn test_chain() {

@@ -27,7 +27,7 @@ fn main() -> io::Result<()> {
     println!("🚀 {} Store.save() calls per second", rate as u64);
     println!("");
 
-    println!("🛁 Loading same objects, looping {} times...", LOOPS);
+    println!("🛁 Requesting all objects in random order...");
     let keys = store.keys();
     assert_eq!(keys.len(), COUNT);
     let start = Instant::now();
@@ -38,10 +38,11 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} Store.load() calls per second", rate as u64);
+    println!("🚀 {} Store.load() validated reads per second", rate as u64);
     println!("");
 
-    println!("🛁 Loading same objects UNCHECKED, looping {} times...", LOOPS);
+    /*
+    println!("🛁 Requesting same objects UNCHECKED");
     let start = Instant::now();
     for _ in 0..LOOPS {
         for hash in keys.iter() {
@@ -50,28 +51,18 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} Store.load_unchecked() calls per second", rate as u64);
+    println!("🚀 {} Store.load_unchecked() reads per second", rate as u64);
     println!("");
+    */
 
-    println!("🛁 Reindexing same objects, looping {} times...", LOOPS);
+    println!("🛁 Reindexing objects...");
     let start = Instant::now();
     for _ in 0..LOOPS {
         store.reindex(&mut obj)?;
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} objects indexed per second", rate as u64);
-    println!("");
-    assert_eq!(store.len(), COUNT);
-
-    println!("🛁 Reindexing same objects UNCHECKED, looping {} times...", LOOPS);
-    let start = Instant::now();
-    for _ in 0..LOOPS {
-        store.reindex_unchecked(&mut obj)?;
-    }
-    let elapsed = start.elapsed().as_secs_f64();
-    let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} objects indexed (but not verified) per second", rate as u64);
+    println!("🚀 {} objects indexed plus validated per second", rate as u64);
     println!("");
     assert_eq!(store.len(), COUNT);
 

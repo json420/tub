@@ -290,7 +290,15 @@ impl Chain {
 
     pub fn generate(file: fs::File) -> (sign::SecretKey, Self) {
         let (pk, sk) = sign::gen_keypair();
-        (sk, Self::new(file, pk))
+        let mut chain = Self::new(file, pk);
+        chain.init(&sk);
+        (sk, chain)
+    }
+
+    fn init(&mut self, sk: &sign::SecretKey) {
+        let hash = self.header.sign_and_set(sk);
+        self.block.set_hash(hash.as_buf());
+        self.file.write_all(self.header.as_buf()).unwrap();
     }
 
     pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> io::Result<Name<30>> {
@@ -310,6 +318,7 @@ impl Chain {
                 if ! self.block.is_valid() {
                     panic!("Bad block, yo");
                 }
+                self.block.ready_next();
             }
         }
         Ok(())

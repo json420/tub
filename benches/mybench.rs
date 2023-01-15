@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use blake3;
+use sodiumoxide::crypto::sign;
 use tub::util::getrandom;
 use tub::chaos::DefaultName;
 
@@ -24,6 +25,15 @@ fn bm_hash2(c: &mut Criterion) {
     c.bench_function("blake3 64 KiB", |b| b.iter(|| hash_blake3(black_box(&buf[..]))));
 }
 
+fn bm_ed25519(c: &mut Criterion) {
+    let mut buf = [0_u8; 30];
+    getrandom(&mut buf);
+    let (_pk, sk) = sign::gen_keypair();
+    c.bench_function("sodiumoxide ed25519 sign",
+        |b| b.iter(|| sign::sign(black_box(&buf), black_box(&sk)))
+    );
+}
+
 
 fn bm_db32enc(c: &mut Criterion) {
     let mut src = DefaultName::new();
@@ -45,7 +55,7 @@ fn bm_db32dec(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_hash, bm_hash2, bm_db32enc, bm_db32dec
+    targets = bm_hash, bm_hash2, bm_ed25519, bm_db32enc, bm_db32dec
 }
 
 criterion_main!(benches);

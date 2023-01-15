@@ -1,5 +1,8 @@
 //! Super cool crypto in here, yo! 💵 💵 💵
 
+use std::{fs, io};
+use std::os::unix::fs::FileExt;
+use std::io::prelude::*;
 use sodiumoxide::crypto::sign;
 use blake3;
 
@@ -90,6 +93,91 @@ impl Chain {
         //sign::SecretKey::from_slice(&key).unwrap()
     }
 }
+
+
+/*
+
+
+header: HASH SIG PUBKEY
+block:  HASH SIG PAYLOAD
+*/
+
+pub struct Header {
+    buf: [u8; 30 + 64 + 32],
+}
+
+impl Header {
+    pub fn new() -> Self {
+        Self {buf: [0; 30 + 64 + 32]}
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_tail(&self) -> &[u8] {
+        &self.buf[30..]
+    }
+
+    pub fn as_hash(&self) -> &[u8] {
+        &self.buf[0..30]
+    }
+
+    pub fn as_sig(&self) -> &[u8] {
+        &self.buf[30..94]
+    }
+
+    pub fn as_pubkey(&self) -> &[u8] {
+        &self.buf[94..126]
+    }
+
+    pub fn pubkey(&self) -> sign::PublicKey {
+        sign::PublicKey::from_slice(self.as_pubkey()).unwrap()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let pk = self.pubkey();
+        if let Ok(_) = sign::verify(self.as_buf(), &pk) {
+            true
+        }
+        else {
+            false
+        }
+    }
+}
+
+
+pub struct BlockChain {
+    file: fs::File,
+    header: [u8; 30 + 64 + 32],
+    block: [u8; 30 + 64 + 30],
+}
+
+impl BlockChain {
+    pub fn new(file: fs::File) -> Self {
+        Self {
+            file: file,
+            header: [0; 126],
+            block: [0; 124],
+
+        }
+    }
+
+    pub fn verify(&mut self) -> io::Result<()> {
+        self.file.seek(io::SeekFrom::Start(0))?;
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        if let Ok(_) = br.read_exact(&mut self.header) {
+            while let Ok(_) = br.read_exact(&mut self.block) {}
+        }
+        Ok(())
+    }
+}
+
+
 
 
 #[cfg(test)]

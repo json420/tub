@@ -33,10 +33,9 @@ use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::{db32enc, db32dec_into};
 use crate::util::getrandom;
-use std::{fs, io, cmp};
+use std::{fs, io, cmp, fmt};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
-use std::fmt;
 use std::io::prelude::*;
 use std::marker::PhantomData;
 

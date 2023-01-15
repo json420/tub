@@ -191,7 +191,7 @@ impl Block {
     }
 
     pub fn as_buf(&self) -> &[u8] {
-        &self.buf  // Everything except PREVIOUS
+        &self.buf[0..124]  // Everything except PREVIOUS
     }
 
     pub fn as_signed(&self) -> &[u8] {
@@ -244,6 +244,17 @@ impl Block {
     }
 }
 
+
+/*
+
+1. Generate SecretKey
+2. Generate header
+3. Write header to file
+4. Reopen file?
+
+
+
+*/
 
 pub struct Chain {
     file: fs::File,

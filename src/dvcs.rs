@@ -20,8 +20,8 @@ pub type DefaultScanner = Scanner<Blake3, 30>;
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
     EmptyDir,
-    Dir,
     EmptyFile,
+    Dir,
     File,
     ExeFile,
     SymLink,
@@ -31,8 +31,8 @@ impl From<u8> for Kind {
     fn from(item: u8) -> Self {
         match item {
             0 => Self::EmptyDir,
-            1 => Self::Dir,
-            2 => Self::EmptyFile,
+            1 => Self::EmptyFile,
+            2 => Self::Dir,
             3 => Self::File,
             4 => Self::ExeFile,
             5 => Self::SymLink,
@@ -431,10 +431,10 @@ mod tests {
         }
         assert_eq!(Kind::EmptyDir as u8, 0);
         assert_eq!(Kind::EmptyDir, 0.into());
-        assert_eq!(Kind::Dir as u8, 1);
-        assert_eq!(Kind::Dir, 1.into());
-        assert_eq!(Kind::EmptyFile as u8, 2);
-        assert_eq!(Kind::EmptyFile, 2.into());
+        assert_eq!(Kind::EmptyFile as u8, 1);
+        assert_eq!(Kind::EmptyFile, 1.into());
+        assert_eq!(Kind::Dir as u8, 2);
+        assert_eq!(Kind::Dir, 2.into());
         assert_eq!(Kind::File as u8, 3);
         assert_eq!(Kind::File, 3.into());
         assert_eq!(Kind::ExeFile as u8, 4);

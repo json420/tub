@@ -36,7 +36,7 @@ fn bm_db32dec(c: &mut Criterion) {
     let mut hash = DefaultName::new();
     hash.randomize();
     let src = &hash.to_string();
-    c.bench_function("db32dec: Name::from_string()",
+    c.bench_function("db32dec: Name::from_str()",
         |b| b.iter(|| DefaultName::from_str(black_box(src)))
     );
 }

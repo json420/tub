@@ -36,7 +36,7 @@ impl Chain {
         h.update(&self.secret);
         h.update(&index.to_le_bytes());
         h.update(previous);
-        let mut key = [0_u8; 64];
+        let mut key: Secret = [0_u8; 64];
         h.finalize_xof().fill(&mut key);
         key
         //sign::SecretKey::from_slice(&key).unwrap()

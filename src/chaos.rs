@@ -62,6 +62,16 @@ impl<const N: usize> Name<N> {
         Self {buf: buf}
     }
 
+    pub fn from_str(txt: &str) -> Self {
+        let mut buf = [0_u8; N];
+        if db32dec_into(txt.as_bytes(), &mut buf) {
+            Self {buf: buf}
+        }
+        else {
+            panic!("Handle this better, yo");
+        }
+    }
+
     pub fn from_string(txt: String) -> Self {
         let mut buf = [0_u8; N];
         if db32dec_into(txt.as_bytes(), &mut buf) {

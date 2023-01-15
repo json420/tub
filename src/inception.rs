@@ -177,7 +177,7 @@ impl<const N: usize> LocationMap<N> {
             map: HashMap::new(),
         }
     }
-    
+
     pub fn clear(&mut self) {
         self.map.clear();
     }

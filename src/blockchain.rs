@@ -218,6 +218,22 @@ impl Block {
         self.buf[124..154].copy_from_slice(value);
     }
 
+    pub fn ready_next(&mut self) {
+        let hash = self.hash();
+        self.set_previous(hash.as_buf());
+        self.buf[0..124].fill(0);
+    }
+
+    pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> Name<30> {
+        self.ready_next();
+        self.set_payload(payload.as_buf());
+        let sig = sign::sign_detached(self.as_signed(), sk);
+        self.set_signature(sig.as_ref());
+        let hash = self.compute();
+        self.set_hash(hash.as_buf());
+        hash
+    }
+
     pub fn set_and_sign(&mut self,  sk: &sign::SecretKey,
         payload: &Name<30>, previous: &Name<30>) -> Name<30>
     {
@@ -258,8 +274,8 @@ impl Block {
 
 pub struct Chain {
     file: fs::File,
-    header: Header,
-    block: Block,
+    pub header: Header,
+    pub block: Block,
 }
 
 impl Chain {
@@ -270,6 +286,17 @@ impl Chain {
             block: Block::new(pk),
 
         }
+    }
+
+    pub fn generate(file: fs::File) -> (sign::SecretKey, Self) {
+        let (pk, sk) = sign::gen_keypair();
+        (sk, Self::new(file, pk))
+    }
+
+    pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> io::Result<Name<30>> {
+        let hash = self.block.sign_next(payload, sk);
+        self.file.write_all(self.block.as_buf())?;
+        Ok(hash)
     }
 
     pub fn verify(&mut self) -> io::Result<()> {

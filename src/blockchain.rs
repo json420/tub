@@ -192,12 +192,21 @@ impl Header {
 //      This get's hashed
 
 pub struct Block {
+    pk: sign::PublicKey,
     buf: [u8; 154],
 }
 
 impl Block {
-    pub fn new() -> Self {
-        Self {buf: [0; 154]}
+    pub fn new(pk: sign::PublicKey) -> Self {
+        Self {pk: pk, buf: [0; 154]}
+    }
+
+    pub fn hash(&self) -> Name<30> {
+        Name::from(&self.buf[0..30])
+    }
+
+    pub fn as_mut_raw(&mut self) -> &mut [u8] {
+        &mut self.buf
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
@@ -246,6 +255,15 @@ impl Block {
 
     pub fn compute(&self) -> Name<30> {
         compute_hash(self.as_hashed())
+    }
+
+    pub fn is_valid(&self) -> bool {
+        if let Ok(_) = sign::verify(self.as_hashed(), &self.pk) {
+            self.hash() == self.compute()
+        }
+        else {
+            false
+        }
     }
 }
 
@@ -308,7 +326,21 @@ mod tests {
 
     #[test]
     fn test_block() {
-        let mut block = Block::new();
+        let (pk, sk) = sign::gen_keypair();
+        let mut block = Block::new(pk);
+        let mut payload: Name<30> = Name::new();
+        payload.randomize();
+        let mut previous: Name<30> = Name::new();
+        previous.randomize();
+        assert!(! block.is_valid());
+        block.set_and_sign(&sk, &payload, &previous);
+        assert!(block.is_valid());
+        for bit in 0..block.as_mut_raw().len() * 8 {
+            flip_bit_in(block.as_mut_raw(), bit);
+            assert!(! block.is_valid());
+            flip_bit_in(block.as_mut_raw(), bit);
+            assert!(block.is_valid());
+        }
     }
 
     #[test]

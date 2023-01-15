@@ -273,7 +273,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 
 
 fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
-    let hash = DefaultName::from_string(txt);
+    let hash = DefaultName::from_str(&txt);
     let dst = dir_or_cwd(dst)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut store = tub.into_store();

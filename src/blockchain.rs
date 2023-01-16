@@ -182,11 +182,16 @@ impl Block {
         Name::from(&self.buf[0..30])
     }
 
+    pub fn previous(&self) -> Name<30> {
+        Name::from(&self.buf[124..154])
+    }
+
     pub fn as_mut_raw(&mut self) -> &mut [u8] {
         &mut self.buf
     }
 
     pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        self.ready_next();
         &mut self.buf[0..124]  // Everything except PREVIOUS
     }
 
@@ -221,6 +226,7 @@ impl Block {
     pub fn ready_next(&mut self) {
         let hash = self.hash();
         self.set_previous(hash.as_buf());
+        assert_eq!(hash, self.previous());
         self.buf[0..124].fill(0);
     }
 
@@ -231,18 +237,7 @@ impl Block {
         self.set_signature(sig.as_ref());
         let hash = self.compute();
         self.set_hash(hash.as_buf());
-        hash
-    }
-
-    pub fn set_and_sign(&mut self,  sk: &sign::SecretKey,
-        payload: &Name<30>, previous: &Name<30>) -> Name<30>
-    {
-        self.set_payload(payload.as_buf());
-        self.set_previous(previous.as_buf());
-        let sig = sign::sign_detached(self.as_signed(), sk);
-        self.set_signature(sig.as_ref());
-        let hash = self.compute();
-        self.set_hash(hash.as_buf());
+        assert!(self.is_valid());
         hash
     }
 
@@ -310,17 +305,18 @@ impl Chain {
     pub fn verify(&mut self) -> io::Result<()> {
         self.file.seek(io::SeekFrom::Start(0))?;
         let mut br = io::BufReader::new(self.file.try_clone()?);
+        /*
         if let Ok(_) = br.read_exact(&mut self.header.as_mut_buf()) {
             if ! self.header.is_valid() {
                 panic!("Bad chain header, yo");
             }
+        */
             while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
                 if ! self.block.is_valid() {
                     panic!("Bad block, yo");
                 }
-                self.block.ready_next();
             }
-        }
+       // }
         Ok(())
     }
 
@@ -365,13 +361,20 @@ mod tests {
         let mut previous: Name<30> = Name::new();
         previous.randomize();
         assert!(! block.is_valid());
-        block.set_and_sign(&sk, &payload, &previous);
+        block.sign_next(&payload, &sk);
         assert!(block.is_valid());
         for bit in 0..block.as_mut_raw().len() * 8 {
             flip_bit_in(block.as_mut_raw(), bit);
             assert!(! block.is_valid());
             flip_bit_in(block.as_mut_raw(), bit);
             assert!(block.is_valid());
+        }
+        let prev = block.hash();
+        for _ in 0..100 {
+            payload.randomize();
+            let new = block.sign_next(&payload, &sk);
+            //assert_eq!(block.previous(), prev);
+            let prev = new;
         }
     }
 

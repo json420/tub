@@ -297,7 +297,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
 ///
 /// 16 MiB is a lot of compressed source code, so typically all objects in a
 /// DVCS commit will fit within a single object.  We can beat git on initial
-/// space efficiency this way when there are mulitple new objects in a commit
+/// space efficiency this way when there are multiple new objects in a commit
 /// (objects will compress much better back to back in the same compression
 /// stream).  It also means we can write a commit with a single call to
 /// `Store.save()`.

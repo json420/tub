@@ -15,7 +15,7 @@ fn main() -> io::Result<()> {
     //let file = tmp.create(&["block.chain"]);
     let file = fs::File::options().read(true).append(true).create(true).open("block.chain")?;
     let (sk, mut chain) = Chain::generate(file);
-    //chain.verify()?;
+    chain.verify()?;
 
     let mut payload: Name<30> = Name::new();
     for _ in 0..COUNT {
@@ -23,7 +23,6 @@ fn main() -> io::Result<()> {
         let hash = chain.sign_next(&payload, &sk)?;
         println!("{}", hash);
     }
-    
     Ok(())
 }
 

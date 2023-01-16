@@ -55,6 +55,10 @@ impl<'a, const N: usize> WriteBlock<'a, N> {
         Self {inner: inner, sk: sk}
     }
 
+    pub fn into_sk(self) -> sign::SecretKey {
+        self.sk
+    }
+
     pub fn sign(&mut self) -> sign::Signature {
         let sig = sign::sign_detached(self.as_signed(), &self.sk);
         self.set_signature(sig.as_ref());

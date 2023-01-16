@@ -9,6 +9,12 @@ use crate::chaos::Name;
 
 
 /*
+Rough cycles for ed5519 to sign/verify:
+Sign:    87548
+Verify: 273364
+
+https://ed25519.cr.yp.to/
+
 The idea is to use a signed block chain in which the key rotates each signature
 (given key is only used once).  The key is used for short term access control,
 whereas the hash chain provides long term history preservation (even if the
@@ -41,15 +47,16 @@ pub type Secret = [u8; 64];
 // SIG PREVIOUS PAYLOAD
 pub struct WriteBlock<'a, const N: usize> {
     inner: &'a mut [u8],
+    sk: sign::SecretKey,
 }
 
 impl<'a, const N: usize> WriteBlock<'a, N> {
-    pub fn new(inner: &'a mut [u8]) -> Self{
-        Self {inner: inner}
+    pub fn new(inner: &'a mut [u8], sk: sign::SecretKey) -> Self{
+        Self {inner: inner, sk: sk}
     }
 
-    pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
-        let sig = sign::sign_detached(self.as_signed(), &sk);
+    pub fn sign(&mut self) -> sign::Signature {
+        let sig = sign::sign_detached(self.as_signed(), &self.sk);
         self.set_signature(sig.as_ref());
         sig
     }
@@ -357,14 +364,14 @@ mod tests {
     fn test_write_block() {
         let mut obj = DefaultObject::new();
         obj.reset(124, 0);
-        let mut writer: WriteBlock<30> = WriteBlock::new(obj.as_mut_data());
+        let (pk, sk) = sign::gen_keypair();
+        let mut writer: WriteBlock<30> = WriteBlock::new(obj.as_mut_data(), sk);
         let mut name = DefaultName::new();
         name.randomize();
         writer.set_previous(name.as_buf());
         name.randomize();
         writer.set_payload(name.as_buf());
-        let (pk, sk) = sign::gen_keypair();
-        let sig = writer.sign(&sk);
+        let sig = writer.sign();
         assert!(sign::verify(obj.as_data(), &pk).is_ok());
     }
 

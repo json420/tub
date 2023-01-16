@@ -71,26 +71,35 @@ impl<'a, const N: usize> WriteBlock<'a, N> {
     }
 }
 
-
+// pub fn verify_detached(sig: &Signature, m: &[u8], pk: &PublicKey) -> bool
 pub struct ReadBlock<'a, const N: usize> {
     inner: &'a [u8],
+    pk: sign::PublicKey,
 }
 
 impl<'a, const N: usize> ReadBlock<'a, N> {
-    pub fn new(inner: &'a [u8]) -> Self{
-        Self {inner: inner}
+    pub fn new(inner: &'a [u8], pk: sign::PublicKey) -> Self{
+        Self {inner: inner, pk: pk}
     }
 
-    pub fn as_signature(&self) -> &[u8] {
-        &self.inner[0..64]
+    pub fn is_valid(&self) -> bool {
+        sign::verify_detached(&self.signature(), self.as_signed(), &self.pk)
     }
 
-    pub fn as_previous(&self) -> &[u8] {
-        &self.inner[64..64 + N]
+    pub fn signature(&self) -> sign::Signature {
+        sign::Signature::try_from(&self.inner[0..64]).unwrap()
     }
 
-    pub fn as_payload(&self) -> &[u8] {
-        &self.inner[64 + N..64 + N * 2]
+    pub fn previous(&self) -> Name<N> {
+        Name::from(&self.inner[64..64 + N])
+    }
+
+    pub fn payload(&self) -> Name<N> {
+        Name::from(&self.inner[64 + N..64 + N * 2])
+    }
+
+    pub fn as_signed(&self) -> &[u8] {
+        &self.inner[64..64 + N * 2]
     }
 }
 
@@ -357,6 +366,15 @@ mod tests {
         let (pk, sk) = sign::gen_keypair();
         let sig = writer.sign(&sk);
         assert!(sign::verify(obj.as_data(), &pk).is_ok());
+    }
+
+    #[test]
+    fn test_read_block() {
+        let mut obj = DefaultObject::new();
+        obj.reset(124, 0);
+        let (pk, sk) = sign::gen_keypair();
+        let reader: ReadBlock<30> = ReadBlock::new(obj.as_data(), pk);
+        assert!(! reader.is_valid());
     }
 
     #[test]

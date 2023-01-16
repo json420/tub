@@ -19,7 +19,7 @@ You can think of a Tub blockchain like a namespace or an identity.
 ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 
 
-SIG PREVIOUS PAYLOAD
+
 
 */
 
@@ -37,6 +37,8 @@ fn compute_hash(payload: &[u8]) -> Name<30> {
 pub type Secret = [u8; 64];
 
 
+
+// SIG PREVIOUS PAYLOAD
 pub struct WriteBlock<'a, const N: usize> {
     inner: &'a mut [u8],
 }
@@ -46,16 +48,26 @@ impl<'a, const N: usize> WriteBlock<'a, N> {
         Self {inner: inner}
     }
 
-    pub fn as_mut_signature(&mut self) -> &mut [u8] {
-        &mut self.inner[0..64]
+    pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
+        let sig = sign::sign_detached(self.as_signed(), &sk);
+        self.set_signature(sig.as_ref());
+        sig
     }
 
-    pub fn as_mut_previous(&mut self) -> &mut [u8] {
-        &mut self.inner[64..64 + N]
+    pub fn as_signed(&self) -> &[u8] {
+        &self.inner[64..64 + N * 2]
     }
 
-    pub fn as_mut_payload(&mut self) -> &mut [u8] {
-        &mut self.inner[64 + N..64 + N * 2]
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.inner[0..64].copy_from_slice(value);
+    }
+
+    pub fn set_previous(&mut self, value: &[u8]) {
+        self.inner[64..64 + N].copy_from_slice(value);
+    }
+
+    pub fn set_payload(&mut self, value: &[u8]) {
+        self.inner[64 + N..64 + N * 2].copy_from_slice(value);
     }
 }
 
@@ -329,7 +341,23 @@ mod tests {
     use std::collections::HashSet;
     use crate::util::getrandom;
     use crate::helpers::flip_bit_in;
+    use crate::chaos::{DefaultName, DefaultObject};
     use super::*;
+
+    #[test]
+    fn test_write_block() {
+        let mut obj = DefaultObject::new();
+        obj.reset(124, 0);
+        let mut writer: WriteBlock<30> = WriteBlock::new(obj.as_mut_data());
+        let mut name = DefaultName::new();
+        name.randomize();
+        writer.set_previous(name.as_buf());
+        name.randomize();
+        writer.set_payload(name.as_buf());
+        let (pk, sk) = sign::gen_keypair();
+        let sig = writer.sign(&sk);
+        assert!(sign::verify(obj.as_data(), &pk).is_ok());
+    }
 
     #[test]
     fn test_header() {

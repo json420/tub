@@ -17,7 +17,6 @@ fn main() -> io::Result<()> {
     let (sk, mut chain) = Chain::generate(file);
     //chain.verify()?;
 
-
     println!("🛁 Signing {} new blocks...", COUNT);
     let start = Instant::now();
     let mut payload: Name<30> = Name::new();
@@ -29,10 +28,7 @@ fn main() -> io::Result<()> {
     let elapsed = start.elapsed().as_secs_f64();
     let rate = COUNT as f64 / elapsed;
     println!("🚀 {} blocks generated per second", rate as u64);
-    //chain.verify()?;
-    
-    
-    
+    //chain.verify()?;S
     Ok(())
 }
 

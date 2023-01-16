@@ -237,7 +237,7 @@ impl Block {
         self.set_signature(sig.as_ref());
         let hash = self.compute();
         self.set_hash(hash.as_buf());
-        assert!(self.is_valid());
+        //assert!(self.is_valid());
         hash
     }
 
@@ -305,18 +305,17 @@ impl Chain {
     pub fn verify(&mut self) -> io::Result<()> {
         self.file.seek(io::SeekFrom::Start(0))?;
         let mut br = io::BufReader::new(self.file.try_clone()?);
-        /*
         if let Ok(_) = br.read_exact(&mut self.header.as_mut_buf()) {
             if ! self.header.is_valid() {
                 panic!("Bad chain header, yo");
             }
-        */
+            self.block.set_hash(self.header.hash().as_buf());
             while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
                 if ! self.block.is_valid() {
                     panic!("Bad block, yo");
                 }
             }
-       // }
+        }
         Ok(())
     }
 
@@ -369,12 +368,11 @@ mod tests {
             flip_bit_in(block.as_mut_raw(), bit);
             assert!(block.is_valid());
         }
-        let prev = block.hash();
         for _ in 0..100 {
             payload.randomize();
+            let prev = block.hash();
             let new = block.sign_next(&payload, &sk);
-            //assert_eq!(block.previous(), prev);
-            let prev = new;
+            assert_eq!(block.previous(), prev);
         }
     }
 

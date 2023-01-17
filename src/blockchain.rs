@@ -87,6 +87,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_block_set_get() {
+        let (pk, sk) = sign::gen_keypair();
+        let mut buf = [0_u8; 124];
+        let mut block: Block<30> = Block::new(&mut buf, pk);
+        assert_eq!(block.signature().as_ref(), [0; 64]);
+        assert_eq!(block.previous().as_buf(), [0; 30]);
+        assert_eq!(block.payload().as_buf(), [0; 30]);
+
+        let sig = sign::sign_detached(b"Just for testing and fun", &sk);
+        block.set_signature(sig.as_ref());
+        assert_eq!(block.signature(), sig);
+
+        let mut previous = DefaultName::new();
+        previous.randomize();
+        block.set_previous(previous.as_buf());
+        assert_ne!(block.previous().as_buf(), [0; 64]);
+        assert_eq!(block.previous(), previous);
+
+        let mut payload = DefaultName::new();
+        payload.randomize();
+        block.set_payload(payload.as_buf());
+        assert_ne!(block.payload().as_buf(), [0; 64]);
+        assert_eq!(block.payload(), payload);
+    }
+
+    #[test]
     fn test_block() {
         let mut obj = DefaultObject::new();
         obj.reset(124, 0);

@@ -142,7 +142,9 @@ mod tests {
             let block: Block<30> = Block::new(&mut copy, pk);
             assert!(! block.verify());
         }
-        
+        let mut copy = buf.clone();
+        let block: Block<30> = Block::new(&mut copy, pk);
+        assert!(block.verify());
     }
 
     #[test]

@@ -1,8 +1,7 @@
-use std::{fs, io};
+use std::io;
 use std::time::Instant;
-use tub::helpers::TestTempDir;
 use tub::chaos::DefaultObject;
-use tub::blockchain::{WriteBlock, ReadBlock};
+use tub::blockchain::Block;
 use tub::util::getrandom;
 //use sodium
 use sodiumoxide;
@@ -17,12 +16,12 @@ fn main() -> io::Result<()> {
     let mut obj = DefaultObject::new();
     obj.reset(124, 0);
     getrandom(obj.as_mut_data());
-    let mut writer: WriteBlock<30> = WriteBlock::new(obj.as_mut_data(), sk);
+    let mut block: Block<30> = Block::new(obj.as_mut_data(), pk);
 
     println!("🛁 Signing {} times...", COUNT);
     let start = Instant::now();
     for _ in 0..COUNT {
-        writer.sign();
+        block.sign(&sk);
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = COUNT as f64 / elapsed;
@@ -30,12 +29,10 @@ fn main() -> io::Result<()> {
 
     println!("");
 
-    let obj = obj;
     println!("🛁 Veriying {} times...", COUNT);
-    let reader: ReadBlock<30> = ReadBlock::new(obj.as_data(), pk);
     let start = Instant::now();
     for _ in 0..COUNT {
-        reader.is_valid();
+        block.verify();
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = COUNT as f64 / elapsed;

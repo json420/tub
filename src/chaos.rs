@@ -27,6 +27,10 @@
 //! 2.  Zero heap allocations
 //!
 //! If we stick to the above, this should stay fast!
+//!
+//! We can get a bit more performance by replacing HashMap with something
+//! custom... we already have a hash!  All we need to do is XOR that with a
+//! random process key to prevent DoS attacks.
 
 
 use crate::base::*;

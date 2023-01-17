@@ -9,7 +9,7 @@ use crate::chaos::Name;
 
 
 /*
-Rough cycles for ed5519 to sign/verify:
+Rough cycles for ed25519 to sign/verify:
 Sign:    87548
 Verify: 273364
 

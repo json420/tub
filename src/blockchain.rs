@@ -24,6 +24,48 @@ ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 */
 
 
+/*
+The KeyBlock is a self signed special block that starts the chain.
+*/
+
+// SIG PUBKEY
+pub struct KeyBlock<'a> {
+    inner: &'a mut [u8],
+}
+
+impl<'a> KeyBlock<'a> {
+    pub fn new(inner: &'a mut [u8]) -> Self {
+        Self {inner: inner}
+    }
+
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.inner[0..64].copy_from_slice(value);
+    }
+
+    pub fn set_pubkey(&mut self, value: &[u8]) {
+        self.inner[64..96].copy_from_slice(value);
+    }
+
+    // Note not all signatures are structurally valid
+    pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
+        sign::Signature::try_from(&self.inner[0..64])
+    }
+
+    pub fn pubkey(&self) -> sign::PublicKey {
+        sign::PublicKey::from_slice(&self.inner[64..96]).unwrap()
+    }
+
+    pub fn verify(&self) -> bool {
+        if let Ok(sig) = self.signature() {
+            sign::verify_detached(&sig, &self.inner[64..96], &self.pubkey())
+        }
+        else {
+            false
+        }
+    }
+}
+
+
 // SIG PREVIOUS PAYLOAD
 pub struct Block<'a, const N: usize> {
     inner: &'a mut [u8],
@@ -70,6 +112,7 @@ impl<'a, const N: usize> Block<'a, N> {
         self.inner[64 + N..64 + N * 2].copy_from_slice(value);
     }
 
+    // Note not all signatures are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
         sign::Signature::try_from(&self.inner[0..64])
     }
@@ -94,6 +137,23 @@ mod tests {
     use crate::helpers::flip_bit_in;
     use crate::chaos::{DefaultName, DefaultObject};
     use super::*;
+
+    #[test]
+    fn test_keyblock_get_set() {
+        let mut buf = [0_u8; 96];
+        let mut kb = KeyBlock::new(&mut buf);
+        assert_eq!(kb.pubkey().as_ref(), [0; 32]);
+        assert_eq!(kb.signature().unwrap().as_ref(), [0; 64]);
+        assert!(! kb.verify());
+
+        let (pk, sk) = sign::gen_keypair();
+        let sig = sign::sign_detached(pk.as_ref(), &sk);
+        let mut buf = [0_u8; 96];
+        buf[0..64].copy_from_slice(sig.as_ref());
+        buf[64..96].copy_from_slice(pk.as_ref());
+        let mut kb = KeyBlock::new(&mut buf);
+        assert!(kb.verify());
+    }
 
     #[test]
     fn test_block_set_get() {

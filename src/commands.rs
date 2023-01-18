@@ -16,7 +16,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦓")]
+#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦓 🦀")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -91,7 +91,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🧬 Insert changes from one branch into another 😍")]
+    #[command(about = "🧬 Bring changes from one branch into another 😍")]
     Merge {},
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]

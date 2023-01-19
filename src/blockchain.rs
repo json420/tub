@@ -46,7 +46,7 @@ impl<'a> KeyBlock<'a> {
         self.inner[64..96].copy_from_slice(value);
     }
 
-    // Note not all signatures are structurally valid
+    // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
         sign::Signature::try_from(&self.inner[0..64])
     }
@@ -112,7 +112,7 @@ impl<'a, const N: usize> Block<'a, N> {
         self.inner[64 + N..64 + N * 2].copy_from_slice(value);
     }
 
-    // Note not all signatures are structurally valid
+    // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
         sign::Signature::try_from(&self.inner[0..64])
     }
@@ -139,7 +139,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_keyblock_get_set() {
+    fn test_keyblock() {
         let mut buf = [0_u8; 96];
         let mut kb = KeyBlock::new(&mut buf);
         assert_eq!(kb.pubkey().as_ref(), [0; 32]);
@@ -153,6 +153,15 @@ mod tests {
         buf[64..96].copy_from_slice(pk.as_ref());
         let mut kb = KeyBlock::new(&mut buf);
         assert!(kb.verify());
+        assert_eq!(kb.signature().unwrap(), sig);
+        assert_eq!(kb.pubkey(), pk);
+
+        for bit in 0..buf.len() * 8 {
+            let mut copy = buf.clone();
+            flip_bit_in(&mut copy, bit);
+            let kb = KeyBlock::new(&mut copy);
+            assert!(! kb.verify());
+        }
     }
 
     #[test]

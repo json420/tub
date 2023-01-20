@@ -38,6 +38,14 @@ impl<'a> KeyBlock<'a> {
         Self {inner: inner}
     }
 
+    pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
+        let pk = sk.public_key();
+        let sig = sign::sign_detached(pk.as_ref(), sk);
+        self.set_signature(sig.as_ref());
+        self.set_pubkey(pk.as_ref());
+        sig
+    }
+
     pub fn set_signature(&mut self, value: &[u8]) {
         self.inner[0..64].copy_from_slice(value);
     }
@@ -145,6 +153,11 @@ mod tests {
         assert_eq!(kb.pubkey().as_ref(), [0; 32]);
         assert_eq!(kb.signature().unwrap().as_ref(), [0; 64]);
         assert!(! kb.verify());
+        let (pk, sk) = sign::gen_keypair();
+        let sig = kb.sign(&sk);
+        assert!(kb.verify());
+        assert_eq!(kb.signature().unwrap(), sig);
+        assert_eq!(kb.pubkey(), pk);
 
         let (pk, sk) = sign::gen_keypair();
         let sig = sign::sign_detached(pk.as_ref(), &sk);

@@ -3,6 +3,7 @@ use tub::chaos::{DefaultName, DefaultObject, DefaultStore};
 use tub::inception::Fanout;
 use tub::helpers::TestTempDir;
 use tub::util::getrandom;
+use tub::blockchain::{KeyBlock, Block};
 
 
 const COUNT: usize = 65536;
@@ -10,19 +11,16 @@ const COUNT: usize = 65536;
 fn main() -> io::Result<()> {
     let tmp = TestTempDir::new();
     let file = tmp.create(&["some_file.store"]);
-    let store = DefaultStore::new(file);
-    let obj = DefaultObject::new();
-    let mut fanout = Fanout::new(store, obj);
-    let mut hash = DefaultName::new();
-    let mut cont = DefaultName::new();
-    for _ in 0..COUNT {
-        getrandom(hash.as_mut_buf());
-        assert!(fanout.get(&hash).unwrap().is_none());
-        getrandom(cont.as_mut_buf());
-        fanout.insert(hash.clone(), cont.clone()).unwrap();
-        assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
-    }
-    let (store, _obj) = fanout.into_inners();
-    assert_eq!(store.len(), COUNT);
+    let mut store = DefaultStore::new(file);
+    let mut obj = DefaultObject::new();
+    obj.reset(96, 0);
+    let mut kb = KeyBlock::new(obj.as_mut_data());
+    kb.generate();
+    let id = obj.finalize();
+    println!("{}", id);
+    store.save(&mut obj)?;
+    //let b = kb.into_block();
+    //let pk = kb.pubkey();
+    //let mut kb = KeyBlock::new(obj.as_mut_data());
     Ok(())
 }

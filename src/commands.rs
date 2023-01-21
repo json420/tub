@@ -16,7 +16,7 @@ type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
 #[command(name="tub")]
-#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦓 🦀")]
+#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦀 🦓")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

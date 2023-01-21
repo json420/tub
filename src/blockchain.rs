@@ -25,7 +25,8 @@ ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 
 
 /*
-The KeyBlock is a self signed special block that starts the chain.
+The KeyBlock is a self signed special block that starts the chain.  It does not
+have `previous` nor `payload` fields (unlike `Block`).
 */
 
 // SIG PUBKEY
@@ -36,6 +37,15 @@ pub struct KeyBlock<'a> {
 impl<'a> KeyBlock<'a> {
     pub fn new(inner: &'a mut [u8]) -> Self {
         Self {inner: inner}
+    }
+
+    pub fn into_block(self) -> Block<'a, 30> {
+        Block::new(self.inner, self.pubkey())
+    }
+
+    pub fn generate(&mut self) {
+        let (pk, sk) = sign::gen_keypair();
+        self.sign(&sk);
     }
 
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {

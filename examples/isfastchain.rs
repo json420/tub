@@ -16,7 +16,7 @@ fn main() -> io::Result<()> {
     let mut obj = DefaultObject::new();
     obj.reset(124, 0);
     getrandom(obj.as_mut_data());
-    let mut block: Block<30> = Block::new(obj.as_mut_data(), pk);
+    let mut block: Block = Block::new(pk);
 
     println!("🛁 Signing {} times...", COUNT);
     let start = Instant::now();

@@ -33,12 +33,12 @@ have `previous` nor `payload` fields (unlike `Block`).
 
 // SIG PUBKEY
 pub struct Header {
-    buf: [u8; 96],
+    buf: [u8; 126],
 }
 
 impl Header {
     pub fn new() -> Self {
-        Self {buf: [0; 96]}
+        Self {buf: [0; 126]}
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -91,14 +91,14 @@ impl Header {
 
 
 // SIG PREVIOUS PAYLOAD
-pub struct Block<'a, const N: usize> {
-    inner: &'a mut [u8],
+pub struct Block {
+    buf: [u8; 188],
     pk: sign::PublicKey,
 }
 
-impl<'a, const N: usize> Block<'a, N> {
-    pub fn new(inner: &'a mut [u8], pk: sign::PublicKey) -> Self{
-        Self {inner: inner, pk: pk}
+impl Block {
+    pub fn new(pk: sign::PublicKey) -> Self{
+        Self {buf: [0; 188], pk: pk}
     }
 
     pub fn into_pk(self) -> sign::PublicKey {
@@ -112,7 +112,7 @@ impl<'a, const N: usize> Block<'a, N> {
     }
 
     pub fn as_signed(&self) -> &[u8] {
-        &self.inner[64..64 + N * 2]
+        &self.buf[64..64 + 2]
     }
 
     pub fn verify(&self) -> bool {
@@ -125,41 +125,43 @@ impl<'a, const N: usize> Block<'a, N> {
     }
 
     pub fn set_signature(&mut self, value: &[u8]) {
-        self.inner[0..64].copy_from_slice(value);
+        self.buf[0..64].copy_from_slice(value);
     }
 
     pub fn set_previous(&mut self, value: &[u8]) {
-        self.inner[64..64 + N].copy_from_slice(value);
+        self.buf[64..96].copy_from_slice(value);
     }
 
     pub fn set_payload(&mut self, value: &[u8]) {
-        self.inner[64 + N..64 + N * 2].copy_from_slice(value);
+        self.buf[64..96].copy_from_slice(value);
     }
 
     // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
-        sign::Signature::try_from(&self.inner[0..64])
+        sign::Signature::try_from(&self.buf[0..64])
     }
 
-    pub fn previous(&self) -> Name<N> {
-        Name::from(&self.inner[64..64 + N])
+    pub fn previous(&self) -> Name<30> {
+        Name::from(&self.buf[64..94])
     }
 
-    pub fn payload(&self) -> Name<N> {
-        Name::from(&self.inner[64 + N..64 + N * 2])
+    pub fn payload(&self) -> Name<30> {
+        Name::from(&self.buf[40..50])
     }
 }
 
 
-pub struct Chain<const N: usize> {
+pub struct Chain {
     pk: sign::PublicKey,
+    header: Header,
     file: fs::File,
 }
 
-impl<const N: usize> Chain<N> {
+impl Chain {
     pub fn verify_chain(&mut self) -> io::Result<bool> {
         let mut br = io::BufReader::new(self.file.try_clone()?);
         br.seek(io::SeekFrom::Start(0))?;
+        br.read_exact(self.header.as_mut_buf())?;
         Ok(false)
     }
 }

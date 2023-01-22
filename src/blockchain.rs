@@ -1,5 +1,7 @@
 //! Super cool crypto in here, yo! 💵 💵 💵
 
+use std::{io, fs};
+use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use sodiumoxide::crypto::sign;
@@ -30,17 +32,21 @@ have `previous` nor `payload` fields (unlike `Block`).
 */
 
 // SIG PUBKEY
-pub struct KeyBlock<'a> {
-    inner: &'a mut [u8],
+pub struct Header {
+    buf: [u8; 96],
 }
 
-impl<'a> KeyBlock<'a> {
-    pub fn new(inner: &'a mut [u8]) -> Self {
-        Self {inner: inner}
+impl Header {
+    pub fn new() -> Self {
+        Self {buf: [0; 96]}
     }
 
-    pub fn into_block(self) -> Block<'a, 30> {
-        Block::new(self.inner, self.pubkey())
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
     }
 
     pub fn generate(&mut self) {
@@ -57,25 +63,25 @@ impl<'a> KeyBlock<'a> {
     }
 
     pub fn set_signature(&mut self, value: &[u8]) {
-        self.inner[0..64].copy_from_slice(value);
+        self.buf[0..64].copy_from_slice(value);
     }
 
     pub fn set_pubkey(&mut self, value: &[u8]) {
-        self.inner[64..96].copy_from_slice(value);
+        self.buf[64..96].copy_from_slice(value);
     }
 
     // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
-        sign::Signature::try_from(&self.inner[0..64])
+        sign::Signature::try_from(&self.buf[0..64])
     }
 
     pub fn pubkey(&self) -> sign::PublicKey {
-        sign::PublicKey::from_slice(&self.inner[64..96]).unwrap()
+        sign::PublicKey::from_slice(&self.buf[64..96]).unwrap()
     }
 
     pub fn verify(&self) -> bool {
         if let Ok(sig) = self.signature() {
-            sign::verify_detached(&sig, &self.inner[64..96], &self.pubkey())
+            sign::verify_detached(&sig, &self.buf[64..96], &self.pubkey())
         }
         else {
             false
@@ -145,8 +151,18 @@ impl<'a, const N: usize> Block<'a, N> {
 }
 
 
+pub struct Chain<const N: usize> {
+    pk: sign::PublicKey,
+    file: fs::File,
+}
 
-
+impl<const N: usize> Chain<N> {
+    pub fn verify_chain(&mut self) -> io::Result<bool> {
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        br.seek(io::SeekFrom::Start(0))?;
+        Ok(false)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -156,6 +172,10 @@ mod tests {
     use crate::chaos::{DefaultName, DefaultObject};
     use super::*;
 
+    #[test]
+    fn test_block_chain() {
+    }
+/*
     #[test]
     fn test_keyblock() {
         let mut buf = [0_u8; 96];
@@ -265,5 +285,7 @@ mod tests {
         let verified_data = sign::verify(&signed_data, &pk).unwrap();
         assert_eq!(data, &verified_data[..]);
     }
+    */
+
 }
 

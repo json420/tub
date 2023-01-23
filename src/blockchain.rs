@@ -160,7 +160,7 @@ impl Block {
 
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
         let sig = sign::sign_detached(self.as_signed(), sk);
-        self.set_signature(sig.as_ref());
+        self.set_signature(&sig);
         sig
     }
 
@@ -181,8 +181,8 @@ impl Block {
         Name::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_hash(&mut self, value: &[u8]) {
-        self.buf[HASH_RANGE].copy_from_slice(value);
+    pub fn set_hash(&mut self, hash: &Name<30>) {
+        self.buf[HASH_RANGE].copy_from_slice(hash.as_buf());
     }
 
     // Note not all signature values are structurally valid
@@ -190,24 +190,24 @@ impl Block {
         sign::Signature::try_from(&self.buf[SIGNATURE_RANGE])
     }
 
-    pub fn set_signature(&mut self, value: &[u8]) {
-        self.buf[SIGNATURE_RANGE].copy_from_slice(value);
+    pub fn set_signature(&mut self, sig: &sign::Signature) {
+        self.buf[SIGNATURE_RANGE].copy_from_slice(sig.as_ref());
     }
 
     pub fn previous(&self) -> Name<30> {
         Name::from(&self.buf[BLOCK_PREVIOUS_RANGE])
     }
 
-    pub fn set_previous(&mut self, value: &[u8]) {
-        self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(value);
+    pub fn set_previous(&mut self, hash: &Name<30>) {
+        self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(hash.as_buf());
     }
 
     pub fn payload(&self) -> Name<30> {
         Name::from(&self.buf[BLOCK_PAYLOAD_RANGE])
     }
 
-    pub fn set_payload(&mut self, value: &[u8]) {
-        self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(value);
+    pub fn set_payload(&mut self, hash: &Name<30>) {
+        self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(hash.as_buf());
     }
 }
 
@@ -222,6 +222,7 @@ impl Chain {
     pub fn generate(file: fs::File) -> io::Result<(sign::SecretKey, Self)> {
         let (pk, sk) = sign::gen_keypair();
         let me = Self::create(file, &sk)?;
+        assert_eq!(me.header.pubkey(), pk);
         Ok((sk, me))
     }
 
@@ -244,8 +245,10 @@ impl Chain {
         if ! self.header.verify() {
             panic!("Bad header: {}", self.header.hash());
         }
+        let mut previous = self.header.hash();
         while let Ok(_) = self.file.read_exact(self.block.as_mut_buf()) {
             // FIXME: do, like, stuff here
+            previous = self.block.hash();
         }
         Ok(false)
     }
@@ -321,6 +324,39 @@ mod tests {
             flip_bit_in(header.as_mut_buf(), bit);
             assert!(header.verify_signature());
         }
+    }
+
+    #[test]
+    fn test_block_get_set() {
+        let (pk, sk) = sign::gen_keypair();
+        let mut block = Block::new(pk);
+
+        let mut hash: Name<30> = Name::new();
+        assert_eq!(block.hash(), hash);
+        hash.randomize();
+        assert_ne!(block.hash(), hash);
+        block.set_hash(&hash);
+        assert_eq!(block.hash(), hash);
+
+        assert_eq!(block.signature().unwrap().as_ref(), [0; 64]);
+        let sig = sign::sign_detached(pk.as_ref(), &sk);
+        assert_ne!(block.signature().unwrap(), sig);
+        block.set_signature(&sig);
+        assert_eq!(block.signature().unwrap(), sig);
+
+        assert_eq!(block.previous(), Name::new());
+        hash.randomize();
+        assert_ne!(block.previous(), hash);
+        block.set_previous(&hash);
+        assert_eq!(block.previous(), hash);
+
+        assert_eq!(block.payload(), Name::new());
+        hash.randomize();
+        assert_ne!(block.payload(), hash);
+        block.set_payload(&hash);
+        assert_eq!(block.payload(), hash);
+
+
     }
 
     #[test]

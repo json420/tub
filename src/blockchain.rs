@@ -73,8 +73,8 @@ impl Header {
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
         let pk = sk.public_key();
         let sig = sign::sign_detached(pk.as_ref(), sk);
-        self.set_signature(sig.as_ref());
-        self.set_pubkey(pk.as_ref());
+        self.set_signature(&sig);
+        self.set_pubkey(&pk);
         sig
     }
 
@@ -99,8 +99,8 @@ impl Header {
         Name::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_hash(&mut self, value: &[u8]) {
-        self.buf[HASH_RANGE].copy_from_slice(value);
+    pub fn set_hash(&mut self, hash: &Name<30>) {
+        self.buf[HASH_RANGE].copy_from_slice(hash.as_buf());
     }
 
     // Note not all signature values are structurally valid
@@ -108,16 +108,16 @@ impl Header {
         sign::Signature::try_from(&self.buf[SIGNATURE_RANGE])
     }
 
-    pub fn set_signature(&mut self, value: &[u8]) {
-        self.buf[SIGNATURE_RANGE].copy_from_slice(value);
+    pub fn set_signature(&mut self, sig: &sign::Signature) {
+        self.buf[SIGNATURE_RANGE].copy_from_slice(sig.as_ref());
     }
 
     pub fn pubkey(&self) -> sign::PublicKey {
         sign::PublicKey::from_slice(&self.buf[HEADER_PUBKEY_RANGE]).unwrap()
     }
 
-    pub fn set_pubkey(&mut self, value: &[u8]) {
-        self.buf[HEADER_PUBKEY_RANGE].copy_from_slice(value);
+    pub fn set_pubkey(&mut self, pk: &sign::PublicKey) {
+        self.buf[HEADER_PUBKEY_RANGE].copy_from_slice(pk.as_ref());
     }
 }
 
@@ -238,19 +238,19 @@ mod tests {
         assert_eq!(header.hash(), hash);
         hash.randomize();
         assert_ne!(header.hash(), hash);
-        header.set_hash(hash.as_buf());
+        header.set_hash(&hash);
         assert_eq!(header.hash(), hash);
 
         assert_eq!(header.signature().unwrap().as_ref(), [0; 64]);
         let (pk, sk) = sign::gen_keypair();
         let sig = sign::sign_detached(pk.as_ref(), &sk);
         assert_ne!(header.signature().unwrap(), sig);
-        header.set_signature(sig.as_ref());
+        header.set_signature(&sig);
         assert_eq!(header.signature().unwrap(), sig);
 
         assert_eq!(header.pubkey().as_ref(), [0; 32]);
         assert_ne!(header.pubkey(), pk);
-        header.set_pubkey(pk.as_ref());
+        header.set_pubkey(&pk);
         assert_eq!(header.pubkey(), pk);
     }
 

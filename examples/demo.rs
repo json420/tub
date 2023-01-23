@@ -11,15 +11,20 @@ const COUNT: usize = 65536;
 fn main() -> io::Result<()> {
     let tmp = TestTempDir::new();
     let file = tmp.create(&["some_file.store"]);
+
     let (sk, mut chain) = Chain::generate(file)?;
     chain.verify()?;
     let mut name = DefaultName::new();
     println!("{}", chain.header.hash());
-    for _ in 0..1000 {
+    for _ in 0..COUNT {
         name.randomize();
         chain.sign_next(&name, &sk)?;
         println!("{} {}", chain.block.hash(), chain.block.previous());
     }
-    chain.verify();
+    //chain.verify();
+
+    let file = chain.into_file();
+    let mut chain = Chain::open(file)?;
+    //chain.verify();
     Ok(())
 }

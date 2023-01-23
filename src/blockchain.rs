@@ -252,6 +252,24 @@ impl Chain {
         })
     }
 
+    pub fn into_file(self) -> fs::File {
+        self.file
+    }
+
+    pub fn open(mut file: fs::File) -> io::Result<Self> {
+        file.seek(io::SeekFrom::Start(0))?;
+        let mut header = Header::new();
+        file.read_exact(header.as_mut_buf())?;
+        let block = Block::new(header.pubkey());
+        let mut me = Self {
+            header: header,
+            block: block,
+            file: file,
+        };
+        me.verify()?;
+        Ok(me)
+    }
+
     pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.block.hash());
@@ -275,7 +293,7 @@ impl Chain {
             }
             previous = self.block.hash();
         }
-        Ok(false)
+        Ok(true)
     }
 }
 

@@ -78,13 +78,21 @@ impl Header {
         sig
     }
 
-    pub fn verify(&self) -> bool {
+    pub fn verify_hash(&self) -> bool {
+        self.hash() == self.compute()
+    }
+
+    pub fn verify_signature(&self) -> bool {
         if let Ok(sig) = self.signature() {
             sign::verify_detached(&sig, &self.buf[64..96], &self.pubkey())
         }
         else {
             false
         }
+    }
+
+    pub fn verify(&self) -> bool {
+        self.verify_signature()
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -138,6 +146,10 @@ pub struct Block {
 impl Block {
     pub fn new(pk: sign::PublicKey) -> Self{
         Self {buf: [0; BLOCK_LEN], pk: pk}
+    }
+
+    pub fn len(&self) -> usize {
+        self.buf.len()
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -252,6 +264,23 @@ mod tests {
         assert_ne!(header.pubkey(), pk);
         header.set_pubkey(&pk);
         assert_eq!(header.pubkey(), pk);
+    }
+
+    #[test]
+    fn test_header_verify_hash() {
+        let mut header = Header::new();
+        assert!(! header.verify_hash());
+        getrandom(header.as_mut_buf());
+        assert!(! header.verify_hash());
+        header.set_hash(&header.compute());
+        assert!(header.verify_hash());
+        let count = header.as_mut_buf().len() * 8;
+        for bit in 0..count {
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(! header.verify_hash());
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(header.verify_hash());
+        }
     }
 
     #[test]

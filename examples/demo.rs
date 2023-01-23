@@ -13,5 +13,13 @@ fn main() -> io::Result<()> {
     let file = tmp.create(&["some_file.store"]);
     let (sk, mut chain) = Chain::generate(file)?;
     chain.verify()?;
+    let mut name = DefaultName::new();
+    println!("{}", chain.header.hash());
+    for _ in 0..100 {
+        name.randomize();
+        chain.sign_next(&name, &sk)?;
+        println!("{} {}", chain.block.hash(), chain.block.previous());
+    }
+    chain.verify();
     Ok(())
 }

@@ -161,6 +161,7 @@ impl Block {
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
         let sig = sign::sign_detached(self.as_signed(), sk);
         self.set_signature(&sig);
+        self.set_hash(&self.compute());
         sig
     }
 
@@ -172,13 +173,21 @@ impl Block {
         self.hash() == self.compute()
     }
 
-    pub fn verify(&self) -> bool {
+    pub fn verify_signature(&self) -> bool {
         if let Ok(sig) = self.signature() {
             sign::verify_detached(&sig, self.as_signed(), &self.pk)
         }
         else {
             false
         }
+    }
+
+    pub fn verify(&self) -> bool {
+        self.verify_hash() && self.verify_signature()
+    }
+
+    pub fn verify_against(&self, previous: &Name<30>) -> bool {
+        self.verify() && &self.previous() == previous
     }
 
     pub fn hash(&self) -> Name<30> {
@@ -217,8 +226,8 @@ impl Block {
 
 
 pub struct Chain {
-    header: Header,
-    block: Block,
+    pub header: Header,
+    pub block: Block,
     file: fs::File,
 }
 
@@ -234,12 +243,21 @@ impl Chain {
         let mut header = Header::new();
         header.sign(sk);
         file.write_all(header.as_buf())?;
-        let block = Block::new(header.pubkey());
+        let mut block = Block::new(header.pubkey());
+        block.set_hash(&header.hash());
         Ok( Self {
             header: header,
             block: block,
             file: file,
         })
+    }
+
+    pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> io::Result<()> {
+        self.block.set_payload(payload);
+        self.block.set_previous(&self.block.hash());
+        self.block.sign(sk);
+        self.file.write_all(self.block.as_buf())?;
+        Ok(())
     }
 
     pub fn verify(&mut self) -> io::Result<bool> {
@@ -251,7 +269,9 @@ impl Chain {
         }
         let mut previous = self.header.hash();
         while let Ok(_) = self.file.read_exact(self.block.as_mut_buf()) {
-            // FIXME: do, like, stuff here
+            if ! self.block.verify_against(&previous) {
+                panic!("Bad block: {}", self.block.hash());
+            }
             previous = self.block.hash();
         }
         Ok(false)

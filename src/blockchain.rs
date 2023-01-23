@@ -168,6 +168,10 @@ impl Block {
         &self.buf[BLOCK_SIGNED_RANGE]
     }
 
+    pub fn verify_hash(&self) -> bool {
+        self.hash() == self.compute()
+    }
+
     pub fn verify(&self) -> bool {
         if let Ok(sig) = self.signature() {
             sign::verify_detached(&sig, self.as_signed(), &self.pk)
@@ -355,8 +359,23 @@ mod tests {
         assert_ne!(block.payload(), hash);
         block.set_payload(&hash);
         assert_eq!(block.payload(), hash);
+    }
 
-
+    #[test]
+    fn test_block_verify_hash() {
+        let mut block = Header::new();
+        assert!(! block.verify_hash());
+        getrandom(block.as_mut_buf());
+        assert!(! block.verify_hash());
+        block.set_hash(&block.compute());
+        assert!(block.verify_hash());
+        let count = block.as_mut_buf().len() * 8;
+        for bit in 0..count {
+            flip_bit_in(block.as_mut_buf(), bit);
+            assert!(! block.verify_hash());
+            flip_bit_in(block.as_mut_buf(), bit);
+            assert!(block.verify_hash());
+        }
     }
 
     #[test]

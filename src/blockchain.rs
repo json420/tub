@@ -84,7 +84,7 @@ impl Header {
 
     pub fn verify_signature(&self) -> bool {
         if let Ok(sig) = self.signature() {
-            sign::verify_detached(&sig, &self.buf[64..96], &self.pubkey())
+            sign::verify_detached(&sig, &self.buf[HEADER_PUBKEY_RANGE], &self.pubkey())
         }
         else {
             false
@@ -92,7 +92,7 @@ impl Header {
     }
 
     pub fn verify(&self) -> bool {
-        self.verify_signature()
+        self.verify_hash() && self.verify_signature()
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -280,6 +280,25 @@ mod tests {
             assert!(! header.verify_hash());
             flip_bit_in(header.as_mut_buf(), bit);
             assert!(header.verify_hash());
+        }
+    }
+
+    #[test]
+    fn test_header_verify_signature() {
+        let mut header = Header::new();
+        assert!(! header.verify_signature());
+
+        let (pk, sk) = sign::gen_keypair();
+        header.sign(&sk);
+        assert!(header.verify_signature());
+
+        let start = 30 * 8;
+        let stop = header.as_mut_buf().len() * 8;
+        for bit in start..stop {
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(! header.verify_signature());
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(header.verify_signature());
         }
     }
 

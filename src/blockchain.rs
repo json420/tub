@@ -59,13 +59,6 @@ impl Header {
         Self {buf: [0; HEADER_LEN]}
     }
 
-    pub fn generate() -> (sign::SecretKey, Self) {
-        let (pk, sk) = sign::gen_keypair();
-        let mut me = Self::new();
-        me.sign(&sk);
-        (sk, me)
-    }
-
     pub fn compute(&self) -> Name<30> {
         compute_hash(&self.buf[HEADER_HASHED_RANGE])
     }
@@ -75,6 +68,7 @@ impl Header {
         let sig = sign::sign_detached(pk.as_ref(), sk);
         self.set_signature(&sig);
         self.set_pubkey(&pk);
+        self.set_hash(&self.compute());
         sig
     }
 
@@ -219,17 +213,40 @@ impl Block {
 
 
 pub struct Chain {
-    pk: sign::PublicKey,
     header: Header,
     block: Block,
     file: fs::File,
 }
 
 impl Chain {
-    pub fn verify_chain(&mut self) -> io::Result<bool> {
+    pub fn generate(file: fs::File) -> io::Result<(sign::SecretKey, Self)> {
+        let (pk, sk) = sign::gen_keypair();
+        let me = Self::create(file, &sk)?;
+        Ok((sk, me))
+    }
+
+    pub fn create(mut file: fs::File, sk: &sign::SecretKey) -> io::Result<Self> {
+        let mut header = Header::new();
+        header.sign(sk);
+        file.write_all(header.as_buf())?;
+        let block = Block::new(header.pubkey());
+        Ok( Self {
+            header: header,
+            block: block,
+            file: file,
+        })
+    }
+
+    pub fn verify(&mut self) -> io::Result<bool> {
         let mut br = io::BufReader::new(self.file.try_clone()?);
         br.seek(io::SeekFrom::Start(0))?;
         br.read_exact(self.header.as_mut_buf())?;
+        if ! self.header.verify() {
+            panic!("Bad header: {}", self.header.hash());
+        }
+        while let Ok(_) = self.file.read_exact(self.block.as_mut_buf()) {
+            // FIXME: do, like, stuff here
+        }
         Ok(false)
     }
 }
@@ -294,6 +311,10 @@ mod tests {
 
         let start = 30 * 8;
         let stop = header.as_mut_buf().len() * 8;
+        for bit in 0..start {
+            flip_bit_in(header.as_mut_buf(), bit);
+            assert!(header.verify_signature());
+        }
         for bit in start..stop {
             flip_bit_in(header.as_mut_buf(), bit);
             assert!(! header.verify_signature());

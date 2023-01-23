@@ -33,11 +33,21 @@ have `previous` nor `payload` fields (unlike `Block`).
 */
 
 
+fn compute_hash(payload: &[u8]) -> Name<30> {
+    let mut h = blake3::Hasher::new();
+    h.update(payload);
+    let mut hash: Name<30> = Name::new();
+    h.finalize_xof().fill(hash.as_mut_buf());
+    hash
+}
+
+
 const HASH_RANGE: Range<usize> = 0..30;
 const SIGNATURE_RANGE: Range<usize> = 30..94;
 
 const HEADER_LEN: usize = 126;
-const HEADER_PUBKEY_RANGE: Range<usize> = 94..124;
+const HEADER_PUBKEY_RANGE: Range<usize> = 94..126;
+const HEADER_HASHED_RANGE: Range<usize> = 30..126;
 
 // HASH SIG PUBKEY
 pub struct Header {
@@ -49,17 +59,15 @@ impl Header {
         Self {buf: [0; HEADER_LEN]}
     }
 
-    pub fn as_buf(&self) -> &[u8] {
-        &self.buf
-    }
-
-    pub fn as_mut_buf(&mut self) -> &mut [u8] {
-        &mut self.buf
-    }
-
-    pub fn generate(&mut self) {
+    pub fn generate() -> (sign::SecretKey, Self) {
         let (pk, sk) = sign::gen_keypair();
-        self.sign(&sk);
+        let mut me = Self::new();
+        me.sign(&sk);
+        (sk, me)
+    }
+
+    pub fn compute(&self) -> Name<30> {
+        compute_hash(&self.buf[HEADER_HASHED_RANGE])
     }
 
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
@@ -68,6 +76,23 @@ impl Header {
         self.set_signature(sig.as_ref());
         self.set_pubkey(pk.as_ref());
         sig
+    }
+
+    pub fn verify(&self) -> bool {
+        if let Ok(sig) = self.signature() {
+            sign::verify_detached(&sig, &self.buf[64..96], &self.pubkey())
+        }
+        else {
+            false
+        }
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
     }
 
     pub fn hash(&self) -> Name<30> {
@@ -94,21 +119,13 @@ impl Header {
     pub fn set_pubkey(&mut self, value: &[u8]) {
         self.buf[HEADER_PUBKEY_RANGE].copy_from_slice(value);
     }
-
-    pub fn verify(&self) -> bool {
-        if let Ok(sig) = self.signature() {
-            sign::verify_detached(&sig, &self.buf[64..96], &self.pubkey())
-        }
-        else {
-            false
-        }
-    }
 }
 
 const BLOCK_LEN: usize = 154;
 const BLOCK_PREVIOUS_RANGE: Range<usize> = 94..124;
 const BLOCK_PAYLOAD_RANGE: Range<usize> = 124..154;
 const BLOCK_SIGNED_RANGE: Range<usize> = 94..154;
+const BLOCK_HASHED_RANGE: Range<usize> = 30..154;
 
 // 30    64     30       30
 // HASH  SIG    PREVIOUS PAYLOAD
@@ -131,8 +148,8 @@ impl Block {
         &mut self.buf
     }
 
-    pub fn into_pk(self) -> sign::PublicKey {
-        self.pk
+    pub fn compute(&self) -> Name<30> {
+        compute_hash(&self.buf[BLOCK_HASHED_RANGE])
     }
 
     pub fn sign(&mut self, sk: &sign::SecretKey) -> sign::Signature {
@@ -214,108 +231,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_block_chain() {
-    }
-/*
-    #[test]
-    fn test_keyblock() {
-        let mut buf = [0_u8; 96];
-        let mut kb = KeyBlock::new(&mut buf);
-        assert_eq!(kb.pubkey().as_ref(), [0; 32]);
-        assert_eq!(kb.signature().unwrap().as_ref(), [0; 64]);
-        assert!(! kb.verify());
-        let (pk, sk) = sign::gen_keypair();
-        let sig = kb.sign(&sk);
-        assert!(kb.verify());
-        assert_eq!(kb.signature().unwrap(), sig);
-        assert_eq!(kb.pubkey(), pk);
+    fn test_header_get_set() {
+        let mut header = Header::new();
 
+        let mut hash: Name<30> = Name::new();
+        assert_eq!(header.hash(), hash);
+        hash.randomize();
+        assert_ne!(header.hash(), hash);
+        header.set_hash(hash.as_buf());
+        assert_eq!(header.hash(), hash);
+
+        assert_eq!(header.signature().unwrap().as_ref(), [0; 64]);
         let (pk, sk) = sign::gen_keypair();
         let sig = sign::sign_detached(pk.as_ref(), &sk);
-        let mut buf = [0_u8; 96];
-        buf[0..64].copy_from_slice(sig.as_ref());
-        buf[64..96].copy_from_slice(pk.as_ref());
-        let mut kb = KeyBlock::new(&mut buf);
-        assert!(kb.verify());
-        assert_eq!(kb.signature().unwrap(), sig);
-        assert_eq!(kb.pubkey(), pk);
+        assert_ne!(header.signature().unwrap(), sig);
+        header.set_signature(sig.as_ref());
+        assert_eq!(header.signature().unwrap(), sig);
 
-        for bit in 0..buf.len() * 8 {
-            let mut copy = buf.clone();
-            flip_bit_in(&mut copy, bit);
-            let kb = KeyBlock::new(&mut copy);
-            assert!(! kb.verify());
-        }
+        assert_eq!(header.pubkey().as_ref(), [0; 32]);
+        assert_ne!(header.pubkey(), pk);
+        header.set_pubkey(pk.as_ref());
+        assert_eq!(header.pubkey(), pk);
     }
 
     #[test]
-    fn test_block_set_get() {
-        let (pk, sk) = sign::gen_keypair();
-        let mut buf = [0_u8; 124];
-        let mut block: Block<30> = Block::new(&mut buf, pk);
-        assert_eq!(block.signature().unwrap().as_ref(), [0; 64]);
-        assert_eq!(block.previous().as_buf(), [0; 30]);
-        assert_eq!(block.payload().as_buf(), [0; 30]);
-
-        let sig = sign::sign_detached(b"Just for testing and fun", &sk);
-        block.set_signature(sig.as_ref());
-        assert_eq!(block.signature().unwrap(), sig);
-
-        let mut previous = DefaultName::new();
-        previous.randomize();
-        block.set_previous(previous.as_buf());
-        assert_ne!(block.previous().as_buf(), [0; 64]);
-        assert_eq!(block.previous(), previous);
-
-        let mut payload = DefaultName::new();
-        payload.randomize();
-        block.set_payload(payload.as_buf());
-        assert_ne!(block.payload().as_buf(), [0; 64]);
-        assert_eq!(block.payload(), payload);
-    }
-
-    #[test]
-    fn test_block_verify() {
-        let (pk, sk) = sign::gen_keypair();
-        let mut buf = [0_u8; 124];
-        let mut block: Block<30> = Block::new(&mut buf, pk);
-        assert!(! block.verify());
-
-        let mut name = DefaultName::new();
-        name.randomize();
-        block.set_previous(name.as_buf());
-        name.randomize();
-        block.set_payload(name.as_buf());
-        block.sign(&sk);
-
-        let pk = block.into_pk();
-        for bit in 0..buf.len() * 8 {
-            let mut copy = buf.clone();
-            flip_bit_in(&mut copy, bit);
-            let block: Block<30> = Block::new(&mut copy, pk);
-            assert!(! block.verify());
-        }
-        let mut copy = buf.clone();
-        let block: Block<30> = Block::new(&mut copy, pk);
-        assert!(block.verify());
-    }
-
-    #[test]
-    fn test_block_with_object() {
-        let mut obj = DefaultObject::new();
-        obj.reset(124, 0);
-        let (pk, sk) = sign::gen_keypair();
-        let mut block: Block<30> = Block::new(obj.as_mut_data(), pk);
-        assert!(! block.verify());
-
-        let mut name = DefaultName::new();
-        name.randomize();
-        block.set_previous(name.as_buf());
-        name.randomize();
-        block.set_payload(name.as_buf());
-        assert!(! block.verify());
-        let sig = block.sign(&sk);
-        assert!(block.verify());
+    fn test_block_chain() {
     }
 
     #[test]
@@ -326,7 +266,6 @@ mod tests {
         let verified_data = sign::verify(&signed_data, &pk).unwrap();
         assert_eq!(data, &verified_data[..]);
     }
-    */
 
 }
 

@@ -1,6 +1,7 @@
 //! Super cool crypto in here, yo! 💵 💵 💵
 
 use std::{io, fs};
+use std::ops::Range;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
@@ -31,14 +32,21 @@ The KeyBlock is a self signed special block that starts the chain.  It does not
 have `previous` nor `payload` fields (unlike `Block`).
 */
 
-// SIG PUBKEY
+
+const HASH_RANGE: Range<usize> = 0..30;
+const SIGNATURE_RANGE: Range<usize> = 30..94;
+
+const HEADER_LEN: usize = 126;
+const HEADER_PUBKEY_RANGE: Range<usize> = 94..124;
+
+// HASH SIG PUBKEY
 pub struct Header {
-    buf: [u8; 126],
+    buf: [u8; HEADER_LEN],
 }
 
 impl Header {
     pub fn new() -> Self {
-        Self {buf: [0; 126]}
+        Self {buf: [0; HEADER_LEN]}
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -62,21 +70,29 @@ impl Header {
         sig
     }
 
-    pub fn set_signature(&mut self, value: &[u8]) {
-        self.buf[0..64].copy_from_slice(value);
+    pub fn hash(&self) -> Name<30> {
+        Name::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_pubkey(&mut self, value: &[u8]) {
-        self.buf[64..96].copy_from_slice(value);
+    pub fn set_hash(&mut self, value: &[u8]) {
+        self.buf[HASH_RANGE].copy_from_slice(value);
     }
 
     // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
-        sign::Signature::try_from(&self.buf[0..64])
+        sign::Signature::try_from(&self.buf[SIGNATURE_RANGE])
+    }
+
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.buf[SIGNATURE_RANGE].copy_from_slice(value);
     }
 
     pub fn pubkey(&self) -> sign::PublicKey {
-        sign::PublicKey::from_slice(&self.buf[64..96]).unwrap()
+        sign::PublicKey::from_slice(&self.buf[HEADER_PUBKEY_RANGE]).unwrap()
+    }
+
+    pub fn set_pubkey(&mut self, value: &[u8]) {
+        self.buf[HEADER_PUBKEY_RANGE].copy_from_slice(value);
     }
 
     pub fn verify(&self) -> bool {
@@ -89,16 +105,30 @@ impl Header {
     }
 }
 
+const BLOCK_LEN: usize = 154;
+const BLOCK_PREVIOUS_RANGE: Range<usize> = 94..124;
+const BLOCK_PAYLOAD_RANGE: Range<usize> = 124..154;
+const BLOCK_SIGNED_RANGE: Range<usize> = 94..154;
 
-// SIG PREVIOUS PAYLOAD
+// 30    64     30       30
+// HASH  SIG    PREVIOUS PAYLOAD
+// 0..30 30..94 94..124  124..154
 pub struct Block {
-    buf: [u8; 188],
+    buf: [u8; BLOCK_LEN],
     pk: sign::PublicKey,
 }
 
 impl Block {
     pub fn new(pk: sign::PublicKey) -> Self{
-        Self {buf: [0; 188], pk: pk}
+        Self {buf: [0; BLOCK_LEN], pk: pk}
+    }
+
+    pub fn as_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
+    pub fn as_mut_buf(&mut self) -> &mut [u8] {
+        &mut self.buf
     }
 
     pub fn into_pk(self) -> sign::PublicKey {
@@ -112,7 +142,7 @@ impl Block {
     }
 
     pub fn as_signed(&self) -> &[u8] {
-        &self.buf[64..64 + 2]
+        &self.buf[BLOCK_SIGNED_RANGE]
     }
 
     pub fn verify(&self) -> bool {
@@ -124,29 +154,37 @@ impl Block {
         }
     }
 
-    pub fn set_signature(&mut self, value: &[u8]) {
-        self.buf[0..64].copy_from_slice(value);
+    pub fn hash(&self) -> Name<30> {
+        Name::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_previous(&mut self, value: &[u8]) {
-        self.buf[64..96].copy_from_slice(value);
-    }
-
-    pub fn set_payload(&mut self, value: &[u8]) {
-        self.buf[64..96].copy_from_slice(value);
+    pub fn set_hash(&mut self, value: &[u8]) {
+        self.buf[HASH_RANGE].copy_from_slice(value);
     }
 
     // Note not all signature values are structurally valid
     pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
-        sign::Signature::try_from(&self.buf[0..64])
+        sign::Signature::try_from(&self.buf[SIGNATURE_RANGE])
+    }
+
+    pub fn set_signature(&mut self, value: &[u8]) {
+        self.buf[SIGNATURE_RANGE].copy_from_slice(value);
     }
 
     pub fn previous(&self) -> Name<30> {
-        Name::from(&self.buf[64..94])
+        Name::from(&self.buf[BLOCK_PREVIOUS_RANGE])
+    }
+
+    pub fn set_previous(&mut self, value: &[u8]) {
+        self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(value);
     }
 
     pub fn payload(&self) -> Name<30> {
-        Name::from(&self.buf[40..50])
+        Name::from(&self.buf[BLOCK_PAYLOAD_RANGE])
+    }
+
+    pub fn set_payload(&mut self, value: &[u8]) {
+        self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(value);
     }
 }
 
@@ -154,6 +192,7 @@ impl Block {
 pub struct Chain {
     pk: sign::PublicKey,
     header: Header,
+    block: Block,
     file: fs::File,
 }
 

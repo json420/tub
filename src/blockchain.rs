@@ -257,6 +257,7 @@ impl Chain {
         self.block.set_previous(&self.block.hash());
         self.block.sign(sk);
         self.file.write_all(self.block.as_buf())?;
+        self.file.flush()?;
         Ok(())
     }
 
@@ -268,9 +269,9 @@ impl Chain {
             panic!("Bad header: {}", self.header.hash());
         }
         let mut previous = self.header.hash();
-        while let Ok(_) = self.file.read_exact(self.block.as_mut_buf()) {
+        while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
             if ! self.block.verify_against(&previous) {
-                panic!("Bad block: {}", self.block.hash());
+                panic!("Bad block: {} {}", self.block.hash(), &previous);
             }
             previous = self.block.hash();
         }

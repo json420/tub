@@ -15,7 +15,7 @@ fn main() -> io::Result<()> {
     chain.verify()?;
     let mut name = DefaultName::new();
     println!("{}", chain.header.hash());
-    for _ in 0..100 {
+    for _ in 0..1000 {
         name.randomize();
         chain.sign_next(&name, &sk)?;
         println!("{} {}", chain.block.hash(), chain.block.previous());

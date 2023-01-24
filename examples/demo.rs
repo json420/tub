@@ -25,6 +25,9 @@ fn main() -> io::Result<()> {
 
     let file = chain.into_file();
     let mut chain = Chain::open(file)?;
+    for i in 0..65536 {
+       assert!(chain.load_block_at(i)?);
+    }
     //chain.verify();
     Ok(())
 }

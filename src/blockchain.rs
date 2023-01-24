@@ -59,6 +59,10 @@ impl Header {
         Self {buf: [0; HEADER_LEN]}
     }
 
+    pub fn len(&self) -> usize {
+        self.buf.len()
+    }
+
     pub fn compute(&self) -> DefaultName {
         compute_hash(&self.buf[HEADER_HASHED_RANGE])
     }
@@ -271,6 +275,12 @@ impl Chain {
         };
         me.verify()?;
         Ok(me)
+    }
+
+    pub fn load_block_at(&mut self, index: u64) -> io::Result<bool> {
+        let offset = self.header.len() as u64 + index * self.block.len() as u64;
+        self.file.read_exact_at(self.block.as_mut_buf(), offset)?;
+        Ok(self.block.verify())
     }
 
     pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {

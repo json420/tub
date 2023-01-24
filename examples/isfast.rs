@@ -41,20 +41,6 @@ fn main() -> io::Result<()> {
     println!("🚀 {} Store.load() validated reads per second", rate as u64);
     println!("");
 
-    /*
-    println!("🛁 Requesting same objects UNCHECKED");
-    let start = Instant::now();
-    for _ in 0..LOOPS {
-        for hash in keys.iter() {
-            assert!(store.load_unchecked(&hash, &mut obj)?);
-        }
-    }
-    let elapsed = start.elapsed().as_secs_f64();
-    let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} Store.load_unchecked() reads per second", rate as u64);
-    println!("");
-    */
-
     println!("🛁 Reindexing objects...");
     let start = Instant::now();
     for _ in 0..LOOPS {

@@ -275,8 +275,9 @@ impl Chain {
 
     pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {
         self.block.set_payload(payload);
-        self.block.set_previous(&self.block.hash());
+        self.block.set_previous(&self.previous);
         self.block.sign(sk);
+        self.previous = self.block.hash();
         self.file.write_all(self.block.as_buf())?;
         self.file.flush()?;
         Ok(())

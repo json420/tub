@@ -228,6 +228,7 @@ impl Block {
 pub struct Chain {
     pub header: Header,
     pub block: Block,
+    previous: DefaultName,
     file: fs::File,
 }
 
@@ -248,6 +249,7 @@ impl Chain {
         Ok( Self {
             header: header,
             block: block,
+            previous: DefaultName::new(),
             file: file,
         })
     }
@@ -264,6 +266,7 @@ impl Chain {
         let mut me = Self {
             header: header,
             block: block,
+            previous: DefaultName::new(),
             file: file,
         };
         me.verify()?;
@@ -286,12 +289,12 @@ impl Chain {
         if ! self.header.verify() {
             panic!("Bad header: {}", self.header.hash());
         }
-        let mut previous = self.header.hash();
+        self.previous = self.header.hash();
         while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
-            if ! self.block.verify_against(&previous) {
-                panic!("Bad block: {} {}", self.block.hash(), &previous);
+            if ! self.block.verify_against(&self.previous) {
+                panic!("Bad block: {} {}", self.block.hash(), &self.previous);
             }
-            previous = self.block.hash();
+            self.previous = self.block.hash();
         }
         Ok(true)
     }

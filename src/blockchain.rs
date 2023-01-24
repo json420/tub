@@ -7,7 +7,7 @@ use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use sodiumoxide::crypto::sign;
 use blake3;
-use crate::chaos::Name;
+use crate::chaos::DefaultName;
 
 
 /*
@@ -33,10 +33,10 @@ have `previous` nor `payload` fields (unlike `Block`).
 */
 
 
-fn compute_hash(payload: &[u8]) -> Name<30> {
+fn compute_hash(payload: &[u8]) -> DefaultName {
     let mut h = blake3::Hasher::new();
     h.update(payload);
-    let mut hash: Name<30> = Name::new();
+    let mut hash= DefaultName::new();
     h.finalize_xof().fill(hash.as_mut_buf());
     hash
 }
@@ -59,7 +59,7 @@ impl Header {
         Self {buf: [0; HEADER_LEN]}
     }
 
-    pub fn compute(&self) -> Name<30> {
+    pub fn compute(&self) -> DefaultName {
         compute_hash(&self.buf[HEADER_HASHED_RANGE])
     }
 
@@ -97,11 +97,11 @@ impl Header {
         &mut self.buf
     }
 
-    pub fn hash(&self) -> Name<30> {
-        Name::from(&self.buf[HASH_RANGE])
+    pub fn hash(&self) -> DefaultName {
+        DefaultName::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_hash(&mut self, hash: &Name<30>) {
+    pub fn set_hash(&mut self, hash: &DefaultName) {
         self.buf[HASH_RANGE].copy_from_slice(hash.as_buf());
     }
 
@@ -154,7 +154,7 @@ impl Block {
         &mut self.buf
     }
 
-    pub fn compute(&self) -> Name<30> {
+    pub fn compute(&self) -> DefaultName {
         compute_hash(&self.buf[BLOCK_HASHED_RANGE])
     }
 
@@ -186,15 +186,15 @@ impl Block {
         self.verify_hash() && self.verify_signature()
     }
 
-    pub fn verify_against(&self, previous: &Name<30>) -> bool {
+    pub fn verify_against(&self, previous: &DefaultName) -> bool {
         self.verify() && &self.previous() == previous
     }
 
-    pub fn hash(&self) -> Name<30> {
-        Name::from(&self.buf[HASH_RANGE])
+    pub fn hash(&self) -> DefaultName {
+        DefaultName::from(&self.buf[HASH_RANGE])
     }
 
-    pub fn set_hash(&mut self, hash: &Name<30>) {
+    pub fn set_hash(&mut self, hash: &DefaultName) {
         self.buf[HASH_RANGE].copy_from_slice(hash.as_buf());
     }
 
@@ -207,19 +207,19 @@ impl Block {
         self.buf[SIGNATURE_RANGE].copy_from_slice(sig.as_ref());
     }
 
-    pub fn previous(&self) -> Name<30> {
-        Name::from(&self.buf[BLOCK_PREVIOUS_RANGE])
+    pub fn previous(&self) -> DefaultName {
+        DefaultName::from(&self.buf[BLOCK_PREVIOUS_RANGE])
     }
 
-    pub fn set_previous(&mut self, hash: &Name<30>) {
+    pub fn set_previous(&mut self, hash: &DefaultName) {
         self.buf[BLOCK_PREVIOUS_RANGE].copy_from_slice(hash.as_buf());
     }
 
-    pub fn payload(&self) -> Name<30> {
-        Name::from(&self.buf[BLOCK_PAYLOAD_RANGE])
+    pub fn payload(&self) -> DefaultName {
+        DefaultName::from(&self.buf[BLOCK_PAYLOAD_RANGE])
     }
 
-    pub fn set_payload(&mut self, hash: &Name<30>) {
+    pub fn set_payload(&mut self, hash: &DefaultName) {
         self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(hash.as_buf());
     }
 }
@@ -270,7 +270,7 @@ impl Chain {
         Ok(me)
     }
 
-    pub fn sign_next(&mut self, payload: &Name<30>, sk: &sign::SecretKey) -> io::Result<()> {
+    pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.block.hash());
         self.block.sign(sk);
@@ -309,7 +309,7 @@ mod tests {
     fn test_header_get_set() {
         let mut header = Header::new();
 
-        let mut hash: Name<30> = Name::new();
+        let mut hash= DefaultName::new();
         assert_eq!(header.hash(), hash);
         hash.randomize();
         assert_ne!(header.hash(), hash);
@@ -374,7 +374,7 @@ mod tests {
         let (pk, sk) = sign::gen_keypair();
         let mut block = Block::new(pk);
 
-        let mut hash: Name<30> = Name::new();
+        let mut hash= DefaultName::new();
         assert_eq!(block.hash(), hash);
         hash.randomize();
         assert_ne!(block.hash(), hash);
@@ -387,13 +387,13 @@ mod tests {
         block.set_signature(&sig);
         assert_eq!(block.signature().unwrap(), sig);
 
-        assert_eq!(block.previous(), Name::new());
+        assert_eq!(block.previous(), DefaultName::new());
         hash.randomize();
         assert_ne!(block.previous(), hash);
         block.set_previous(&hash);
         assert_eq!(block.previous(), hash);
 
-        assert_eq!(block.payload(), Name::new());
+        assert_eq!(block.payload(), DefaultName::new());
         hash.randomize();
         assert_ne!(block.payload(), hash);
         block.set_payload(&hash);

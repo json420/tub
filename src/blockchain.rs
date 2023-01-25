@@ -121,9 +121,10 @@ impl Header {
     }
 }
 
-const BLOCK_LEN: usize = 154;
+const BLOCK_LEN: usize = 162;
 const BLOCK_PREVIOUS_RANGE: Range<usize> = 94..124;
 const BLOCK_PAYLOAD_RANGE: Range<usize> = 124..154;
+const BLOCK_INDEX_RANGE: Range<usize> = 154..162;
 const BLOCK_SIGNED_RANGE: Range<usize> = 94..154;
 const BLOCK_HASHED_RANGE: Range<usize> = 30..154;
 
@@ -220,6 +221,16 @@ impl Block {
     pub fn set_payload(&mut self, hash: &DefaultName) {
         self.buf[BLOCK_PAYLOAD_RANGE].copy_from_slice(hash.as_buf());
     }
+
+    pub fn index(&self) -> u64 {
+        u64::from_le_bytes(
+            self.buf[BLOCK_INDEX_RANGE].try_into().unwrap()
+        )
+    }
+
+    pub fn set_index(&mut self, index: u64) {
+        self.buf[BLOCK_INDEX_RANGE].copy_from_slice(&index.to_le_bytes());
+    }
 }
 
 
@@ -306,6 +317,7 @@ impl Chain {
     pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.previous);
+        self.block.set_index(self.index);
         self.block.sign(sk);
         self.index += 1;
         self.previous = self.block.hash();
@@ -436,6 +448,10 @@ mod tests {
         assert_ne!(block.payload(), hash);
         block.set_payload(&hash);
         assert_eq!(block.payload(), hash);
+
+        assert_eq!(block.index(), 0);
+        block.set_index(420);
+        assert_eq!(block.index(), 420);
     }
 
     #[test]

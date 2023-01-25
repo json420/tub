@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
     chain.load_last_block()?;
     println!("{}", chain.block.hash());
     while chain.load_previous()? {
-        println!("{}", chain.block.hash());
+        println!("{} {}", chain.block.hash(), chain.block.index());
     }
     Ok(())
 }

@@ -292,7 +292,16 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
 fn cmd_log(tub: OptPath) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    eprintln!("🛁 yo from cmd_log()");
+    if let Ok(mut chain) = tub.open_branch() {
+        chain.load_last_block()?;
+        println!("{} {}", chain.block.hash(), chain.block.index());
+        while chain.load_previous()? {
+            println!("{} {}", chain.block.hash(), chain.block.index());
+        }
+    }
+    else {
+        eprintln!("🛁 No commits yet, get to work! 💵");
+    }
     Ok(())
 }
 

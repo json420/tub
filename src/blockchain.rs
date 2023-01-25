@@ -234,16 +234,6 @@ impl Block {
 }
 
 
-fn load_secret_key(secfile: Option<fs::File>) -> Option<sign::SecretKey> {
-    if let Some(mut file) = secfile {
-        let mut buf = [0_u8; 64];
-        if let Ok(_) = file.read_exact(&mut buf) {
-            return sign::SecretKey::from_slice(&buf);
-        }
-    }
-    None
-}
-
 pub struct Chain {
     pub header: Header,
     pub block: Block,
@@ -277,6 +267,14 @@ impl Chain {
         })
     }
 
+    pub fn load_secret_key(&mut self, mut file: fs::File) -> io::Result<()> {
+        let mut buf = [0_u8; 64];
+        if let Ok(_) = file.read_exact(&mut buf) {
+            self.sk = sign::SecretKey::from_slice(&buf);
+        }
+        Ok(())
+    }
+
     pub fn save_secret_key(&self, mut file: fs::File) -> io::Result<()> {
         file.write_all(self.sk.as_ref().unwrap().as_ref())?;
         file.flush()?;
@@ -287,7 +285,7 @@ impl Chain {
         self.file
     }
 
-    pub fn open(mut file: fs::File, sk: Option<sign::SecretKey>) -> io::Result<Self> {
+    pub fn open(mut file: fs::File) -> io::Result<Self> {
         file.seek(io::SeekFrom::Start(0))?;
         let mut header = Header::new();
         file.read_exact(header.as_mut_buf())?;
@@ -299,25 +297,7 @@ impl Chain {
             file: file,
             index: 0,
             current: 0,
-            sk: sk,
-        };
-        me.verify()?;
-        Ok(me)
-    }
-
-    pub fn open2(mut file: fs::File, secfile: Option<fs::File>) -> io::Result<Self> {
-        file.seek(io::SeekFrom::Start(0))?;
-        let mut header = Header::new();
-        file.read_exact(header.as_mut_buf())?;
-        let block = Block::new(header.pubkey());
-        let mut me = Self {
-            header: header,
-            block: block,
-            previous: DefaultName::new(),  // FIXME
-            file: file,
-            index: 0,
-            current: 0,
-            sk: load_secret_key(secfile),
+            sk: None,
         };
         me.verify()?;
         Ok(me)

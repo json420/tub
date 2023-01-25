@@ -99,15 +99,9 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = open_store(&filename)?;
-        filename.pop();
-        filename.push("omg.fixme.soon");
-        let secfile = if let Ok(f) = fs::File::open(&filename) {
-            Some(f)
-        }
-        else {
-            None
-        };
-        Chain::open2(file, secfile)
+        Chain::open(file)
+        //filename.pop();
+        //filename.push("omg.fixme.soon");
     }
 }
 

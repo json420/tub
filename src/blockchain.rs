@@ -267,11 +267,17 @@ impl Chain {
         })
     }
 
+    pub fn save_secret_key(&self, mut file: fs::File) -> io::Result<()> {
+        file.write_all(self.sk.as_ref().unwrap().as_ref())?;
+        file.flush()?;
+        file.sync_all()
+    }
+
     pub fn into_file(self) -> fs::File {
         self.file
     }
 
-    pub fn open(mut file: fs::File) -> io::Result<Self> {
+    pub fn open(mut file: fs::File, sk: Option<sign::SecretKey>) -> io::Result<Self> {
         file.seek(io::SeekFrom::Start(0))?;
         let mut header = Header::new();
         file.read_exact(header.as_mut_buf())?;
@@ -283,7 +289,7 @@ impl Chain {
             file: file,
             index: 0,
             current: 0,
-            sk: None,
+            sk: sk,
         };
         me.verify()?;
         Ok(me)

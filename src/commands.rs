@@ -236,6 +236,7 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     }
     else {
         let tub = DefaultTub::create(&target)?;
+        tub.create_branch()?;
         eprintln!("🛁 Created new Tub repository: {:?}", tub.dotdir());
         eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
         Ok(())

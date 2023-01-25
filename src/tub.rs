@@ -85,14 +85,20 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = create_store(&filename)?;
-        Chain::generate(file)
+        let mut chain = Chain::generate(file)?;
+        // Save secret key:
+        filename.pop();
+        filename.push("omg.fixme.soon");
+        let file = create_store(&filename)?;
+        chain.save_secret_key(file);
+        Ok(chain)
     }
 
     pub fn open_branch(&self) -> io::Result<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = open_store(&filename)?;
-        Chain::open(file)
+        Chain::open(file, None)
     }
 }
 

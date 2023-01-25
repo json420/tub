@@ -108,7 +108,11 @@ enum Commands {
     },
 
     #[command(about = "📜 View commit history")]
-    Log {},
+    Log {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
 
     #[command(about = "🔗 Verify all objects and blockchains 💵")]
     Check {},
@@ -157,8 +161,8 @@ pub fn run() -> io::Result<()> {
         Commands::Revert {hash, dst, tub} => {
             cmd_revert(hash, dst, tub)
         }
-        Commands::Log {} => {
-            not_yet()
+        Commands::Log {tub} => {
+            cmd_log(tub)
         }
         Commands::Check {} => {
             not_yet()
@@ -285,6 +289,12 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     Ok(())
 }
 
+fn cmd_log(tub: OptPath) -> io::Result<()>
+{
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    eprintln!("🛁 yo from cmd_log()");
+    Ok(())
+}
 
 fn cmd_hash(path: &Path) -> io::Result<()>
 {

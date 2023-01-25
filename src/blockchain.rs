@@ -27,12 +27,6 @@ ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 */
 
 
-/*
-The KeyBlock is a self signed special block that starts the chain.  It does not
-have `previous` nor `payload` fields (unlike `Block`).
-*/
-
-
 fn compute_hash(payload: &[u8]) -> DefaultName {
     let mut h = blake3::Hasher::new();
     h.update(payload);
@@ -234,6 +228,8 @@ pub struct Chain {
     pub block: Block,
     previous: DefaultName,
     file: fs::File,
+    index: u64,
+    current: u64,
 }
 
 impl Chain {
@@ -255,6 +251,8 @@ impl Chain {
             block: block,
             previous: DefaultName::new(),
             file: file,
+            index: 0,
+            current: 0,
         })
     }
 
@@ -272,6 +270,8 @@ impl Chain {
             block: block,
             previous: DefaultName::new(),
             file: file,
+            index: 0,
+            current: 0,
         };
         me.verify()?;
         Ok(me)
@@ -283,10 +283,31 @@ impl Chain {
         Ok(self.block.verify())
     }
 
+    pub fn load_current(&mut self) -> io::Result<bool> {
+        self.load_block_at(self.current)
+    }
+
+    pub fn load_last_block(&mut self) -> io::Result<bool> {
+        assert!(self.index > 0);
+        self.current = self.index - 1;
+        self.load_current()
+    }
+
+    pub fn load_previous(&mut self) -> io::Result<bool> {
+        if self.current > 0 {
+            self.current -= 1;
+            self.load_current()
+        }
+        else {
+            Ok(false)
+        }
+    }
+
     pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.previous);
         self.block.sign(sk);
+        self.index += 1;
         self.previous = self.block.hash();
         self.file.write_all(self.block.as_buf())?;
         self.file.flush()?;
@@ -294,6 +315,7 @@ impl Chain {
     }
 
     pub fn verify(&mut self) -> io::Result<bool> {
+        self.index = 0;
         let mut br = io::BufReader::new(self.file.try_clone()?);
         br.seek(io::SeekFrom::Start(0))?;
         br.read_exact(self.header.as_mut_buf())?;
@@ -305,11 +327,13 @@ impl Chain {
             if ! self.block.verify_against(&self.previous) {
                 panic!("Bad block: {} {}", self.block.hash(), &self.previous);
             }
+            self.index += 1;
             self.previous = self.block.hash();
         }
         Ok(true)
     }
 }
+
 
 #[cfg(test)]
 mod tests {

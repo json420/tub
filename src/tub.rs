@@ -5,6 +5,7 @@ use std::{io, fs};
 use crate::base::*;
 use crate::protocol::{Hasher, DefaultHasher};
 use crate::chaos::Store;
+use crate::blockchain::Chain;
 
 
 
@@ -78,6 +79,21 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let file = open_store(&filename)?;
         let store = Store::<H, N>::new(file);
         Ok( Self {dotdir: dotdir, filename: filename, store: store} )
+    }
+
+    /*
+    pub fn create_branch() -> io::Result<Chain> {
+        let mut filename = dotdir.clone();
+        filename.push("fixme.branch");
+        let file = create_store(&filename)?;
+    }
+    */
+
+    pub fn open_branch(&self) -> io::Result<Chain> {
+        let mut filename = self.dotdir.clone();
+        filename.push("fixme.branch");
+        let file = open_store(&filename)?;
+        Chain::open(file)
     }
 }
 

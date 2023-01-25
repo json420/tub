@@ -241,29 +241,29 @@ pub struct Chain {
     file: fs::File,
     index: u64,
     current: u64,
+    sk: Option<sign::SecretKey>,
 }
 
 impl Chain {
-    pub fn generate(file: fs::File) -> io::Result<(sign::SecretKey, Self)> {
+    pub fn generate(file: fs::File) -> io::Result<Self> {
         let (pk, sk) = sign::gen_keypair();
-        let me = Self::create(file, &sk)?;
-        assert_eq!(me.header.pubkey(), pk);
-        Ok((sk, me))
+        Self::create(file, sk)
     }
 
-    pub fn create(mut file: fs::File, sk: &sign::SecretKey) -> io::Result<Self> {
+    pub fn create(mut file: fs::File, sk: sign::SecretKey) -> io::Result<Self> {
         let mut header = Header::new();
-        header.sign(sk);
+        header.sign(&sk);
+        let previous = header.hash();
         file.write_all(header.as_buf())?;
         let mut block = Block::new(header.pubkey());
-        block.set_hash(&header.hash());
         Ok( Self {
             header: header,
             block: block,
-            previous: DefaultName::new(),
+            previous: previous,
             file: file,
             index: 0,
             current: 0,
+            sk: Some(sk),
         })
     }
 
@@ -279,10 +279,11 @@ impl Chain {
         let mut me = Self {
             header: header,
             block: block,
-            previous: DefaultName::new(),
+            previous: DefaultName::new(),  // FIXME
             file: file,
             index: 0,
             current: 0,
+            sk: None,
         };
         me.verify()?;
         Ok(me)
@@ -314,11 +315,11 @@ impl Chain {
         }
     }
 
-    pub fn sign_next(&mut self, payload: &DefaultName, sk: &sign::SecretKey) -> io::Result<()> {
+    pub fn sign_next(&mut self, payload: &DefaultName) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.previous);
         self.block.set_index(self.index);
-        self.block.sign(sk);
+        self.block.sign(self.sk.as_ref().unwrap());
         self.index += 1;
         self.previous = self.block.hash();
         self.file.write_all(self.block.as_buf())?;

@@ -81,13 +81,12 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         Ok( Self {dotdir: dotdir, filename: filename, store: store} )
     }
 
-    /*
-    pub fn create_branch() -> io::Result<Chain> {
-        let mut filename = dotdir.clone();
+    pub fn create_branch(&self) -> io::Result<Chain> {
+        let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = create_store(&filename)?;
+        Chain::generate(file)
     }
-    */
 
     pub fn open_branch(&self) -> io::Result<Chain> {
         let mut filename = self.dotdir.clone();

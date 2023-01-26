@@ -387,6 +387,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += obj.len() as u64;
         }
         obj.clear();
+        println!("{}", self.len());
         Ok(())
     }
 

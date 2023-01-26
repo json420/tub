@@ -278,8 +278,7 @@ impl Chain {
 
     pub fn save_secret_key(&self, mut file: fs::File) -> io::Result<()> {
         file.write_all(self.sk.as_ref().unwrap().as_ref())?;
-        file.flush()?;
-        file.sync_all()
+        file.flush()
     }
 
     pub fn into_file(self) -> fs::File {
@@ -291,10 +290,11 @@ impl Chain {
         let mut header = Header::new();
         file.read_exact(header.as_mut_buf())?;
         let block = Block::new(header.pubkey());
+        let previous = header.hash();
         let mut me = Self {
             header: header,
             block: block,
-            previous: DefaultName::new(),  // FIXME
+            previous: previous,
             file: file,
             index: 0,
             current: 0,

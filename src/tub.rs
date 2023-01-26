@@ -53,7 +53,7 @@ pub struct HashingFileReaderIter {
 pub struct Tub<H: Hasher, const N: usize> {
     dotdir: PathBuf,
     filename: PathBuf,
-    store: Store<H, N>,
+    pub store: Store<H, N>,
 }
 
 impl<H: Hasher, const N: usize> Tub<H, N> {
@@ -91,7 +91,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.pop();
         filename.push("omg.fixme.soon");
         let file = create_store(&filename)?;
-        chain.save_secret_key(file);
+        chain.save_secret_key(file)?;
         Ok(chain)
     }
 

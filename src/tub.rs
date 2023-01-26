@@ -100,8 +100,17 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push("fixme.branch");
         let file = open_store(&filename)?;
         Chain::open(file)
-        //filename.pop();
-        //filename.push("omg.fixme.soon");
+    }
+
+    pub fn load_branch_seckey(&self, chain: &mut Chain) -> io::Result<bool> {
+        let mut filename = self.dotdir.clone();
+        filename.push("omg.fixme.soon");
+        if let Ok(file) = fs::File::open(&filename) {
+            chain.load_secret_key(file)
+        }
+        else {
+            Ok(false)
+        }
     }
 }
 

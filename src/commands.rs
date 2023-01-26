@@ -247,6 +247,11 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut chain = tub.open_branch()?;
+    if ! tub.load_branch_seckey(&mut chain)? {
+        eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
+        exit(42);
+    }
     let mut store = tub.into_store();
     let mut obj = store.new_object();
     store.reindex(&mut obj)?;

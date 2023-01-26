@@ -267,12 +267,13 @@ impl Chain {
         })
     }
 
-    pub fn load_secret_key(&mut self, mut file: fs::File) -> io::Result<()> {
+    pub fn load_secret_key(&mut self, mut file: fs::File) -> io::Result<bool> {
+        assert!(self.sk.is_none());
         let mut buf = [0_u8; 64];
         if let Ok(_) = file.read_exact(&mut buf) {
             self.sk = sign::SecretKey::from_slice(&buf);
         }
-        Ok(())
+        Ok(self.sk.is_some())
     }
 
     pub fn save_secret_key(&self, mut file: fs::File) -> io::Result<()> {

@@ -319,10 +319,12 @@ fn cmd_log(tub: OptPath) -> io::Result<()>
         store.reindex(&mut obj)?;
         chain.seek_to_beyond();
         while chain.load_previous()? {
-            println!("{} {}", chain.block.hash(), chain.block.index());
+            println!(" block: {} {}", chain.block.hash(), chain.block.index());
+            println!("commit: {}", chain.block.payload());
             if store.load(&chain.block.payload(), &mut obj)? {
                 let commit = DefaultCommit::deserialize(obj.as_data());
-                println!("{}", commit.msg);
+                println!("  tree: {}", commit.tree);
+                println!("📜 {}", commit.msg);
             }
             println!("");
         }

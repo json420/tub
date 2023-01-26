@@ -15,6 +15,7 @@ use crate::inception::{import_file, restore_file, hash_file};
 
 const MAX_DEPTH: usize = 32;
 pub type DefaultScanner = Scanner<Blake3, 30>;
+pub type DefaultCommit = Commit<30>;
 
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -100,6 +101,31 @@ impl TrackingList {
 
     pub fn remove(&mut self, path: &String) -> bool {
         self.set.remove(path)
+    }
+}
+
+
+#[derive(Debug)]
+pub struct Commit<const N: usize> {
+    tree: Name<N>,
+    msg: String,
+}
+
+impl<const N: usize> Commit<N> {
+    pub fn new(tree: Name<N>, msg: String) -> Self {
+        Self {tree: tree, msg: msg}
+    }
+
+    pub fn deserialize(buf: &[u8]) -> Self {
+        Self {
+            tree: Name::from(&buf[0..N]),
+            msg: String::from_utf8(buf[N..].to_vec()).unwrap(),
+        }
+    }
+
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        buf.extend_from_slice(self.tree.as_buf());
+        buf.extend_from_slice(self.msg.as_bytes());
     }
 }
 

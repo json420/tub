@@ -9,7 +9,7 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::DefaultScanner;
+use crate::dvcs::{DefaultScanner, DefaultCommit};
 use crate::inception::hash_file;
 
 type OptPath = Option<PathBuf>;
@@ -86,6 +86,10 @@ enum Commands {
         #[arg(help="Tree directory (defaults to current CWD)")]
         source: Option<PathBuf>,
 
+        #[arg(short, long, value_name="MESSAGE")]
+        #[arg(help="Short description of this commit")]
+        msg: Option<String>,
+
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory")]
         tub: Option<PathBuf>,
@@ -155,8 +159,8 @@ pub fn run() -> io::Result<()> {
         Commands::Status {source, tub} => {
             cmd_status(source, tub)
         }
-        Commands::Commit {source, tub} => {
-            cmd_commit(source, tub)
+        Commands::Commit {source, msg, tub} => {
+            cmd_commit(source, msg, tub)
         }
         Commands::Revert {hash, dst, tub} => {
             cmd_revert(hash, dst, tub)
@@ -243,7 +247,7 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     }
 }
 
-fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
+fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
@@ -259,11 +263,15 @@ fn cmd_commit(source: OptPath, tub: OptPath) -> io::Result<()>
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree(&source)? {
-        chain.sign_next(&root)?;
-        println!("{}", root);
+        let commit = DefaultCommit::new(root, String::from("hello"));
+        obj.clear();
+        commit.serialize(obj.as_mut_vec());
+        obj.finalize_with_kind(69);
+        let mut store = scanner.into_store();
+        store.save(&obj)?;
+        chain.sign_next(&obj.hash())?;
+        println!("{}", &obj.hash());
     }
-    let mut store = scanner.into_store();
-    store.reindex(&mut obj)?;
     eprintln!("🛁 Wow, great job on that one! 💋");
     Ok(())
 }

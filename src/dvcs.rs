@@ -107,8 +107,8 @@ impl TrackingList {
 
 #[derive(Debug)]
 pub struct Commit<const N: usize> {
-    tree: Name<N>,
-    msg: String,
+    pub tree: Name<N>,
+    pub msg: String,
 }
 
 impl<const N: usize> Commit<N> {

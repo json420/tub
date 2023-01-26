@@ -29,8 +29,7 @@ fn main() -> io::Result<()> {
        assert!(chain.load_block_at(i)?);
     }
     //chain.verify();
-    chain.load_last_block()?;
-    println!("{}", chain.block.hash());
+    chain.seek_to_beyond();
     while chain.load_previous()? {
         println!("{} {}", chain.block.hash(), chain.block.index());
     }

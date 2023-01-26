@@ -310,20 +310,14 @@ impl Chain {
         Ok(self.block.verify())
     }
 
-    pub fn load_current(&mut self) -> io::Result<bool> {
-        self.load_block_at(self.current)
-    }
-
-    pub fn load_last_block(&mut self) -> io::Result<bool> {
-        assert!(self.index > 0);
-        self.current = self.index - 1;
-        self.load_current()
+    pub fn seek_to_beyond(&mut self) {
+        self.current = self.index;
     }
 
     pub fn load_previous(&mut self) -> io::Result<bool> {
         if self.current > 0 {
             self.current -= 1;
-            self.load_current()
+            self.load_block_at(self.current)
         }
         else {
             Ok(false)

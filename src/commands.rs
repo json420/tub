@@ -263,7 +263,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree(&source)? {
-        let commit = DefaultCommit::new(root, String::from("hello"));
+        let commit = DefaultCommit::new(root, String::from("just kidding"));
         obj.clear();
         commit.serialize(obj.as_mut_vec());
         obj.finalize_with_kind(69);
@@ -308,10 +308,17 @@ fn cmd_log(tub: OptPath) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     if let Ok(mut chain) = tub.open_branch() {
-        chain.load_last_block()?;
-        println!("{} {}", chain.block.hash(), chain.block.index());
+        let mut store = tub.into_store();
+        let mut obj = store.new_object();
+        store.reindex(&mut obj)?;
+        chain.seek_to_beyond();
         while chain.load_previous()? {
             println!("{} {}", chain.block.hash(), chain.block.index());
+            if store.load(&chain.block.payload(), &mut obj)? {
+                let commit = DefaultCommit::deserialize(obj.as_data());
+                println!("{}", commit.msg);
+            }
+            println!("");
         }
     }
     else {

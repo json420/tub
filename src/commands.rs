@@ -263,7 +263,13 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree(&source)? {
-        let commit = DefaultCommit::new(root, String::from("just kidding"));
+        let msg = if let Some(msg) = msg {
+            msg
+        }
+        else {
+            String::from("")
+        };
+        let commit = DefaultCommit::new(root, msg);
         obj.clear();
         commit.serialize(obj.as_mut_vec());
         obj.finalize_with_kind(69);

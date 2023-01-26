@@ -48,6 +48,7 @@ pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
 
 
+
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
 pub struct Name<const N: usize> {
@@ -251,6 +252,14 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn info(&self) -> Info {
         Info::from_le_bytes(&self.buf[N..N + INFO_LEN])
+    }
+
+    pub fn raw_kind(&self) -> u8 {
+        self.buf[N + 3]
+    }
+
+    pub fn set_raw_kind(&mut self, raw_kind: u8) {
+        self.buf[N + 3] = raw_kind;
     }
 
     pub fn set_info(&mut self, info: Info) {
@@ -521,11 +530,13 @@ mod tests {
 
         assert_eq!(obj.info().size(), 1);
         assert_eq!(obj.info().kind(), 0);
+        assert_eq!(obj.raw_kind(), 0);
         assert_eq!(obj.as_buf(), &[0; 34]);
 
         obj.as_mut_buf().fill(255);
         assert_eq!(obj.info().size(), 16 * 1024 * 1024);
         assert_eq!(obj.info().kind(), 255);
+        assert_eq!(obj.raw_kind(), 255);
 
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[255; 34]);
@@ -534,6 +545,11 @@ mod tests {
         assert_eq!(obj.len(), 34);
         assert_eq!(obj.as_buf(), &[0; 34]);
         assert_eq!(obj.as_payload(), &[0; 4]);
+
+        for k in 0_u8..=255 {
+            obj.set_raw_kind(k);
+            assert_eq!(obj.raw_kind(), k);
+        }
     }
 
     #[test]

@@ -7,6 +7,7 @@ use std::fs;
 use std::process::exit;
 use std::time::Instant;
 use clap::{Parser, Subcommand};
+use sodiumoxide;
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
 use crate::dvcs::{DefaultScanner, DefaultCommit};
@@ -130,6 +131,7 @@ enum Commands {
 
 
 pub fn run() -> io::Result<()> {
+    sodiumoxide::init();
     let args = Cli::parse();
     match args.command {
         Commands::Init {target} => {

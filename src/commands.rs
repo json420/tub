@@ -92,7 +92,7 @@ enum Commands {
         msg: Option<String>,
 
         #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
+        #[arg(help="Path of Tub control directory", hide=true)]
         tub: Option<PathBuf>,
     },
 
@@ -261,10 +261,10 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     let mut store = tub.into_store();
     let mut obj = store.new_object();
     store.reindex(&mut obj)?;
-    let mut scanner = DefaultScanner::new(store);
+    let mut scanner = DefaultScanner::new(store, &source);
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
-    if let Some(root) = scanner.scan_tree(&source)? {
+    if let Some(root) = scanner.scan_tree()? {
         let msg = if let Some(msg) = msg {
             msg
         }
@@ -289,9 +289,9 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut scanner = DefaultScanner::new(tub.into_store());
+    let mut scanner = DefaultScanner::new(tub.into_store(), &source);
     eprintln!("🛁 Scanning tree state, wont take long...");
-    if let Some(root) = scanner.scan_tree(&source)? {
+    if let Some(root) = scanner.scan_tree()? {
         println!("{}", root);
     }
     eprintln!("🛁 Status: it's complicated! 🤣");
@@ -306,8 +306,8 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     let mut store = tub.into_store();
     let mut obj = store.new_object();
     store.reindex(&mut obj)?;
-    let mut scanner = DefaultScanner::new(store);
-    scanner.restore_tree(&hash, &dst)?;
+    let mut scanner = DefaultScanner::new(store, &dst);
+    scanner.restore_tree(&hash)?;
     eprintln!("🛁 yo from revert");
     Ok(())
 }

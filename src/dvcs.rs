@@ -238,14 +238,16 @@ pub struct Scanner<H: Hasher, const N: usize> {
     mode: ScanMode,
     obj: Object<H, N>,
     store: Store<H, N>,
+    dir: PathBuf,
 }
 
 impl<H: Hasher, const N: usize> Scanner<H, N> {
-    pub fn new(store: Store<H, N>) -> Self {
+    pub fn new(store: Store<H, N>, dir: &Path) -> Self {
         Self {
+            mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
             store: store,
-            mode: ScanMode::Scan,
+            dir: dir.to_path_buf(),
         }
     }
 
@@ -293,16 +295,16 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                         }
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
-                        //println!("X {} {:?}", hash, path);
+                        println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash);
                     }
                     else {
-                        //println!("F {} {:?}", hash, path);
+                        println!("F {} {:?}", hash, path);
                         tree.add_file(name, hash);
                     }
                 }
                 else {
-                    //println!("Empty File: {:?}", path);
+                    println!("Empty File: {:?}", path);
                     tree.add_empty_file(name);
                 }
             }
@@ -329,8 +331,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         }
     }
 
-    pub fn scan_tree(&mut self, dir: &Path) -> io::Result<Option<Name<N>>> {
-        self.scan_tree_inner(dir, 0)
+    pub fn scan_tree(&mut self) -> io::Result<Option<Name<N>>> {
+        let dir = self.dir.clone();
+        self.scan_tree_inner(&dir, 0)
     }
 
     fn restore_tree_inner(&mut self, root: &Name<N>, path: &Path, depth: usize) -> io::Result<()> {
@@ -386,8 +389,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         Ok(())
     }
 
-    pub fn restore_tree(&mut self, root: &Name<N>, path: &Path) -> io::Result<()> {
-        self.restore_tree_inner(root, path, 0)
+    pub fn restore_tree(&mut self, root: &Name<N>) -> io::Result<()> {
+        let dir = self.dir.clone();
+        self.restore_tree_inner(root, &dir, 0)
     }
 }
 

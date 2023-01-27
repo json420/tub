@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 use std::{io, fs};
-use std::io::prelude::*;
 use crate::base::*;
 use crate::protocol::{Hasher, DefaultHasher};
 use crate::chaos::Store;
@@ -86,7 +85,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = create_store(&filename)?;
-        let mut chain = Chain::generate(file)?;
+        let chain = Chain::generate(file)?;
         // Save secret key:
         filename.pop();
         filename.push("omg.fixme.soon");

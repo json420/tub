@@ -4,7 +4,6 @@ use std::{io, fs};
 use std::ops::Range;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
-use std::io::prelude::*;
 use sodiumoxide::crypto::sign;
 use blake3;
 use crate::chaos::DefaultName;
@@ -246,7 +245,7 @@ pub struct Chain {
 
 impl Chain {
     pub fn generate(file: fs::File) -> io::Result<Self> {
-        let (pk, sk) = sign::gen_keypair();
+        let (_pk, sk) = sign::gen_keypair();
         Self::create(file, sk)
     }
 
@@ -255,7 +254,7 @@ impl Chain {
         header.sign(&sk);
         let previous = header.hash();
         file.write_all(header.as_buf())?;
-        let mut block = Block::new(header.pubkey());
+        let block = Block::new(header.pubkey());
         Ok( Self {
             header: header,
             block: block,
@@ -359,10 +358,9 @@ impl Chain {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use crate::util::getrandom;
     use crate::helpers::flip_bit_in;
-    use crate::chaos::{DefaultName, DefaultObject};
+    use crate::chaos::DefaultName;
     use super::*;
 
     #[test]
@@ -411,7 +409,7 @@ mod tests {
         let mut header = Header::new();
         assert!(! header.verify_signature());
 
-        let (pk, sk) = sign::gen_keypair();
+        let (_pk, sk) = sign::gen_keypair();
         header.sign(&sk);
         assert!(header.verify_signature());
 

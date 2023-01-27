@@ -131,7 +131,7 @@ enum Commands {
 
 
 pub fn run() -> io::Result<()> {
-    sodiumoxide::init();
+    sodiumoxide::init().unwrap();
     let args = Cli::parse();
     match args.command {
         Commands::Init {target} => {

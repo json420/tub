@@ -1,8 +1,6 @@
 use std::io;
-use tub::chaos::{DefaultName, DefaultObject, DefaultStore};
-use tub::inception::Fanout;
+use tub::chaos::DefaultName;
 use tub::helpers::TestTempDir;
-use tub::util::getrandom;
 use tub::blockchain::Chain;
 
 

@@ -398,7 +398,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             file.write_all(&entry.info.to_le_bytes())?;
             file.write_all(&entry.offset.to_le_bytes())?;
         }
-        file.flush();
+        file.flush()?;
         Ok(())
     }
 

@@ -260,7 +260,6 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     }
     let mut store = tub.into_store();
     let mut obj = store.new_object();
-    store.reindex(&mut obj)?;
     let mut scanner = DefaultScanner::new(store, &source);
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
@@ -304,8 +303,6 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     let dst = dir_or_cwd(dst)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut store = tub.into_store();
-    let mut obj = store.new_object();
-    store.reindex(&mut obj)?;
     let mut scanner = DefaultScanner::new(store, &dst);
     scanner.restore_tree(&hash)?;
     eprintln!("🛁 yo from revert");
@@ -318,7 +315,6 @@ fn cmd_log(tub: OptPath) -> io::Result<()>
     if let Ok(mut chain) = tub.open_branch() {
         let mut store = tub.into_store();
         let mut obj = store.new_object();
-        store.reindex(&mut obj)?;
         chain.seek_to_beyond();
         while chain.load_previous()? {
             println!(" block: {} {}", chain.block.hash(), chain.block.index());

@@ -77,8 +77,28 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
         let file = open_store(&filename)?;
-        let store = Store::<H, N>::new(file);
+        let mut store = Store::<H, N>::new(file);
+
+        let mut obj = store.new_object();
+        let mut filename = dotdir.clone();
+        filename.push("append.idx");
+        if let Ok(file) = fs::File::open(&filename) {
+            eprintln!("opened index");
+            store.load_index(file)?;
+            store.reindex_from(&mut obj)?;
+        }
+        else {
+            eprintln!("reindexing");
+            store.reindex(&mut obj)?;
+        }
         Ok( Self {dotdir: dotdir, filename: filename, store: store} )
+    }
+
+    pub fn save_index(&self) -> io::Result<()> {
+        let mut filename = self.dotdir.clone();
+        filename.push("append.idx");
+        let file = fs::File::create(&filename)?;
+        self.store.save_index(file)
     }
 
     pub fn create_branch(&self) -> io::Result<Chain> {

@@ -51,7 +51,6 @@ pub struct HashingFileReaderIter {
 /// Put all your 🏴‍☠️ treasure in here, matey! 💰💵🦓
 pub struct Tub<H: Hasher, const N: usize> {
     dotdir: PathBuf,
-    filename: PathBuf,
     pub store: Store<H, N>,
 }
 
@@ -70,7 +69,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push(PACKFILE);
         let file = create_store(&filename)?;
         let store = Store::<H, N>::new(file);
-        Ok( Self {dotdir: dotdir, filename: filename, store: store} )
+        Ok( Self {dotdir: dotdir, store: store} )
     }
 
     pub fn open(dotdir: PathBuf) -> io::Result<Self> {
@@ -91,7 +90,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
             eprintln!("reindexing");
             store.reindex(&mut obj)?;
         }
-        Ok( Self {dotdir: dotdir, filename: filename, store: store} )
+        Ok( Self {dotdir: dotdir, store: store} )
     }
 
     pub fn save_index(&self) -> io::Result<()> {

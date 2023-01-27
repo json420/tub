@@ -342,6 +342,19 @@ impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
 }
 
 
+/*
+Notes on saving loading index:
+
+No need to write to index every new object write.
+
+On load, use highest offset + object total size to figure out to what part
+the object stream has been index.  We only need to index from that part on,
+which will be fast.
+
+Periodically write new index.  Index should probably be framed in an Object,
+just like everything else, yo.
+*/
+
 
 /// Organizes objects in an append-only file.
 pub struct Store<H: Hasher, const N: usize> {
@@ -391,8 +404,24 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn save_index(&self, mut file: fs::File) -> io::Result<()> {
-        //let file = io::BufWriter::new(file);
+    pub fn reindex_from(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
+        self.file.seek(io::SeekFrom::Start(self.offset))?;
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
+        while reader.read_next(obj)? {
+            self.map.insert(
+                obj.hash(),
+                Entry::new(obj.info(), self.offset)
+            );
+            self.offset += obj.len() as u64;
+        }
+        obj.clear();
+        println!("{}", self.len());
+        Ok(())
+    }
+
+    pub fn save_index(&self, file: fs::File) -> io::Result<()> {
+        let mut file = io::BufWriter::new(file);
         for (hash, entry) in self.map.iter() {
             file.write_all(hash.as_buf())?;
             file.write_all(&entry.info.to_le_bytes())?;
@@ -408,6 +437,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         let mut hash: Name<N> = Name::new();
         let mut ibuf = [0_u8; 4];
         let mut obuf = [0_u8; 8];
+        self.offset = 0;
         while let Ok(_) = file.read_exact(hash.as_mut_buf()) {
             file.read_exact(&mut ibuf)?;
             let info = Info::from_le_bytes(&ibuf);
@@ -415,6 +445,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             let offset = u64::from_le_bytes(obuf.try_into().unwrap());
             let entry = Entry::new(info, offset);
             self.map.insert(hash.clone(), entry);
+            self.offset = cmp::max(self.offset, offset);
         }
         Ok(())
     }
@@ -684,6 +715,10 @@ mod tests {
         let mut store = DefaultStore::new(file);    
         let mut file = tmp.open(&["some.index"]);
         store.load_index(file).unwrap();
+        for hash in keys.iter() {
+            assert!(store.load(&hash, &mut obj).unwrap());
+        }
+        store.reindex(&mut obj).unwrap();
         for hash in keys.iter() {
             assert!(store.load(&hash, &mut obj).unwrap());
         }

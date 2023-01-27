@@ -391,6 +391,34 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
+    pub fn save_index(&self, file: &mut fs::File) -> io::Result<()> {
+        //let file = io::BufWriter::new(file);
+        for (hash, entry) in self.map.iter() {
+            file.write_all(hash.as_buf())?;
+            file.write_all(&entry.info.to_le_bytes())?;
+            file.write_all(&entry.offset.to_le_bytes())?;
+        }
+        file.flush();
+        Ok(())
+    }
+
+    pub fn load_index(&mut self, file: &mut fs::File) -> io::Result<()> {
+        let mut file = io::BufReader::new(file);
+        self.map.clear();
+        let mut hash: Name<N> = Name::new();
+        let mut ibuf = [0_u8; 4];
+        let mut obuf = [0_u8; 8];
+        while let Ok(_) = file.read_exact(hash.as_mut_buf()) {
+            file.read_exact(&mut ibuf)?;
+            let info = Info::from_le_bytes(&ibuf);
+            file.read_exact(&mut obuf)?;
+            let offset = u64::from_le_bytes(obuf.try_into().unwrap());
+            let entry = Entry::new(info, offset);
+            self.map.insert(hash.clone(), entry);
+        }
+        Ok(())
+    }
+
     pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
             obj.reset(entry.info.size(), entry.info.kind());

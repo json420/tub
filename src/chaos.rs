@@ -278,6 +278,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         &mut self.buf
     }   
 
+    pub fn as_header(&self) -> &[u8] {
+        &self.buf[0..N + INFO_LEN]
+    }
+
     pub fn as_mut_header(&mut self) -> &mut [u8] {
         &mut self.buf[0..N + INFO_LEN]
     }
@@ -404,8 +408,24 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn reindex_from(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
-        self.file.seek(io::SeekFrom::Start(self.offset))?;
+    pub fn reindex2(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> io::Result<()> {
+        self.map.clear();
+        self.offset = 0;
+        self.file.seek(io::SeekFrom::Start(0))?;
+
+        // Load entries from the saved index file
+        let mut idx = io::BufReader::new(idx);
+        while let Ok(_) = idx.read_exact(obj.as_mut_header()) {
+            self.map.insert(
+                obj.hash(),
+                Entry::new(obj.info(), self.offset)
+            );
+            self.offset += (N + 4 + obj.info().size()) as u64;
+        }
+        // FIXME: truncate if needed base on OFFSET % HEADER_LEN
+
+        // Index plus verify remaining objects, adding to index file
+        let mut idx = io::BufWriter::new(idx.into_inner());
         let mut br = io::BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
@@ -413,10 +433,11 @@ impl<H: Hasher, const N: usize> Store<H, N> {
                 obj.hash(),
                 Entry::new(obj.info(), self.offset)
             );
-            self.offset += obj.len() as u64;
+            idx.write_all(obj.as_header())?;
+            self.offset += (N + 4 + obj.info().size()) as u64;
         }
-        obj.clear();
-        println!("{}", self.len());
+        // FIXME: truncate self.file if needed
+        idx.flush()?;
         Ok(())
     }
 
@@ -449,6 +470,23 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
         Ok(())
     }
+
+    pub fn reindex_from(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
+        self.file.seek(io::SeekFrom::Start(self.offset))?;
+        let mut br = io::BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
+        while reader.read_next(obj)? {
+            self.map.insert(
+                obj.hash(),
+                Entry::new(obj.info(), self.offset)
+            );
+            self.offset += obj.len() as u64;
+        }
+        obj.clear();
+        println!("{}", self.len());
+        Ok(())
+    }
+
 
     pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {

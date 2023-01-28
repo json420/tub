@@ -276,6 +276,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 self.obj.clear();
                 self.obj.as_mut_vec().extend_from_slice(&data);
                 let hash = self.obj.finalize();
+                println!("S {} {:?}", hash, path);
                 tree.add_symlink(name, hash);
                 if self.mode == ScanMode::Import {
                     self.store.save(&self.obj)?;
@@ -304,15 +305,17 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     }
                 }
                 else {
-                    println!("Empty File: {:?}", path);
+                    println!("EF {:?}", path);
                     tree.add_empty_file(name);
                 }
             }
             else if ft.is_dir() {
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
+                    println!("D {} {:?}", hash, path);
                     tree.add_dir(name, hash);
                 }
                 else {
+                    println!("ED {:?}", path);
                     tree.add_empty_dir(name);
                 }
             }

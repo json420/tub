@@ -253,6 +253,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    tub.save_index()?;
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());

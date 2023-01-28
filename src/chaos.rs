@@ -427,7 +427,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         // Index plus verify remaining objects, adding to index file
         let mut idx = io::BufWriter::new(idx.into_inner());
         let mut br = io::BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
+        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N>
+            = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
                 obj.hash(),

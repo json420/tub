@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::{io, fs};
 use crate::base::*;
 use crate::protocol::{Hasher, DefaultHasher};
-use crate::chaos::Store;
+use crate::chaos::{Object, Store};
 use crate::blockchain::Chain;
 
 
@@ -33,11 +33,11 @@ pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
     }
 }
 
-pub fn create_store(path: &Path) -> io::Result<fs::File> {
+pub fn create_for_append(path: &Path) -> io::Result<fs::File> {
     fs::File::options().read(true).append(true).create_new(true).open(path)
 }
 
-pub fn open_store(path: &Path) -> io::Result<fs::File> {
+pub fn open_for_append(path: &Path) -> io::Result<fs::File> {
     fs::File::options().read(true).append(true).open(path)
 }
 
@@ -67,7 +67,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
-        let file = create_store(&filename)?;
+        let file = create_for_append(&filename)?;
         let store = Store::<H, N>::new(file);
         Ok( Self {dotdir: dotdir, store: store} )
     }
@@ -75,22 +75,26 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn open(dotdir: PathBuf) -> io::Result<Self> {
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
-        let file = open_store(&filename)?;
+        let file = open_for_append(&filename)?;
         let mut store = Store::<H, N>::new(file);
+        Ok( Self {dotdir: dotdir, store: store} )
+    }
 
-        let mut obj = store.new_object();
-        let mut filename = dotdir.clone();
-        filename.push("append.idx");
-        if let Ok(file) = fs::File::open(&filename) {
-            eprintln!("opened index");
-            store.load_index(file)?;
-            store.reindex_from(&mut obj)?;
+    pub fn idx_file(&self) -> io::Result<fs::File> {
+        let mut pb = self.dotdir.clone();
+        pb.push(INDEX_FILE);
+        if let Ok(file) = open_for_append(&pb) {
+            Ok(file)
         }
         else {
-            eprintln!("reindexing");
-            store.reindex(&mut obj)?;
+            create_for_append(&pb)
         }
-        Ok( Self {dotdir: dotdir, store: store} )
+    }
+
+    pub fn reindex(&mut self) -> io::Result<()> {
+        let mut obj: Object<H, N> = Object::new();
+        self.store.reindex2(&mut obj, self.idx_file()?)?;
+        Ok(())
     }
 
     pub fn save_index(&self) -> io::Result<()> {
@@ -103,12 +107,12 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn create_branch(&self) -> io::Result<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
-        let file = create_store(&filename)?;
+        let file = create_for_append(&filename)?;
         let chain = Chain::generate(file)?;
         // Save secret key:
         filename.pop();
         filename.push("omg.fixme.soon");
-        let file = create_store(&filename)?;
+        let file = create_for_append(&filename)?;
         chain.save_secret_key(file)?;
         Ok(chain)
     }
@@ -116,7 +120,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn open_branch(&self) -> io::Result<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
-        let file = open_store(&filename)?;
+        let file = open_for_append(&filename)?;
         Chain::open(file)
     }
 
@@ -148,40 +152,40 @@ mod tests {
     }
 
     #[test]
-    fn test_open_store() {
+    fn test_open_for_append() {
         let tmp = TestTempDir::new();
         let pb = tmp.build(&["a_store_file"]);
         let empty: Vec<String> = vec![];
 
         // Should fail if file is missing (and should not create anything)
-        let r = open_store(&pb);
+        let r = open_for_append(&pb);
         assert!(r.is_err());
         assert_eq!(tmp.list_root(), empty);
 
         // Now try when file exists
         tmp.touch(&["a_store_file"]);
-        let r = open_store(&pb);
+        let r = open_for_append(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
     }
 
     #[test]
-    fn test_create_store() {
+    fn test_create_for_append() {
         let tmp = TestTempDir::new();
         let pb = tmp.build(&["a_store_file"]);
 
-        let r = create_store(&pb);
+        let r = create_for_append(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
         assert_eq!(tmp.list_root(), &["a_store_file"]);
 
         // Should fail if file already exists
-        let r = create_store(&pb);
+        let r = create_for_append(&pb);
         assert!(r.is_err());
         assert_eq!(tmp.list_root(), &["a_store_file"]);
 
-        // Make sure we can open with open_store()
-        let r = open_store(&pb);
+        // Make sure we can open with open_for_append()
+        let r = open_for_append(&pb);
         assert!(r.is_ok());
         assert_eq!(r.unwrap().metadata().unwrap().len(), 0);
     }

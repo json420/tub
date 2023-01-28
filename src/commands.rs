@@ -206,7 +206,10 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 fn get_tub(target: &Path) -> io::Result<DefaultTub>
 {
     if let Some(dotdir) = find_dotdir(&target) {
-        DefaultTub::open(dotdir)
+        let mut tub = DefaultTub::open(dotdir)?;
+        //tub.reindex()?;
+        let mut obj = tub.store.new_object();
+        Ok(tub)
     }
     else {
         other_err!("Could not find Tub")
@@ -253,7 +256,6 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    tub.save_index()?;
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());

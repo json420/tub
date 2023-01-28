@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::{io, fs};
 use crate::base::*;
 use crate::protocol::{Hasher, DefaultHasher};
-use crate::chaos::{Object, Store};
+use crate::chaos::{Object, Store, Name};
 use crate::blockchain::Chain;
 
 
@@ -89,6 +89,13 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         else {
             create_for_append(&pb)
         }
+    }
+
+    pub fn join(&self, dir: &str, hash: &Name<N>) -> PathBuf {
+        let mut pb = self.dotdir.clone();
+        pb.push(dir);
+        pb.push(hash.to_string());
+        pb
     }
 
     pub fn check(&mut self) -> io::Result<()> {

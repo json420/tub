@@ -7,9 +7,9 @@ pub const DOTDIR: &str = ".tub";
 pub const PACKFILE: &str = "append.tub";
 pub const INDEX_FILE: &str = "append.idx";
 pub const OBJECTDIR: &str = "objects";
-pub const PARTIALDIR: &str = "partial";
 pub const TMPDIR: &str = "tmp";
 pub const README: &str = "REAMDE.txt";  // The REAMDE file
+pub const BRANCHES: &str = "blockchain";
 
 pub static README_CONTENTS: &[u8] = b"Hello from Bathtub DB!
 

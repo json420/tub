@@ -76,7 +76,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
         let file = open_for_append(&filename)?;
-        let mut store = Store::<H, N>::new(file);
+        let store = Store::<H, N>::new(file);
         Ok( Self {dotdir: dotdir, store: store} )
     }
 
@@ -93,7 +93,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
 
     pub fn reindex(&mut self) -> io::Result<()> {
         let mut obj: Object<H, N> = Object::new();
-        self.store.reindex2(&mut obj, self.idx_file()?)?;
+        self.store.reindex_from(&mut obj, self.idx_file()?)?;
         Ok(())
     }
 

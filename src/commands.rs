@@ -208,7 +208,6 @@ fn get_tub(target: &Path) -> io::Result<DefaultTub>
     if let Some(dotdir) = find_dotdir(&target) {
         let mut tub = DefaultTub::open(dotdir)?;
         tub.reindex()?;
-        let mut obj = tub.store.new_object();
         Ok(tub)
     }
     else {
@@ -261,7 +260,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
         exit(42);
     }
-    let mut store = tub.into_store();
+    let store = tub.into_store();
     let mut obj = store.new_object();
     let mut scanner = DefaultScanner::new(store, &source);
     scanner.enable_import();
@@ -305,7 +304,7 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     let hash = DefaultName::from_str(&txt);
     let dst = dir_or_cwd(dst)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut store = tub.into_store();
+    let store = tub.into_store();
     let mut scanner = DefaultScanner::new(store, &dst);
     scanner.restore_tree(&hash)?;
     eprintln!("🛁 yo from revert");

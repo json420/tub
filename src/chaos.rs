@@ -408,7 +408,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn reindex2(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> io::Result<()> {
+    pub fn reindex_from(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
 
@@ -421,7 +421,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             );
             self.offset += (N + 4 + obj.info().size()) as u64;
         }
-        // FIXME: truncate if needed base on OFFSET % HEADER_LEN
+        // FIXME: truncate if needed based on OFFSET % HEADER_LEN
 
         // Index plus verify remaining objects, adding to index file
         let mut idx = io::BufWriter::new(idx.into_inner());

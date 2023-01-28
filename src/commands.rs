@@ -120,7 +120,11 @@ enum Commands {
     },
 
     #[command(about = "🔗 Verify all objects and blockchains 💵")]
-    Check {},
+    Check {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory")]
+        tub: Option<PathBuf>,
+    },
 
     #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
@@ -170,8 +174,8 @@ pub fn run() -> io::Result<()> {
         Commands::Log {tub} => {
             cmd_log(tub)
         }
-        Commands::Check {} => {
-            not_yet()
+        Commands::Check {tub} => {
+            cmd_check(tub)
         }
         Commands::Hash {path} => {
             cmd_hash(&path)
@@ -334,6 +338,20 @@ fn cmd_log(tub: OptPath) -> io::Result<()>
     }
     Ok(())
 }
+
+fn cmd_check(tub: OptPath) -> io::Result<()>
+{
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let start = Instant::now();
+    eprintln!("🛁 Verifying {} objects...", tub.store.len());
+    tub.check()?;
+    let elapsed = start.elapsed().as_secs_f64();
+    let size = tub.store.size();
+    let rate = (size as f64 / elapsed) as u64;
+    eprintln!("🛁 Verified {} bytes in {}s, {} bytes/s", size, elapsed, rate);
+    Ok(())
+}
+
 
 fn cmd_hash(path: &Path) -> io::Result<()>
 {

@@ -91,6 +91,11 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         }
     }
 
+    pub fn check(&mut self) -> io::Result<()> {
+        let mut obj: Object<H, N> = Object::new();
+        self.store.reindex(&mut obj)
+    }
+
     pub fn reindex(&mut self) -> io::Result<()> {
         let mut obj: Object<H, N> = Object::new();
         self.store.reindex_from(&mut obj, self.idx_file()?)?;

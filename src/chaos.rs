@@ -386,6 +386,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         self.map.len()
     }
 
+    pub fn size(&self) -> u64 {
+        self.offset
+    }
+
     pub fn keys(&self) -> Vec<Name<N>> {
         Vec::from_iter(self.map.keys().cloned())
     }
@@ -404,7 +408,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += obj.len() as u64;
         }
         obj.clear();
-        println!("{}", self.len());
         Ok(())
     }
 
@@ -439,6 +442,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
         // FIXME: truncate self.file if needed
         idx.flush()?;
+        obj.clear();
         Ok(())
     }
 

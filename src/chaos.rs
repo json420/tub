@@ -425,7 +425,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
         // Index plus verify remaining objects, adding to index file
         let mut idx = io::BufWriter::new(idx.into_inner());
-        self.file.seek(io::SeekFrom::Start(self.offset))?;
+        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Very important!
         let mut br = io::BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N>
             = ObjectReader::new(&mut br);
@@ -441,53 +441,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         idx.flush()?;
         Ok(())
     }
-
-    pub fn save_index(&self, file: fs::File) -> io::Result<()> {
-        let mut file = io::BufWriter::new(file);
-        for (hash, entry) in self.map.iter() {
-            file.write_all(hash.as_buf())?;
-            file.write_all(&entry.info.to_le_bytes())?;
-            file.write_all(&entry.offset.to_le_bytes())?;
-        }
-        file.flush()?;
-        Ok(())
-    }
-
-    pub fn load_index(&mut self, file: fs::File) -> io::Result<()> {
-        let mut file = io::BufReader::new(file);
-        self.map.clear();
-        let mut hash: Name<N> = Name::new();
-        let mut ibuf = [0_u8; 4];
-        let mut obuf = [0_u8; 8];
-        self.offset = 0;
-        while let Ok(_) = file.read_exact(hash.as_mut_buf()) {
-            file.read_exact(&mut ibuf)?;
-            let info = Info::from_le_bytes(&ibuf);
-            file.read_exact(&mut obuf)?;
-            let offset = u64::from_le_bytes(obuf.try_into().unwrap());
-            let entry = Entry::new(info, offset);
-            self.map.insert(hash.clone(), entry);
-            self.offset = cmp::max(self.offset, offset);
-        }
-        Ok(())
-    }
-
-    pub fn reindex_from(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
-        self.file.seek(io::SeekFrom::Start(self.offset))?;
-        let mut br = io::BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
-        while reader.read_next(obj)? {
-            self.map.insert(
-                obj.hash(),
-                Entry::new(obj.info(), self.offset)
-            );
-            self.offset += obj.len() as u64;
-        }
-        obj.clear();
-        println!("{}", self.len());
-        Ok(())
-    }
-
 
     pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
         if let Some(entry) = self.map.get(hash) {
@@ -712,54 +665,6 @@ mod tests {
         assert_eq!(store.len(), keys.len());
         for key in keys.iter() {
             assert!(store.load(&key, &mut obj1).unwrap());
-        }
-    }
-
-    #[test]
-    fn test_store_load_index() {
-        let tmp = TestTempDir::new();
-        let mut file = tmp.create(&["some.index"]);
-        let mut entry = [0_u8; 30 + 4 + 8];
-        for _ in 0..100 {
-            getrandom(&mut entry);
-            file.write_all(&entry).unwrap();
-        }
-
-        let mut sfile = tmp.create(&["some.store"]);
-        let mut store = DefaultStore::new(sfile);
-        let mut file = tmp.open(&["some.index"]);
-        store.load_index(file).unwrap();
-        assert_eq!(store.len(), 100);
-    }
-
-   #[test]
-    fn test_store_save_index() {
-        let tmp = TestTempDir::new();
-        let mut obj = DefaultObject::new();
-
-        let mut file = tmp.create(&["some.store"]);
-        let mut store = DefaultStore::new(file);    
-        let mut keys = Vec::new();
-        for _ in 0..100 {
-            obj.randomize(true);
-            assert!(store.save(&obj).unwrap());
-            keys.push(obj.hash());
-        }
-        assert_eq!(keys.len(), 100);
-        assert_eq!(store.len(), 100);
-        let mut file = tmp.create(&["some.index"]);
-        store.save_index(file).unwrap();
-
-        let mut file = tmp.open(&["some.store"]);
-        let mut store = DefaultStore::new(file);    
-        let mut file = tmp.open(&["some.index"]);
-        store.load_index(file).unwrap();
-        for hash in keys.iter() {
-            assert!(store.load(&hash, &mut obj).unwrap());
-        }
-        store.reindex(&mut obj).unwrap();
-        for hash in keys.iter() {
-            assert!(store.load(&hash, &mut obj).unwrap());
         }
     }
 }

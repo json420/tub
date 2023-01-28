@@ -97,13 +97,6 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         Ok(())
     }
 
-    pub fn save_index(&self) -> io::Result<()> {
-        let mut filename = self.dotdir.clone();
-        filename.push("append.idx");
-        let file = fs::File::create(&filename)?;
-        self.store.save_index(file)
-    }
-
     pub fn create_branch(&self) -> io::Result<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");

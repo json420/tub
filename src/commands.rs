@@ -207,7 +207,7 @@ fn get_tub(target: &Path) -> io::Result<DefaultTub>
 {
     if let Some(dotdir) = find_dotdir(&target) {
         let mut tub = DefaultTub::open(dotdir)?;
-        //tub.reindex()?;
+        tub.reindex()?;
         let mut obj = tub.store.new_object();
         Ok(tub)
     }

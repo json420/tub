@@ -411,7 +411,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex2(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> io::Result<()> {
         self.map.clear();
         self.offset = 0;
-        self.file.seek(io::SeekFrom::Start(0))?;
 
         // Load entries from the saved index file
         let mut idx = io::BufReader::new(idx);
@@ -426,6 +425,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
         // Index plus verify remaining objects, adding to index file
         let mut idx = io::BufWriter::new(idx.into_inner());
+        self.file.seek(io::SeekFrom::Start(self.offset))?;
         let mut br = io::BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<io::BufReader<fs::File>, H, N>
             = ObjectReader::new(&mut br);

@@ -407,8 +407,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             );
             self.offset += obj.len() as u64;
         }
-        // Truncate to end of valid object stream, discarding an partial object:
-        self.file.seek(io::SeekFrom::Start(self.offset))?;
+        // Truncate to end of valid object stream, discarding any partial object
+        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Needed on Windows
         self.file.set_len(self.offset)?;
         obj.clear();
         Ok(())
@@ -443,8 +443,8 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             idx.write_all(obj.as_header())?;
             self.offset += (N + 4 + obj.info().size()) as u64;
         }
-        // Truncate to end of valid object stream, discarding an partial object:
-        self.file.seek(io::SeekFrom::Start(self.offset))?;
+        // Truncate to end of valid object stream, discarding any partial object
+        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Needed on Windows
         self.file.set_len(self.offset)?;
         idx.flush()?;
         obj.clear();

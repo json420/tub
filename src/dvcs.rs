@@ -398,6 +398,49 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
     }
 }
 
+
+#[derive(Debug, PartialEq)]
+pub enum Item<const N: usize> {
+    EmptyDir,
+    EmptyFile,
+    Dir(Name<N>),
+    File(Name<N>),
+    ExeFile(Name<N>),
+    SymLink(PathBuf),
+}
+
+
+pub type ItemMap<const N: usize> = HashMap<PathBuf, Item<N>>;
+
+
+pub enum Status {
+    Changed,
+    Missing,
+}
+
+
+pub fn compare_tree<const N:usize>(a: ItemMap<N>, b: ItemMap<N>)
+        -> Vec<(PathBuf, Status)>
+{
+    let mut ret: Vec<(PathBuf, Status)> = Vec::new();
+    let mut keys = Vec::from_iter(a.keys());
+    keys.sort();
+    let keys = keys;
+    for path in keys.iter() {
+        let p = path.clone();  // FIXME
+        let old = a.get(p).unwrap();
+        if let Some(new) = b.get(p) {
+            if new != old {
+                ret.push((p.to_path_buf(), Status::Changed));
+            }
+        }
+        else {
+            ret.push((p.to_path_buf(), Status::Missing));
+        }
+    }
+    ret
+}
+
 /*
 
 #[derive(Debug)]

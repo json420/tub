@@ -507,7 +507,6 @@ impl<const N: usize> Tree2<N> {
             };
             map.insert(key, val);
         }
-
         Self {map: map}
     }
 
@@ -521,24 +520,22 @@ impl<const N: usize> Tree2<N> {
             buf.push(kind as u8);
             buf.push(size);
             buf.extend_from_slice(name);
+            match item {
+                Item::EmptyDir | Item::EmptyFile => {
+                    // Nothing to do
+                }
+                Item::Dir(hash) | Item::File(hash) | Item::ExeFile(hash) => {
+                    buf.extend_from_slice(hash.as_buf());
+                }
+                Item::SymLink(target) => {
+                    let tsize = target.len() as u16;
+                    buf.extend_from_slice(&tsize.to_le_bytes());
+                    buf.extend_from_slice(target.as_bytes());
+                }
+            }
+            
         }
     }
-
-/*
-    pub fn serialize(&self, buf: &mut Vec<u8>) {
-        let mut items = Vec::from_iter(self.map.iter());
-        items.sort_by(|a, b| b.0.cmp(a.0));
-        for (name, item) in items.iter() {
-            let path = name.as_bytes();
-            let size = path.len() as u8;
-            assert!(size > 0);
-            buf.push(entry.kind as u8);
-            buf.push(size);
-            buf.extend_from_slice(path);
-            buf.extend_from_slice(entry.hash.as_buf());
-        }
-    }
-*/
 }
 
 

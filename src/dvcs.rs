@@ -409,6 +409,30 @@ pub enum Item<const N: usize> {
     SymLink(String),
 }
 
+#[inline]
+fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
+    match item {
+        Item::EmptyDir => {
+            Kind::EmptyDir
+        }
+        Item::EmptyFile => {
+            Kind::EmptyFile
+        }
+        Item::Dir(hash) => {
+            Kind::Dir
+        }
+        Item::File(hash) => {
+            Kind::File
+        }
+        Item::ExeFile(hash) => {
+            Kind::ExeFile
+        }
+        Item::SymLink(target) => {
+            Kind::SymLink
+        }
+    }
+}
+
 pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
 
 
@@ -453,20 +477,21 @@ impl<const N: usize> Tree2<N> {
                 Kind::EmptyFile => {
                     Item::EmptyFile
                 }
-                Kind::Dir => {
+                Kind::Dir | Kind::File | Kind::ExeFile => {
                     let hash = Name::from(&buf[offset..offset + N]);
                     offset += hash.len();
-                    Item::Dir(hash)
-                }
-                Kind::File => {
-                    let hash = Name::from(&buf[offset..offset + N]);
-                    offset += hash.len();
-                    Item::File(hash)
-                }
-                Kind::ExeFile => {
-                    let hash = Name::from(&buf[offset..offset + N]);
-                    offset += hash.len();
-                    Item::ExeFile(hash)
+                    match kind {
+                        Kind::Dir => {
+                            Item::Dir(hash)
+                        }
+                        Kind::File => {
+                            Item::File(hash)
+                        }
+                        Kind::ExeFile => {
+                            Item::ExeFile(hash)
+                        }
+                        _ => {panic!("nope")}
+                    }
                 }
                 Kind::SymLink => {
                     let size = u16::from_le_bytes(
@@ -486,6 +511,18 @@ impl<const N: usize> Tree2<N> {
         Self {map: map}
     }
 
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        let mut pairs = Vec::from_iter(self.map.iter());
+        pairs.sort_by(|a, b| b.0.cmp(a.0));
+        for (name, item) in pairs.iter() {
+            let kind = item_to_kind(&item);
+            let name = name.as_bytes();
+            let size = name.len() as u8; 
+            buf.push(kind as u8);
+            buf.push(size);
+            buf.extend_from_slice(name);
+        }
+    }
 
 /*
     pub fn serialize(&self, buf: &mut Vec<u8>) {

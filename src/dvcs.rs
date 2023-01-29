@@ -406,11 +406,104 @@ pub enum Item<const N: usize> {
     Dir(Name<N>),
     File(Name<N>),
     ExeFile(Name<N>),
-    SymLink(PathBuf),
+    SymLink(String),
 }
 
+pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
 
-pub type ItemMap<const N: usize> = HashMap<PathBuf, Item<N>>;
+
+/// Stores entries in a directory
+#[derive(Debug, PartialEq)]
+pub struct Tree2<const N: usize> {
+    map: ItemMap<N>,
+}
+
+impl<const N: usize> Tree2<N> {
+    pub fn new() -> Self {
+        Self {map: HashMap::new()}
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn as_map(&self) -> &HashMap<String, Item<N>> {
+        &self.map
+    }
+
+    pub fn deserialize(buf: &[u8]) -> Self {
+        let mut map = HashMap::new();
+        let mut offset = 0;
+        while offset < buf.len() {
+            let kind: Kind = buf[offset].into();
+            let size = buf[offset + 1] as usize;
+            assert!(size > 0);
+            offset += 2;
+            offset += 2;
+
+            let key = String::from_utf8(
+                buf[offset..offset + size].to_vec()
+            ).unwrap();
+            offset += size;
+
+            let val: Item<N> = match kind {
+                Kind::EmptyDir => {
+                    Item::EmptyDir
+                }
+                Kind::EmptyFile => {
+                    Item::EmptyFile
+                }
+                Kind::Dir => {
+                    let hash = Name::from(&buf[offset..offset + N]);
+                    offset += hash.len();
+                    Item::Dir(hash)
+                }
+                Kind::File => {
+                    let hash = Name::from(&buf[offset..offset + N]);
+                    offset += hash.len();
+                    Item::File(hash)
+                }
+                Kind::ExeFile => {
+                    let hash = Name::from(&buf[offset..offset + N]);
+                    offset += hash.len();
+                    Item::ExeFile(hash)
+                }
+                Kind::SymLink => {
+                    let size = u16::from_le_bytes(
+                        buf[offset..offset + 2].try_into().unwrap()
+                    ) as usize;
+                    offset += 2;
+                    let target = String::from_utf8(
+                        buf[offset.. offset + size].to_vec()
+                    );
+                    offset += size;
+                    Item::EmptyDir
+                }
+            };
+            map.insert(key, val);
+        }
+
+        Self {map: map}
+    }
+
+
+/*
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        let mut items = Vec::from_iter(self.map.iter());
+        items.sort_by(|a, b| b.0.cmp(a.0));
+        for (name, item) in items.iter() {
+            let path = name.as_bytes();
+            let size = path.len() as u8;
+            assert!(size > 0);
+            buf.push(entry.kind as u8);
+            buf.push(size);
+            buf.extend_from_slice(path);
+            buf.extend_from_slice(entry.hash.as_buf());
+        }
+    }
+*/
+}
+
 
 
 pub enum Status {
@@ -420,9 +513,9 @@ pub enum Status {
 
 
 pub fn compare_tree<const N:usize>(a: ItemMap<N>, b: ItemMap<N>)
-        -> Vec<(PathBuf, Status)>
+        -> Vec<(String, Status)>
 {
-    let mut ret: Vec<(PathBuf, Status)> = Vec::new();
+    let mut ret: Vec<(String, Status)> = Vec::new();
     let mut keys = Vec::from_iter(a.keys());
     keys.sort();
     let keys = keys;
@@ -431,11 +524,11 @@ pub fn compare_tree<const N:usize>(a: ItemMap<N>, b: ItemMap<N>)
         let old = a.get(p).unwrap();
         if let Some(new) = b.get(p) {
             if new != old {
-                ret.push((p.to_path_buf(), Status::Changed));
+                ret.push((p.to_string(), Status::Changed));
             }
         }
         else {
-            ret.push((p.to_path_buf(), Status::Missing));
+            ret.push((p.to_string(), Status::Missing));
         }
     }
     ret

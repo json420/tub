@@ -296,9 +296,6 @@ impl<const N: usize> Commit<N> {
     }
 }
 
-
-pub type FlatTree<const N: usize> = Vec<(PathBuf, Item<N>)>;
-
 #[derive(Debug, PartialEq)]
 pub enum ScanMode {
     Scan,
@@ -458,7 +455,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         self.restore_tree_inner(root, &dir, 0)
     }
 
-    fn flatten_tree_inner(&mut self, flat: &mut FlatTree<N>, root: &Name<N>, parent: &Path, depth: usize)
+    fn flatten_tree_inner(&mut self, flat: &mut ItemMap<N>, root: &Name<N>, parent: &Path, depth: usize)
             -> io::Result<()>
     {
         if depth >= MAX_DEPTH {
@@ -475,7 +472,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     }
                     _ => {}
                 }
-                flat.push((dir, val.to_owned()));
+                flat.insert(dir.to_str().unwrap().to_owned(), val.to_owned());
             }
         } else {
             panic!("Could not find tree object {}", root);
@@ -483,9 +480,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         Ok(())
     }
 
-    pub fn flatten_tree(&mut self, root: &Name<N>) -> io::Result<FlatTree<N>> {
+    pub fn flatten_tree(&mut self, root: &Name<N>) -> io::Result<ItemMap<N>> {
         let parent = PathBuf::from("");
-        let mut flat: FlatTree<N> = Vec::new();
+        let mut flat: ItemMap<N> = HashMap::new();
         self.flatten_tree_inner(&mut flat, root, &parent, 0)?;
         Ok(flat)
     }
@@ -505,6 +502,12 @@ impl Status {
             changed: Vec::new(),
             unknown: Vec::new(),
         }
+    }
+
+    pub fn sort(&mut self) {
+        self.removed.sort();
+        self.changed.sort();
+        self.unknown.sort();
     }
 }
 

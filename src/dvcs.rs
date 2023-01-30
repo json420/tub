@@ -43,6 +43,172 @@ impl From<u8> for Kind {
 }
 
 
+
+#[derive(Debug, PartialEq)]
+pub enum Item<const N: usize> {
+    EmptyDir,
+    EmptyFile,
+    Dir(Name<N>),
+    File(Name<N>),
+    ExeFile(Name<N>),
+    SymLink(String),
+}
+
+pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
+
+
+#[inline]
+fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
+    match item {
+        Item::EmptyDir => {
+            Kind::EmptyDir
+        }
+        Item::EmptyFile => {
+            Kind::EmptyFile
+        }
+        Item::Dir(_hash) => {
+            Kind::Dir
+        }
+        Item::File(_hash) => {
+            Kind::File
+        }
+        Item::ExeFile(_hash) => {
+            Kind::ExeFile
+        }
+        Item::SymLink(_target) => {
+            Kind::SymLink
+        }
+    }
+}
+
+
+/// Stores entries in a directory
+#[derive(Debug, PartialEq)]
+pub struct Tree<const N: usize> {
+    map: ItemMap<N>,
+}
+
+impl<const N: usize> Tree<N> {
+    pub fn new() -> Self {
+        Self {map: HashMap::new()}
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    pub fn as_map(&self) -> &HashMap<String, Item<N>> {
+        &self.map
+    }
+
+    pub fn deserialize(buf: &[u8]) -> Self {
+        let mut map = HashMap::new();
+        let mut offset = 0;
+        while offset < buf.len() {
+            let kind: Kind = buf[offset].into();
+            let size = buf[offset + 1] as usize;
+            assert!(size > 0);
+            offset += 2;
+
+            let key = String::from_utf8(
+                buf[offset..offset + size].to_vec()
+            ).unwrap();
+            offset += size;
+
+            let val: Item<N> = match kind {
+                Kind::EmptyDir => {
+                    Item::EmptyDir
+                }
+                Kind::EmptyFile => {
+                    Item::EmptyFile
+                }
+                Kind::Dir | Kind::File | Kind::ExeFile => {
+                    let hash = Name::from(&buf[offset..offset + N]);
+                    offset += hash.len();
+                    match kind {
+                        Kind::Dir => {
+                            Item::Dir(hash)
+                        }
+                        Kind::File => {
+                            Item::File(hash)
+                        }
+                        Kind::ExeFile => {
+                            Item::ExeFile(hash)
+                        }
+                        _ => {panic!("nope")}
+                    }
+                }
+                Kind::SymLink => {
+                    let size = u16::from_le_bytes(
+                        buf[offset..offset + 2].try_into().unwrap()
+                    ) as usize;
+                    offset += 2;
+                    let target = String::from_utf8(
+                        buf[offset.. offset + size].to_vec()
+                    ).unwrap();
+                    offset += size;
+                    Item::SymLink(target)
+                }
+            };
+            map.insert(key, val);
+        }
+        assert_eq!(offset, buf.len());
+        Self {map: map}
+    }
+
+    pub fn serialize(&self, buf: &mut Vec<u8>) {
+        let mut pairs = Vec::from_iter(self.map.iter());
+        pairs.sort_by(|a, b| a.0.cmp(b.0));
+        for (name, item) in pairs.iter() {
+            let kind = item_to_kind(&item);
+            let name = name.as_bytes();
+            let size = name.len() as u8;
+            buf.push(kind as u8);
+            buf.push(size);
+            buf.extend_from_slice(name);
+            match item {
+                Item::EmptyDir | Item::EmptyFile => {
+                    // Nothing to do
+                }
+                Item::Dir(hash) | Item::File(hash) | Item::ExeFile(hash) => {
+                    buf.extend_from_slice(hash.as_buf());
+                }
+                Item::SymLink(target) => {
+                    let tsize = target.len() as u16;
+                    buf.extend_from_slice(&tsize.to_le_bytes());
+                    buf.extend_from_slice(target.as_bytes());
+                }
+            }
+        }
+    }
+
+    pub fn add_empty_dir(&mut self, name: String) {
+        self.map.insert(name, Item::EmptyDir);
+    }
+
+    pub fn add_empty_file(&mut self, name: String) {
+        self.map.insert(name, Item::EmptyFile);
+    }
+
+    pub fn add_dir(&mut self, name: String, hash: Name<N>) {
+        self.map.insert(name, Item::Dir(hash));
+    }
+
+    pub fn add_file(&mut self, name: String, hash: Name<N>) {
+        self.map.insert(name, Item::File(hash));
+    }
+
+    pub fn add_exefile(&mut self, name: String, hash: Name<N>) {
+        self.map.insert(name, Item::ExeFile(hash));
+    }
+
+    pub fn add_symlink(&mut self, name: String, target: String) {
+        self.map.insert(name, Item::SymLink(target));
+    }
+}
+
+
+
 /// List of paths to be tracked
 #[derive(Debug, PartialEq)]
 pub struct TrackingList {
@@ -286,170 +452,6 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         self.restore_tree_inner(root, &dir, 0)
     }
 }
-
-
-#[derive(Debug, PartialEq)]
-pub enum Item<const N: usize> {
-    EmptyDir,
-    EmptyFile,
-    Dir(Name<N>),
-    File(Name<N>),
-    ExeFile(Name<N>),
-    SymLink(String),
-}
-
-#[inline]
-fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
-    match item {
-        Item::EmptyDir => {
-            Kind::EmptyDir
-        }
-        Item::EmptyFile => {
-            Kind::EmptyFile
-        }
-        Item::Dir(_hash) => {
-            Kind::Dir
-        }
-        Item::File(_hash) => {
-            Kind::File
-        }
-        Item::ExeFile(_hash) => {
-            Kind::ExeFile
-        }
-        Item::SymLink(_target) => {
-            Kind::SymLink
-        }
-    }
-}
-
-pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
-
-
-/// Stores entries in a directory
-#[derive(Debug, PartialEq)]
-pub struct Tree<const N: usize> {
-    map: ItemMap<N>,
-}
-
-impl<const N: usize> Tree<N> {
-    pub fn new() -> Self {
-        Self {map: HashMap::new()}
-    }
-
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    pub fn as_map(&self) -> &HashMap<String, Item<N>> {
-        &self.map
-    }
-
-    pub fn deserialize(buf: &[u8]) -> Self {
-        let mut map = HashMap::new();
-        let mut offset = 0;
-        while offset < buf.len() {
-            let kind: Kind = buf[offset].into();
-            let size = buf[offset + 1] as usize;
-            assert!(size > 0);
-            offset += 2;
-
-            let key = String::from_utf8(
-                buf[offset..offset + size].to_vec()
-            ).unwrap();
-            offset += size;
-
-            let val: Item<N> = match kind {
-                Kind::EmptyDir => {
-                    Item::EmptyDir
-                }
-                Kind::EmptyFile => {
-                    Item::EmptyFile
-                }
-                Kind::Dir | Kind::File | Kind::ExeFile => {
-                    let hash = Name::from(&buf[offset..offset + N]);
-                    offset += hash.len();
-                    match kind {
-                        Kind::Dir => {
-                            Item::Dir(hash)
-                        }
-                        Kind::File => {
-                            Item::File(hash)
-                        }
-                        Kind::ExeFile => {
-                            Item::ExeFile(hash)
-                        }
-                        _ => {panic!("nope")}
-                    }
-                }
-                Kind::SymLink => {
-                    let size = u16::from_le_bytes(
-                        buf[offset..offset + 2].try_into().unwrap()
-                    ) as usize;
-                    offset += 2;
-                    let target = String::from_utf8(
-                        buf[offset.. offset + size].to_vec()
-                    ).unwrap();
-                    offset += size;
-                    Item::SymLink(target)
-                }
-            };
-            map.insert(key, val);
-        }
-        assert_eq!(offset, buf.len());
-        Self {map: map}
-    }
-
-    pub fn serialize(&self, buf: &mut Vec<u8>) {
-        let mut pairs = Vec::from_iter(self.map.iter());
-        pairs.sort_by(|a, b| a.0.cmp(b.0));
-        for (name, item) in pairs.iter() {
-            let kind = item_to_kind(&item);
-            let name = name.as_bytes();
-            let size = name.len() as u8; 
-            buf.push(kind as u8);
-            buf.push(size);
-            buf.extend_from_slice(name);
-            match item {
-                Item::EmptyDir | Item::EmptyFile => {
-                    // Nothing to do
-                }
-                Item::Dir(hash) | Item::File(hash) | Item::ExeFile(hash) => {
-                    buf.extend_from_slice(hash.as_buf());
-                }
-                Item::SymLink(target) => {
-                    let tsize = target.len() as u16;
-                    buf.extend_from_slice(&tsize.to_le_bytes());
-                    buf.extend_from_slice(target.as_bytes());
-                }
-            }
-        }
-    }
-
-    pub fn add_empty_dir(&mut self, name: String) {
-        self.map.insert(name, Item::EmptyDir);
-    }
-
-    pub fn add_empty_file(&mut self, name: String) {
-        self.map.insert(name, Item::EmptyFile);
-    }
-
-    pub fn add_dir(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::Dir(hash));
-    }
-
-    pub fn add_file(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::File(hash));
-    }
-
-    pub fn add_exefile(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::ExeFile(hash));
-    }
-
-    pub fn add_symlink(&mut self, name: String, target: String) {
-        self.map.insert(name, Item::SymLink(target));
-    }
-}
-
 
 
 pub enum Status {

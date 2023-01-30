@@ -264,23 +264,16 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
-        let mut tree = Tree::new();
+        let mut tree = Tree2::new();
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
             if ft.is_symlink() {
-                let value = fs::read_link(&path)?;  // FIXME: Let's just store this value in the tree
-                let data = value.to_str().unwrap().as_bytes();
-                self.obj.clear();
-                self.obj.as_mut_vec().extend_from_slice(&data);
-                let hash = self.obj.finalize();
-                println!("S {} {:?}", hash, path);
-                tree.add_symlink(name, hash);
-                if self.mode == ScanMode::Import {
-                    self.store.save(&self.obj)?;
-                }
+                let target = fs::read_link(&path)?.to_str().unwrap().to_string();
+                println!("S {:?} {}", path, target);
+                tree.add_symlink(name, target);
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
@@ -344,46 +337,38 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree = Tree::deserialize(&self.obj.as_data());
+            let tree = Tree2::deserialize(&self.obj.as_data());
             fs::create_dir_all(&path)?;
             for (name, entry) in tree.as_map() {
                 let mut pb = path.to_path_buf();
                 pb.push(name);
-                match entry.kind {
-                    Kind::EmptyDir => {
+                match entry {
+                    Item::EmptyDir => {
                         fs::create_dir_all(&pb)?;
-                    },
-                    Kind::EmptyFile => {
+                    }
+                    Item::EmptyFile => {
                         fs::File::create(&pb)?;
-                    },
-                    Kind::Dir => {
-                        self.restore_tree_inner(&entry.hash, &pb, depth + 1)?;
-                    },
-                    Kind::File | Kind::ExeFile => {
-                        if self.store.load(&entry.hash, &mut self.obj)? {
+                    }
+                    Item::Dir(hash) => {
+                        self.restore_tree_inner(&hash, &pb, depth + 1)?;
+                    }
+                    Item::File(hash) | Item::ExeFile(hash) => {
+                        if self.store.load(&hash, &mut self.obj)? {
                             let mut file = fs::File::create(&pb)?;
-                            if entry.kind == Kind::ExeFile {
+                            if let Item::ExeFile(h) = entry {
                                 file.set_permissions(fs::Permissions::from_mode(0o755))?;
                             }
                             restore_file(
-                                &mut self.store, &mut self.obj, &mut file, &entry.hash
+                                &mut self.store, &mut self.obj, &mut file, &hash
                             )?;
                         } else {
-                            panic!("could not find object {}", entry.hash);
+                            panic!("could not find object {}", hash);
                         }
                     }
-                    Kind::SymLink => {
-                        if self.store.load(&entry.hash, &mut self.obj)? {
-                            if let Ok(_) = fs::remove_file(&pb) {
-                                eprintln!("Deleted old {:?}", &pb);  // FIXME: handle this more better
-                            }
-                            let s = String::from_utf8(self.obj.as_data().to_vec()).unwrap();
-                            let target = PathBuf::from(s);
-                            unix::fs::symlink(&target, &pb)?;
-                        } else {
-                            panic!("could not find symlink object: {}", &entry.hash);
-                        }
-                    },
+                    Item::SymLink(target) => {
+                        let target = PathBuf::from(target);
+                        unix::fs::symlink(&target, &pb)?;
+                    }
                 }
             }
         } else {

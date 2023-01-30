@@ -492,16 +492,26 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
 }
 
 
-pub enum Status {
-    Changed,
-    Missing,
+pub struct Status {
+    pub removed: Vec<String>,
+    pub changed: Vec<String>,
+    pub unknown: Vec<String>,
+}
+
+impl Status {
+    pub fn new() -> Self {
+        Self {
+            removed: Vec::new(),
+            changed: Vec::new(),
+            unknown: Vec::new(),
+        }
+    }
 }
 
 
-pub fn compare_tree<const N:usize>(a: ItemMap<N>, b: ItemMap<N>)
-        -> Vec<(String, Status)>
+pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
 {
-    let mut ret: Vec<(String, Status)> = Vec::new();
+    let mut status = Status::new();
     let mut keys = Vec::from_iter(a.keys());
     keys.sort();
     let keys = keys;
@@ -510,14 +520,19 @@ pub fn compare_tree<const N:usize>(a: ItemMap<N>, b: ItemMap<N>)
         let old = a.get(p).unwrap();
         if let Some(new) = b.get(p) {
             if new != old {
-                ret.push((p.to_string(), Status::Changed));
+                status.changed.push(p.to_string());
             }
         }
         else {
-            ret.push((p.to_string(), Status::Missing));
+            status.removed.push(p.to_string());
         }
     }
-    ret
+    for key in b.keys() {
+        if ! a.contains_key(key) {
+            status.unknown.push(key.clone());
+        }
+    }
+    status
 }
 
 /*
@@ -565,6 +580,42 @@ impl WorkingTree {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_compare() {
+        let mut a: ItemMap<30> = ItemMap::new();
+        let mut b: ItemMap<30> = ItemMap::new();
+        let status = compare_trees::<30>(&a, &b);
+        assert_eq!(status.removed.len(), 0);
+        assert_eq!(status.changed.len(), 0);
+        assert_eq!(status.unknown.len(), 0);
+
+        a.insert("same".to_string(), Item::EmptyFile);
+        b.insert("same".to_string(), Item::EmptyFile);
+        let status = compare_trees::<30>(&a, &b);
+        assert_eq!(status.removed.len(), 0);
+        assert_eq!(status.changed.len(), 0);
+        assert_eq!(status.unknown.len(), 0);
+
+        a.insert("foo".to_string(), Item::EmptyFile);
+        let status = compare_trees::<30>(&a, &b);
+        assert_eq!(status.removed, vec!["foo".to_string()]);
+        assert_eq!(status.changed.len(), 0);
+        assert_eq!(status.unknown.len(), 0);
+
+        a.insert("bar".to_string(), Item::EmptyFile);
+        b.insert("bar".to_string(), Item::EmptyDir);
+        let status = compare_trees::<30>(&a, &b);
+        assert_eq!(status.removed, vec!["foo".to_string()]);
+        assert_eq!(status.changed, vec!["bar".to_string()]);
+        assert_eq!(status.unknown.len(), 0);
+
+        b.insert("baz".to_string(), Item::EmptyDir);
+        let status = compare_trees::<30>(&a, &b);
+        assert_eq!(status.removed, vec!["foo".to_string()]);
+        assert_eq!(status.changed, vec!["bar".to_string()]);
+        assert_eq!(status.unknown, vec!["baz".to_string()]);
+    }
 
     #[test]
     fn test_tree() {

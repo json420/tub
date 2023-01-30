@@ -270,12 +270,6 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree()? {
-        /*
-        let flat = scanner.flatten_tree(&root)?;
-        for (k, v) in flat.iter() {
-            println!("{:?} {:?}", k, v);
-        }
-        */
         let msg = if let Some(msg) = msg {msg} else {String::from("")};
         let commit = DefaultCommit::new(root, msg);
         obj.clear();

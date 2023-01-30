@@ -11,6 +11,7 @@ use std::os::unix;
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
 use crate::inception::{import_file, restore_file, hash_file};
+use crate::base::DOTDIR;
 
 
 const MAX_DEPTH: usize = 32;
@@ -342,7 +343,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
             if ft.is_symlink() {
                 let target = fs::read_link(&path)?.to_str().unwrap().to_string();
-                println!("S {:?} {}", path, target);
+                //println!("S {:?} {}", path, target);
                 tree.add_symlink(name, target);
             }
             else if ft.is_file() {
@@ -359,26 +360,30 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                         }
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
-                        println!("X {} {:?}", hash, path);
+                        //println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash);
                     }
                     else {
-                        println!("F {} {:?}", hash, path);
+                        //println!("F {} {:?}", hash, path);
                         tree.add_file(name, hash);
                     }
                 }
                 else {
-                    println!("EF {:?}", path);
+                    //println!("EF {:?}", path);
                     tree.add_empty_file(name);
                 }
             }
             else if ft.is_dir() {
+                if name == DOTDIR || name == ".git" {
+                    eprintln!("Skipping {}", name);
+                    continue;
+                }
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
-                    println!("D {} {:?}", hash, path);
+                    //println!("D {} {:?}", hash, path);
                     tree.add_dir(name, hash);
                 }
                 else {
-                    println!("ED {:?}", path);
+                    //println!("ED {:?}", path);
                     tree.add_empty_dir(name);
                 }
             }

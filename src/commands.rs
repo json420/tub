@@ -270,12 +270,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree()? {
-        let msg = if let Some(msg) = msg {
-            msg
-        }
-        else {
-            String::from("")
-        };
+        let msg = if let Some(msg) = msg {msg} else {String::from("")};
         let commit = DefaultCommit::new(root, msg);
         obj.clear();
         commit.serialize(obj.as_mut_vec());
@@ -311,7 +306,6 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     let store = tub.into_store();
     let mut scanner = DefaultScanner::new(store, &dst);
     scanner.restore_tree(&hash)?;
-    eprintln!("🛁 yo from revert");
     Ok(())
 }
 

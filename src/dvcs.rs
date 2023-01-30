@@ -471,7 +471,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                 dir.push(&key);
                 match val {
                     Item::Dir(hash) => {
-                        self.flatten_tree_inner(flat, &hash, &dir, depth + 1);
+                        self.flatten_tree_inner(flat, &hash, &dir, depth + 1)?;
                     }
                     _ => {}
                 }

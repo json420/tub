@@ -323,6 +323,11 @@ impl Chain {
         }
     }
 
+    pub fn load_last_block(&mut self) -> io::Result<bool> {
+        self.seek_to_beyond();
+        self.load_previous()
+    }
+
     pub fn sign_next(&mut self, payload: &DefaultName) -> io::Result<()> {
         self.block.set_payload(payload);
         self.block.set_previous(&self.previous);

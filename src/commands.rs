@@ -270,10 +270,12 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree()? {
+        /*
         let flat = scanner.flatten_tree(&root)?;
         for (k, v) in flat.iter() {
             println!("{:?} {:?}", k, v);
         }
+        */
         let msg = if let Some(msg) = msg {msg} else {String::from("")};
         let commit = DefaultCommit::new(root, msg);
         obj.clear();
@@ -293,12 +295,27 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut chain = tub.open_branch()?;
+    if chain.load_last_block()? {
+        let mut store = tub.into_store();
+        let mut obj = store.new_object();
+        if store.load(&chain.block.payload(), &mut obj)? {
+            let commit = DefaultCommit::deserialize(obj.as_data());
+            eprintln!(" block: {}", chain.block.hash());
+            eprintln!("commit: {}", chain.block.payload());
+            eprintln!("  tree: {}", commit.tree);
+        }
+    }
+    else {
+        eprintln!("🛁 Status: it's complicated! 🤣");
+    }
+    /*
     let mut scanner = DefaultScanner::new(tub.into_store(), &source);
     eprintln!("🛁 Scanning tree state, wont take long...");
     if let Some(root) = scanner.scan_tree()? {
         println!("{}", root);
     }
-    eprintln!("🛁 Status: it's complicated! 🤣");
+    */
     Ok(())
 }
 

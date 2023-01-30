@@ -404,7 +404,6 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
 
             if self.mode == ScanMode::Scan {
                 let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
-                println!("{}", relpath);
                 self.flatmap.insert(relpath, item);
             }
         }
@@ -507,6 +506,10 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         let mut flat: ItemMap<N> = HashMap::new();
         self.flatten_tree_inner(&mut flat, root, &parent, 0)?;
         Ok(flat)
+    }
+
+    pub fn compare_with_flatmap(&self, other: &ItemMap<N>) -> Status {
+        compare_trees(other, &self.flatmap)
     }
 }
 

@@ -298,11 +298,31 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             let commit = DefaultCommit::deserialize(obj.as_data());
             eprintln!(" block: {}", chain.block.hash());
             eprintln!("commit: {}", chain.block.payload());
-            eprintln!("  tree: {}", commit.tree);
+            eprintln!("   old: {}", commit.tree);
 
             let mut scanner = DefaultScanner::new(store, &source);
             let a = scanner.flatten_tree(&commit.tree)?;
-            let state = scanner.scan_tree()?.unwrap();
+            let root = scanner.scan_tree()?.unwrap();
+            eprintln!("   new: {}", root);
+            let status = scanner.compare_with_flatmap(&a);
+            if status.removed.len() > 0 {
+                println!("Removed:");
+                for relname in status.removed.iter() {
+                    println!("  {}", relname);
+                }
+            }
+            if status.changed.len() > 0 {
+                println!("Changed:");
+                for relname in status.changed.iter() {
+                    println!("  {}", relname);
+                }
+            }
+            if status.unknown.len() > 0 {
+                println!("Unknown:");
+                for relname in status.unknown.iter() {
+                    println!("  {}", relname);
+                }
+            }
         }
     }
     else {

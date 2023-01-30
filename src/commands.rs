@@ -304,6 +304,13 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             eprintln!(" block: {}", chain.block.hash());
             eprintln!("commit: {}", chain.block.payload());
             eprintln!("  tree: {}", commit.tree);
+            let mut scanner = DefaultScanner::new(store, &source);
+            let mut flat = scanner.flatten_tree(&commit.tree)?;
+            flat.sort_by(|a, b| a.0.cmp(&b.0));
+            for (key, val) in flat.iter() {
+                //println!("{:?} {:?}", key, val);
+                println!("{:?}", key);
+            }
         }
     }
     else {

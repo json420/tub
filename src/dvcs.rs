@@ -130,102 +130,6 @@ impl<const N: usize> Commit<N> {
 }
 
 
-#[derive(Debug, PartialEq)]
-pub struct TreeEntry<const N: usize> {
-    pub kind: Kind,
-    pub hash: Name<N>,
-}
-
-impl<const N: usize> TreeEntry<N> {
-    pub fn new(kind: Kind, hash: Name<N>) -> Self {
-        Self {kind: kind, hash: hash}
-    }
-}
-
-
-/// Stores entries in a directory
-#[derive(Debug, PartialEq)]
-pub struct Tree<const N: usize> {
-    map: HashMap<String, TreeEntry<N>>,
-}
-
-impl<const N: usize> Tree<N> {
-    pub fn new() -> Self {
-        Self {map: HashMap::new()}
-    }
-
-    pub fn len(&self) -> usize {
-        self.map.len()
-    }
-
-    pub fn as_map(&self) -> &HashMap<String, TreeEntry<N>> {
-        &self.map
-    }
-
-    pub fn deserialize(buf: &[u8]) -> Self {
-        let mut map: HashMap<String, TreeEntry<N>> = HashMap::new();
-        let mut offset = 0;
-        while offset < buf.len() {
-            let kind: Kind = buf[offset].into();
-            let size = buf[offset + 1] as usize;
-            assert!(size > 0);
-            offset += 2;
-
-            let name = String::from_utf8(buf[offset..offset+size].to_vec()).unwrap();
-            offset += size;
-
-            let h = Name::from(&buf[offset..offset + N]);
-            offset += h.len();
-
-            map.insert(name, TreeEntry::new(kind, h));
-        }
-        assert_eq!(offset, buf.len());
-        Self {map: map}
-    }
-
-    pub fn serialize(&self, buf: &mut Vec<u8>) {
-        let mut items = Vec::from_iter(self.map.iter());
-        items.sort_by(|a, b| b.0.cmp(a.0));
-        for (name, entry) in items.iter() {
-            let path = name.as_bytes();
-            let size = path.len() as u8;
-            assert!(size > 0);
-            buf.push(entry.kind as u8);
-            buf.push(size);
-            buf.extend_from_slice(path);
-            buf.extend_from_slice(entry.hash.as_buf());
-        }
-    }
-
-    fn add(&mut self, name: String, kind: Kind, hash: Name<N>) {
-        self.map.insert(name, TreeEntry::new(kind, hash));
-    }
-
-    pub fn add_empty_dir(&mut self, name: String) {
-        self.add(name, Kind::EmptyDir, Name::<N>::new());
-    }
-
-    pub fn add_empty_file(&mut self, name: String) {
-        self.add(name, Kind::EmptyFile, Name::<N>::new());
-    }
-
-    pub fn add_dir(&mut self, name: String, hash: Name<N>) {
-        self.add(name, Kind::Dir, hash);
-    }
-
-    pub fn add_file(&mut self, name: String, hash: Name<N>) {
-        self.add(name, Kind::File, hash);
-    }
-
-    pub fn add_exefile(&mut self, name: String, hash: Name<N>) {
-        self.add(name, Kind::ExeFile, hash);
-    }
-
-    pub fn add_symlink(&mut self, name: String, hash: Name<N>) {
-        self.add(name, Kind::SymLink, hash);
-    }
-}
-
 
 #[derive(Debug, PartialEq)]
 pub enum ScanMode {
@@ -264,7 +168,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
-        let mut tree = Tree2::new();
+        let mut tree = Tree::new();
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
@@ -337,7 +241,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree = Tree2::deserialize(&self.obj.as_data());
+            let tree = Tree::deserialize(&self.obj.as_data());
             fs::create_dir_all(&path)?;
             for (name, entry) in tree.as_map() {
                 let mut pb = path.to_path_buf();
@@ -355,7 +259,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     Item::File(hash) | Item::ExeFile(hash) => {
                         if self.store.load(&hash, &mut self.obj)? {
                             let mut file = fs::File::create(&pb)?;
-                            if let Item::ExeFile(h) = entry {
+                            if let Item::ExeFile(_) = entry {
                                 file.set_permissions(fs::Permissions::from_mode(0o755))?;
                             }
                             restore_file(
@@ -403,16 +307,16 @@ fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
         Item::EmptyFile => {
             Kind::EmptyFile
         }
-        Item::Dir(hash) => {
+        Item::Dir(_hash) => {
             Kind::Dir
         }
-        Item::File(hash) => {
+        Item::File(_hash) => {
             Kind::File
         }
-        Item::ExeFile(hash) => {
+        Item::ExeFile(_hash) => {
             Kind::ExeFile
         }
-        Item::SymLink(target) => {
+        Item::SymLink(_target) => {
             Kind::SymLink
         }
     }
@@ -423,11 +327,11 @@ pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
 
 /// Stores entries in a directory
 #[derive(Debug, PartialEq)]
-pub struct Tree2<const N: usize> {
+pub struct Tree<const N: usize> {
     map: ItemMap<N>,
 }
 
-impl<const N: usize> Tree2<N> {
+impl<const N: usize> Tree<N> {
     pub fn new() -> Self {
         Self {map: HashMap::new()}
     }
@@ -625,7 +529,7 @@ mod tests {
     #[test]
     fn test_tree() {
         let mut hash = Name::<15>::new();
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, vec![]);
@@ -633,61 +537,61 @@ mod tests {
         // Test each add method, tree with a sigle item
 
         // EmptyDir
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         tree.add_empty_dir("a".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [0, 1, 97]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
 
         // EmptyFile
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         tree.add_empty_file("bb".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [1, 2, 98, 98]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
 
         // Dir
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         hash.as_mut_buf().fill(7);
         tree.add_dir("c".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [2, 1, 99, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
 
         // File
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         hash.as_mut_buf().fill(5);
         tree.add_file("d".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [3, 1, 100, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
 
         // ExeFile
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         hash.as_mut_buf().fill(3);
         tree.add_exefile("e".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [4, 1, 101, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
 
         // SymLink
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
         tree.add_symlink("f".to_string(), "g".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [5, 1, 102, 1, 0, 103]);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
     }
 
     #[test]
     fn test_tree_roundtrip() {
         let mut hash = Name::<15>::new();
-        let mut tree: Tree2<15> = Tree2::new();
+        let mut tree: Tree<15> = Tree::new();
 
         tree.add_empty_dir("F".to_string());
 
@@ -707,7 +611,7 @@ mod tests {
 
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
-        assert_eq!(Tree2::deserialize(&buf), tree);
+        assert_eq!(Tree::deserialize(&buf), tree);
         assert_eq!(buf, [
             // "A" SymLink
             5, 1, 65, 7, 0, 102, 111, 111, 47, 98, 97, 114,

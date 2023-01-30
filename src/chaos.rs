@@ -505,7 +505,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 mod tests {
     use super::*;
     use crate::helpers::{TestTempDir, flip_bit_in};
-    use crate::util::getrandom;
     use std::collections::HashSet;
 
     #[test]

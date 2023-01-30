@@ -297,7 +297,7 @@ impl<const N: usize> Commit<N> {
 }
 
 
-pub type FlatTree<const N: usize> = Vec<(String, Item<N>)>;
+pub type FlatTree<const N: usize> = Vec<(PathBuf, Item<N>)>;
 
 #[derive(Debug, PartialEq)]
 pub enum ScanMode {
@@ -458,7 +458,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         self.restore_tree_inner(root, &dir, 0)
     }
 
-    fn flatten_tree_inner(&mut self, flat: &mut FlatTree<N>, root: &Name<N>, depth: usize)
+    fn flatten_tree_inner(&mut self, flat: &mut FlatTree<N>, root: &Name<N>, parent: &Path, depth: usize)
             -> io::Result<()>
     {
         if depth >= MAX_DEPTH {
@@ -467,9 +467,15 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         if self.store.load(root, &mut self.obj)? {
             let tree: Tree<N> = Tree::deserialize(&self.obj.as_data());
             for (key, val) in tree.as_map().iter() {
-                let k: String = key.to_owned();
-                let v: Item<N> = val.to_owned();
-                flat.push((k, v));
+                let mut dir = parent.to_path_buf();
+                dir.push(&key);
+                match val {
+                    Item::Dir(hash) => {
+                        self.flatten_tree_inner(flat, &hash, &dir, depth + 1);
+                    }
+                    _ => {}
+                }
+                flat.push((dir, val.to_owned()));
             }
         } else {
             panic!("Could not find tree object {}", root);
@@ -478,8 +484,9 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
     }
 
     pub fn flatten_tree(&mut self, root: &Name<N>) -> io::Result<FlatTree<N>> {
+        let parent = PathBuf::from("");
         let mut flat: FlatTree<N> = Vec::new();
-        self.flatten_tree_inner(&mut flat, root, 0)?;
+        self.flatten_tree_inner(&mut flat, root, &parent, 0)?;
         Ok(flat)
     }
 }

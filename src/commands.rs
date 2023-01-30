@@ -301,7 +301,8 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             eprintln!("  tree: {}", commit.tree);
 
             let mut scanner = DefaultScanner::new(store, &source);
-            let mut flat = scanner.flatten_tree(&commit.tree)?;
+            let a = scanner.flatten_tree(&commit.tree)?;
+            let state = scanner.scan_tree()?.unwrap();
         }
     }
     else {

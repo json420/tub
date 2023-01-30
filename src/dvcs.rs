@@ -125,7 +125,7 @@ impl<const N: usize> Tree<N> {
                 }
                 Kind::Dir | Kind::File | Kind::ExeFile => {
                     let hash = Name::from(&buf[offset..offset + N]);
-                    offset += hash.len();
+                    offset += N;
                     match kind {
                         Kind::Dir => {
                             Item::Dir(hash)
@@ -183,28 +183,35 @@ impl<const N: usize> Tree<N> {
         }
     }
 
-    pub fn add_empty_dir(&mut self, name: String) {
-        self.map.insert(name, Item::EmptyDir);
+    #[inline]
+    fn add(&mut self, name: String, item: Item<N>) -> Item<N> {
+        let copy = item.clone();
+        self.map.insert(name, item);
+        copy
     }
 
-    pub fn add_empty_file(&mut self, name: String) {
-        self.map.insert(name, Item::EmptyFile);
+    pub fn add_empty_dir(&mut self, name: String) -> Item<N> {
+        self.add(name, Item::EmptyDir)
     }
 
-    pub fn add_dir(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::Dir(hash));
+    pub fn add_empty_file(&mut self, name: String) -> Item<N> {
+        self.add(name, Item::EmptyFile)
     }
 
-    pub fn add_file(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::File(hash));
+    pub fn add_dir(&mut self, name: String, hash: Name<N>) -> Item<N> {
+        self.add(name, Item::Dir(hash))
     }
 
-    pub fn add_exefile(&mut self, name: String, hash: Name<N>) {
-        self.map.insert(name, Item::ExeFile(hash));
+    pub fn add_file(&mut self, name: String, hash: Name<N>) -> Item<N> {
+        self.add(name, Item::File(hash))
     }
 
-    pub fn add_symlink(&mut self, name: String, target: String) {
-        self.map.insert(name, Item::SymLink(target));
+    pub fn add_exefile(&mut self, name: String, hash: Name<N>) -> Item<N> {
+        self.add(name, Item::ExeFile(hash))
+    }
+
+    pub fn add_symlink(&mut self, name: String, target: String) -> Item<N> {
+        self.add(name, Item::SymLink(target))
     }
 }
 
@@ -307,6 +314,7 @@ pub struct Scanner<H: Hasher, const N: usize> {
     mode: ScanMode,
     obj: Object<H, N>,
     store: Store<H, N>,
+    flatmap: ItemMap<N>,
     dir: PathBuf,
 }
 
@@ -316,6 +324,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
             store: store,
+            flatmap: ItemMap::new(),
             dir: dir.to_path_buf(),
         }
     }
@@ -339,10 +348,12 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             let ft = entry.file_type()?;
             let path = entry.path();
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
-            if ft.is_symlink() {
+            //
+            //
+            let item = if ft.is_symlink() {
                 let target = fs::read_link(&path)?.to_str().unwrap().to_string();
                 //println!("S {:?} {}", path, target);
-                tree.add_symlink(name, target);
+                tree.add_symlink(name, target)
             }
             else if ft.is_file() {
                 let meta = fs::metadata(&path)?;
@@ -359,31 +370,42 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
                         //println!("X {} {:?}", hash, path);
-                        tree.add_exefile(name, hash);
+                        tree.add_exefile(name, hash)
                     }
                     else {
                         //println!("F {} {:?}", hash, path);
-                        tree.add_file(name, hash);
+                        tree.add_file(name, hash)
                     }
                 }
                 else {
                     //println!("EF {:?}", path);
-                    tree.add_empty_file(name);
+                    tree.add_empty_file(name)
                 }
             }
             else if ft.is_dir() {
+                /*
                 if name == DOTDIR || name == ".git" {
                     eprintln!("Skipping {}", name);
                     continue;
                 }
+                */
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
                     //println!("D {} {:?}", hash, path);
-                    tree.add_dir(name, hash);
+                    tree.add_dir(name, hash)
                 }
                 else {
                     //println!("ED {:?}", path);
-                    tree.add_empty_dir(name);
+                    tree.add_empty_dir(name)
                 }
+            }
+            else {
+                panic!("nope");
+            };
+
+            if self.mode == ScanMode::Scan {
+                let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
+                println!("{}", relpath);
+                self.flatmap.insert(relpath, item);
             }
         }
         if tree.len() > 0 {
@@ -623,7 +645,7 @@ mod tests {
     #[test]
     fn test_tree() {
         let mut hash = Name::<15>::new();
-        let mut tree: Tree<15> = Tree::new();
+        let tree: Tree<15> = Tree::new();
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, vec![]);

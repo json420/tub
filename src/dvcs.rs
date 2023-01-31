@@ -604,46 +604,6 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
     status
 }
 
-/*
-
-#[derive(Debug)]
-pub struct WorkingTree {
-    store: Store,
-}
-
-impl WorkingTree {
-    pub fn new(store: Store) -> Self {
-        Self {store: store}
-    }
-
-    fn tl_path(&self) -> PathBuf {
-        let mut pb = self.store.path();
-        pb.push("tracking_list");
-        pb
-    }
-
-    pub fn load_tracking_list(&self) -> io::Result<TrackingList> {
-        let pb = self.tl_path();
-        if let Ok(mut file) = fs::File::open(&pb) {
-            let mut buf = Vec::new();
-            file.read_to_end(&mut buf)?;
-            Ok(TrackingList::deserialize(&buf))
-        }
-        else {
-            Ok(TrackingList::new())
-        }
-    }
-
-    pub fn save_tracking_list(&self, tl: TrackingList) -> io::Result<()> {
-        let pb = self.tl_path();
-        let mut file = fs::File::create(&pb)?;
-        let mut buf = Vec::new();
-        tl.serialize(&mut buf);
-        file.write_all(&buf)?;
-        Ok(())
-    }
-}
-*/
 
 
 #[cfg(test)]
@@ -793,18 +753,6 @@ mod tests {
         ]);
     }
 
-/*
-    #[test]
-    fn test_working_tree() {
-        let (_tmp, store) = Store::new_tmp();
-        let wt = WorkingTree::new(store);
-        let tl = wt.load_tracking_list().unwrap();
-        assert_eq!(tl.len(), 0);
-        wt.save_tracking_list(tl).unwrap();
-        let tl = wt.load_tracking_list().unwrap();
-        assert_eq!(tl.len(), 0);
-    }
-*/
     #[test]
     fn test_kind() {
         for k in 0..4 {

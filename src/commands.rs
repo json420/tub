@@ -39,7 +39,7 @@ enum Commands {
     #[command(about = "🔴 Add paths to tracking list")]
     Add {
         #[arg(help="Path to add")]
-        path: String,
+        paths: Vec<String>,
 
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -49,7 +49,10 @@ enum Commands {
     #[command(about = "🟡 Rename a tracked path")]
     Mov {
         #[arg(help="Path to rename")]
-        path: String,
+        src: String,
+
+        #[arg(help="New name")]
+        dst: String,
 
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -59,7 +62,7 @@ enum Commands {
     #[command(about = "🟢 Remove paths from tracking list")]
     Rem {
         #[arg(help="Path to remove")]
-        path: String,
+        paths: Vec<String>,
 
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -157,13 +160,13 @@ pub fn run() -> io::Result<()> {
         Commands::Merge {} => {
             not_yet()
         }
-        Commands::Add {tub, path} => {
+        Commands::Add {tub, paths} => {
             not_yet()
         }
-        Commands::Mov {tub, path} => {
+        Commands::Mov {tub, src, dst} => {
             not_yet()
         }
-        Commands::Rem {tub, path} => {
+        Commands::Rem {tub, paths} => {
             not_yet()
         }
         Commands::Ignore {tub, paths, remove} => {
@@ -352,6 +355,8 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
+
+// FIXME: Use this - https://docs.rs/glob/latest/glob/struct.Pattern.html
 fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;

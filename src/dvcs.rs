@@ -343,16 +343,21 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         self.mode = ScanMode::Import;
     }
 
-    pub fn load_ignore(&mut self) {
+    pub fn load_ignore(&mut self) -> io::Result<bool> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
+        self.ignore.clear();
         if let Ok(file) = fs::File::open(&filename) {
             let mut file = io::BufReader::new(file);
             for relpath in file.lines() {
-                let relpath = relpath.unwrap();
+                let relpath = relpath?;
                 println!("ignore: {}", relpath);
                 self.ignore.insert(relpath);
             }
+            Ok(true)
+        }
+        else {
+            Ok(false)
         }
     }
 

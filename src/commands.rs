@@ -267,7 +267,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     let store = tub.into_store();
     let mut obj = store.new_object();
     let mut scanner = DefaultScanner::new(store, &source);
-    scanner.load_ignore();
+    scanner.load_ignore()?;
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree()? {

@@ -267,6 +267,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     let store = tub.into_store();
     let mut obj = store.new_object();
     let mut scanner = DefaultScanner::new(store, &source);
+    scanner.load_ignore();
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
     if let Some(root) = scanner.scan_tree()? {
@@ -301,10 +302,12 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             eprintln!("   old: {}", commit.tree);
 
             let mut scanner = DefaultScanner::new(store, &source);
+            scanner.load_ignore();
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
             eprintln!("   new: {}", root);
-            let status = scanner.compare_with_flatmap(&a);
+            let mut status = scanner.compare_with_flatmap(&a);
+            status.sort();
             if status.removed.len() > 0 {
                 println!("Removed:");
                 for relname in status.removed.iter() {

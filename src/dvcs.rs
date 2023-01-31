@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io;
+use std::io::{BufRead, BufReader};
 use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
@@ -11,7 +12,7 @@ use std::os::unix;
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
 use crate::inception::{import_file, restore_file, hash_file};
-use crate::base::DOTDIR;
+use crate::base::{DOTDIR, DOTIGNORE};
 
 
 const MAX_DEPTH: usize = 32;
@@ -323,8 +324,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
     pub fn new(store: Store<H, N>, dir: &Path) -> Self {
         let mut ignore = HashSet::new();
         ignore.insert(".git".to_string());
-        ignore.insert(".tub".to_string());
-        ignore.insert("target".to_string());
+        ignore.insert(DOTDIR.to_string());
         Self {
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
@@ -341,6 +341,19 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
 
     pub fn enable_import(&mut self) {
         self.mode = ScanMode::Import;
+    }
+
+    pub fn load_ignore(&mut self) {
+        let mut filename = self.dir.clone();
+        filename.push(DOTIGNORE);
+        if let Ok(file) = fs::File::open(&filename) {
+            let mut file = io::BufReader::new(file);
+            for relpath in file.lines() {
+                let relpath = relpath.unwrap();
+                println!("ignore: {}", relpath);
+                self.ignore.insert(relpath);
+            }
+        }
     }
 
     fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>

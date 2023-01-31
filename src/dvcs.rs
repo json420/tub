@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write, BufWriter};
 use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
@@ -359,6 +359,21 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         else {
             Ok(false)
         }
+    }
+
+    pub fn save_ignore(&mut self) -> io::Result<()> {
+        let mut filename = self.dir.clone();
+        filename.push(DOTIGNORE);
+        let file = fs::File::create(&filename)?;
+        let mut file = BufWriter::new(file);
+        let mut ignored = Vec::from_iter(self.ignore.iter());
+        ignored.sort();
+        for relpath in ignored.iter() {
+            file.write_all(relpath.as_bytes());
+            file.write_all(b"\n");
+        }
+        file.flush();
+        Ok(())
     }
 
     fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>

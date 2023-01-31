@@ -86,11 +86,11 @@ fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
 
 /// Stores entries in a directory
 #[derive(Debug, PartialEq)]
-pub struct Tree<const N: usize> {
+pub struct Dir<const N: usize> {
     map: ItemMap<N>,
 }
 
-impl<const N: usize> Tree<N> {
+impl<const N: usize> Dir<N> {
     pub fn new() -> Self {
         Self {map: HashMap::new()}
     }
@@ -381,7 +381,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
-        let mut tree = Tree::new();
+        let mut tree = Dir::new();
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
@@ -472,7 +472,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree = Tree::deserialize(&self.obj.as_data());
+            let tree = Dir::deserialize(&self.obj.as_data());
             fs::create_dir_all(&path)?;
             for (name, entry) in tree.as_map() {
                 let mut pb = path.to_path_buf();
@@ -524,7 +524,7 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree: Tree<N> = Tree::deserialize(&self.obj.as_data());
+            let tree: Dir<N> = Dir::deserialize(&self.obj.as_data());
             for (key, val) in tree.as_map().iter() {
                 let mut dir = parent.to_path_buf();
                 dir.push(&key);
@@ -649,7 +649,7 @@ mod tests {
     #[test]
     fn test_tree() {
         let mut hash = Name::<15>::new();
-        let tree: Tree<15> = Tree::new();
+        let tree: Dir<15> = Dir::new();
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, vec![]);
@@ -657,61 +657,61 @@ mod tests {
         // Test each add method, tree with a sigle item
 
         // EmptyDir
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         tree.add_empty_dir("a".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [0, 1, 97]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
 
         // EmptyFile
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         tree.add_empty_file("bb".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [1, 2, 98, 98]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
 
         // Dir
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         hash.as_mut_buf().fill(7);
         tree.add_dir("c".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [2, 1, 99, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
 
         // File
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         hash.as_mut_buf().fill(5);
         tree.add_file("d".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [3, 1, 100, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
 
         // ExeFile
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         hash.as_mut_buf().fill(3);
         tree.add_exefile("e".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [4, 1, 101, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
 
         // SymLink
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
         tree.add_symlink("f".to_string(), "g".to_string());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(buf, [5, 1, 102, 1, 0, 103]);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
     }
 
     #[test]
     fn test_tree_roundtrip() {
         let mut hash = Name::<15>::new();
-        let mut tree: Tree<15> = Tree::new();
+        let mut tree: Dir<15> = Dir::new();
 
         tree.add_empty_dir("F".to_string());
 
@@ -731,7 +731,7 @@ mod tests {
 
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
-        assert_eq!(Tree::deserialize(&buf), tree);
+        assert_eq!(Dir::deserialize(&buf), tree);
         assert_eq!(buf, [
             // "A" SymLink
             5, 1, 65, 7, 0, 102, 111, 111, 47, 98, 97, 114,

@@ -322,15 +322,12 @@ pub struct Tree<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> Tree<H, N> {
     pub fn new(store: Store<H, N>, dir: &Path) -> Self {
-        let mut ignore = HashSet::new();
-        ignore.insert(".git".to_string());
-        ignore.insert(DOTDIR.to_string());
         Self {
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
             store: store,
             flatmap: ItemMap::new(),
-            ignore: ignore,
+            ignore: HashSet::new(),
             dir: dir.to_path_buf(),
         }
     }
@@ -347,6 +344,8 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
         self.ignore.clear();
+        self.ignore.insert(".git".to_string());
+        self.ignore.insert(DOTDIR.to_string());
         if let Ok(file) = fs::File::open(&filename) {
             let file = BufReader::new(file);
             for relpath in file.lines() {

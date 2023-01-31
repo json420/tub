@@ -137,7 +137,7 @@ impl<const N: usize> Dir<N> {
                         Kind::ExeFile => {
                             Item::ExeFile(hash)
                         }
-                        _ => {panic!("nope")}
+                        _ => { panic!("nope") }
                     }
                 }
                 Kind::SymLink => {
@@ -351,7 +351,6 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
             let file = BufReader::new(file);
             for relpath in file.lines() {
                 let relpath = relpath?;
-                println!("ignore: {}", relpath);
                 self.ignore.insert(relpath);
             }
             Ok(true)

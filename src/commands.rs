@@ -67,7 +67,14 @@ enum Commands {
     },
 
     #[command(about = "🚫 Add paths to ignore list")]
-    Ignore {},
+    Ignore {
+        #[arg(help="Tree directory (defaults to current CWD)")]
+        source: Option<PathBuf>,
+
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
 
     #[command(about = "🔎 Examine changes in working tree")]
     Dif {},
@@ -156,8 +163,8 @@ pub fn run() -> io::Result<()> {
         Commands::Rem {tub, path} => {
             not_yet()
         }
-        Commands::Ignore {} => {
-            not_yet()
+        Commands::Ignore {source, tub} => {
+            cmd_ignore(source, tub)
         }
         Commands::Dif {} => {
             not_yet()
@@ -339,6 +346,21 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
         println!("{}", root);
     }
     */
+    Ok(())
+}
+
+fn cmd_ignore(source: OptPath, tub: OptPath) -> io::Result<()>
+{
+    let source = dir_or_cwd(source)?;
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let store = tub.into_store();
+    let mut obj = store.new_object();
+    let mut tree = DefaultTree::new(store, &source);
+    println!("🚫 Ignored paths:");
+    tree.load_ignore()?;
+    for relpath in tree.sorted_ignore_vec() {
+        println!("{}", relpath);
+    }
     Ok(())
 }
 

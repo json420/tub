@@ -4,6 +4,7 @@ pub const INFO_LEN: usize = 4;
 pub const OBJECT_MAX_SIZE: usize = 16777216;
 
 pub const DOTDIR: &str = ".tub";
+pub const DOTIGNORE: &str = ".tubignore";
 pub const PACKFILE: &str = "append.tub";
 pub const INDEX_FILE: &str = "append.idx";
 pub const OBJECTDIR: &str = "objects";

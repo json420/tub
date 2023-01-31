@@ -315,16 +315,22 @@ pub struct Scanner<H: Hasher, const N: usize> {
     obj: Object<H, N>,
     store: Store<H, N>,
     flatmap: ItemMap<N>,
+    ignore: HashSet<String>,
     dir: PathBuf,
 }
 
 impl<H: Hasher, const N: usize> Scanner<H, N> {
     pub fn new(store: Store<H, N>, dir: &Path) -> Self {
+        let mut ignore = HashSet::new();
+        ignore.insert(".git".to_string());
+        ignore.insert(".tub".to_string());
+        ignore.insert("target".to_string());
         Self {
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
             store: store,
             flatmap: ItemMap::new(),
+            ignore: ignore,
             dir: dir.to_path_buf(),
         }
     }
@@ -347,9 +353,12 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
+            let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
+            if self.ignore.contains(&relpath) {
+                eprintln!("Ignoring: {}", relpath);
+                continue;
+            }
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
-            //
-            //
             let item = if ft.is_symlink() {
                 let target = fs::read_link(&path)?.to_str().unwrap().to_string();
                 //println!("S {:?} {}", path, target);
@@ -403,7 +412,6 @@ impl<H: Hasher, const N: usize> Scanner<H, N> {
             };
 
             if self.mode == ScanMode::Scan {
-                let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
                 self.flatmap.insert(relpath, item);
             }
         }

@@ -327,6 +327,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     }
     else {
         eprintln!("🛁 Status: it's complicated! 🤣");
+        eprintln!("🛁 Status: empty project, get to work, yo!");
     }
     /*
     let mut scanner = DefaultScanner::new(tub.into_store(), &source);

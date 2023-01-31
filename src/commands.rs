@@ -302,7 +302,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             eprintln!("   old: {}", commit.tree);
 
             let mut scanner = DefaultTree::new(store, &source);
-            scanner.load_ignore();
+            scanner.load_ignore()?;
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
             eprintln!("   new: {}", root);

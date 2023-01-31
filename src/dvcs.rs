@@ -348,7 +348,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         filename.push(DOTIGNORE);
         self.ignore.clear();
         if let Ok(file) = fs::File::open(&filename) {
-            let mut file = io::BufReader::new(file);
+            let file = BufReader::new(file);
             for relpath in file.lines() {
                 let relpath = relpath?;
                 println!("ignore: {}", relpath);
@@ -361,18 +361,22 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         }
     }
 
+    pub fn sorted_ignore_vec(&self) -> Vec<&String> {
+        let mut vec = Vec::from_iter(self.ignore.iter().to_owned());
+        vec.sort();
+        vec
+    }
+
     pub fn save_ignore(&mut self) -> io::Result<()> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
         let file = fs::File::create(&filename)?;
         let mut file = BufWriter::new(file);
-        let mut ignored = Vec::from_iter(self.ignore.iter());
-        ignored.sort();
-        for relpath in ignored.iter() {
-            file.write_all(relpath.as_bytes());
-            file.write_all(b"\n");
+        for relpath in self.sorted_ignore_vec() {
+            file.write_all(relpath.as_bytes())?;
+            file.write_all(b"\n")?;
         }
-        file.flush();
+        file.flush()?;
         Ok(())
     }
 

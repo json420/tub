@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 use sodiumoxide;
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::{DefaultScanner, DefaultCommit};
+use crate::dvcs::{DefaultTree, DefaultCommit};
 use crate::inception::hash_file;
 
 type OptPath = Option<PathBuf>;
@@ -266,7 +266,7 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
     }
     let store = tub.into_store();
     let mut obj = store.new_object();
-    let mut scanner = DefaultScanner::new(store, &source);
+    let mut scanner = DefaultTree::new(store, &source);
     scanner.load_ignore()?;
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
@@ -301,7 +301,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
             eprintln!("commit: {}", chain.block.payload());
             eprintln!("   old: {}", commit.tree);
 
-            let mut scanner = DefaultScanner::new(store, &source);
+            let mut scanner = DefaultTree::new(store, &source);
             scanner.load_ignore();
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
@@ -333,7 +333,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
         eprintln!("🛁 Status: empty project, get to work, yo!");
     }
     /*
-    let mut scanner = DefaultScanner::new(tub.into_store(), &source);
+    let mut scanner = DefaultTree::new(tub.into_store(), &source);
     eprintln!("🛁 Scanning tree state, wont take long...");
     if let Some(root) = scanner.scan_tree()? {
         println!("{}", root);
@@ -348,7 +348,7 @@ fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
     let dst = dir_or_cwd(dst)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let store = tub.into_store();
-    let mut scanner = DefaultScanner::new(store, &dst);
+    let mut scanner = DefaultTree::new(store, &dst);
     scanner.restore_tree(&hash)?;
     Ok(())
 }

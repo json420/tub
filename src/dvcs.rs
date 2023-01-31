@@ -16,7 +16,7 @@ use crate::base::{DOTDIR, DOTIGNORE};
 
 
 const MAX_DEPTH: usize = 32;
-pub type DefaultScanner = Scanner<Blake3, 30>;
+pub type DefaultTree = Tree<Blake3, 30>;
 pub type DefaultCommit = Commit<30>;
 
 
@@ -311,7 +311,7 @@ pub enum ScanMode {
 }
 
 
-pub struct Scanner<H: Hasher, const N: usize> {
+pub struct Tree<H: Hasher, const N: usize> {
     mode: ScanMode,
     obj: Object<H, N>,
     store: Store<H, N>,
@@ -320,7 +320,7 @@ pub struct Scanner<H: Hasher, const N: usize> {
     dir: PathBuf,
 }
 
-impl<H: Hasher, const N: usize> Scanner<H, N> {
+impl<H: Hasher, const N: usize> Tree<H, N> {
     pub fn new(store: Store<H, N>, dir: &Path) -> Self {
         let mut ignore = HashSet::new();
         ignore.insert(".git".to_string());

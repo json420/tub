@@ -71,6 +71,9 @@ enum Commands {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
+
+        #[arg(help="path names to ignore (or unignore)")]
+        paths: Vec<String>,
     },
 
     #[command(about = "🔎 Examine changes in working tree")]
@@ -160,8 +163,8 @@ pub fn run() -> io::Result<()> {
         Commands::Rem {tub, path} => {
             not_yet()
         }
-        Commands::Ignore {tub} => {
-            cmd_ignore(tub)
+        Commands::Ignore {tub, paths} => {
+            cmd_ignore(tub, paths)
         }
         Commands::Dif {} => {
             not_yet()
@@ -346,7 +349,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn cmd_ignore(tub: OptPath) -> io::Result<()>
+fn cmd_ignore(tub: OptPath, paths: Vec<String>) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.dotdir().to_owned();
@@ -354,9 +357,13 @@ fn cmd_ignore(tub: OptPath) -> io::Result<()>
     let store = tub.into_store();
     let mut obj = store.new_object();
     let mut tree = DefaultTree::new(store, &source);
-    eprintln!("🚫 Ignored paths:");
+
     tree.load_ignore()?;
-    tree.save_ignore()?;
+    for relpath in paths.iter() {
+        tree.ignore(relpath.to_owned());
+    }
+
+    eprintln!("🚫 Ignored paths:");
     for relpath in tree.sorted_ignore_vec() {
         println!("{}", relpath);
     }

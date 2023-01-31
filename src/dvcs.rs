@@ -332,6 +332,14 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         }
     }
 
+    pub fn ignore(&mut self, relpath: String) -> bool {
+        self.ignore.insert(relpath)
+    }
+
+    pub fn unignore(&mut self, relpath: &String) -> bool {
+        self.ignore.remove(relpath)
+    }
+
     pub fn into_store(self) -> Store<H, N> {
         self.store
     }

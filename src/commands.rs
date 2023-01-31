@@ -362,6 +362,9 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>) -> io::Result<()>
     for relpath in paths.iter() {
         tree.ignore(relpath.to_owned());
     }
+    if paths.len() > 0 {
+        tree.save_ignore()?;
+    }
 
     eprintln!("🚫 Ignored paths:");
     for relpath in tree.sorted_ignore_vec() {

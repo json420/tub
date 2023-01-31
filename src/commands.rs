@@ -74,6 +74,9 @@ enum Commands {
 
         #[arg(help="path names to ignore (or unignore)")]
         paths: Vec<String>,
+
+        #[arg(short, long, help="Remove paths from ignore list")]
+        remove: bool,
     },
 
     #[command(about = "🔎 Examine changes in working tree")]
@@ -163,8 +166,8 @@ pub fn run() -> io::Result<()> {
         Commands::Rem {tub, path} => {
             not_yet()
         }
-        Commands::Ignore {tub, paths} => {
-            cmd_ignore(tub, paths)
+        Commands::Ignore {tub, paths, remove} => {
+            cmd_ignore(tub, paths, remove)
         }
         Commands::Dif {} => {
             not_yet()
@@ -349,7 +352,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn cmd_ignore(tub: OptPath, paths: Vec<String>) -> io::Result<()>
+fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.dotdir().to_owned();
@@ -360,7 +363,12 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>) -> io::Result<()>
 
     tree.load_ignore()?;
     for relpath in paths.iter() {
-        tree.ignore(relpath.to_owned());
+        if remove {
+            tree.unignore(relpath);
+        }
+        else {
+            tree.ignore(relpath.to_owned());
+        }
     }
     if paths.len() > 0 {
         tree.save_ignore()?;

@@ -2,11 +2,12 @@
 
 use std::path::{Path, PathBuf};
 use std::io::Result as IoResult;
-use crate::base::*;
 use std::fs::{File, create_dir};
+use crate::base::*;
 use crate::protocol::{Hasher, DefaultHasher};
 use crate::chaos::{Object, Store, Name};
 use crate::blockchain::Chain;
+use crate::dvcs::TrackingList;
 
 pub type DefaultTub = Tub<DefaultHasher, 30>;
 
@@ -52,6 +53,7 @@ pub struct HashingFileReaderIter {
 /// Put all your 🏴‍☠️ treasure in here, matey! 💰💵🦓
 pub struct Tub<H: Hasher, const N: usize> {
     dotdir: PathBuf,
+    treedir: PathBuf,
     pub store: Store<H, N>,
 }
 
@@ -60,10 +62,8 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         &self.dotdir
     }
 
-    pub fn treedir(&self) -> PathBuf {
-        let mut pb = self.dotdir.clone();
-        pb.pop();
-        pb
+    pub fn treedir(&self) -> &Path {
+        &self.treedir
     }
 
     pub fn create(parent: &Path) -> IoResult<Self> {
@@ -72,7 +72,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push(PACKFILE);
         let file = create_for_append(&filename)?;
         let store = Store::<H, N>::new(file);
-        Ok( Self {dotdir: dotdir, store: store} )
+        Ok( Self {dotdir: dotdir, treedir: parent.to_owned(), store: store} )
     }
 
     pub fn open(dotdir: PathBuf) -> IoResult<Self> {
@@ -80,7 +80,9 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push(PACKFILE);
         let file = open_for_append(&filename)?;
         let store = Store::<H, N>::new(file);
-        Ok( Self {dotdir: dotdir, store: store} )
+        let mut treedir = dotdir.clone();
+        treedir.pop();
+        Ok( Self {dotdir: dotdir, treedir: treedir, store: store} )
     }
 
     pub fn idx_file(&self) -> IoResult<File> {
@@ -142,6 +144,8 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
             Ok(false)
         }
     }
+
+   // pub fn load_tracking_list(&
 }
 
 

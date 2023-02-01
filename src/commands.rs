@@ -276,7 +276,7 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
 fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut source = tub.treedir();
+    let mut source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
@@ -310,7 +310,7 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
     */
 
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let source = tub.treedir();
+    let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
     if chain.load_last_block()? {
         let mut obj = tub.store.new_object();
@@ -367,7 +367,7 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
 fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut source = tub.treedir();
+    let mut source = tub.treedir().to_owned();
     let mut obj = tub.store.new_object();
     let mut tree = DefaultTree::new(&mut tub.store, &source);
 
@@ -397,7 +397,7 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 fn cmd_revert(tub: OptPath, txt: String) -> io::Result<()> {
     let hash = DefaultName::from_str(&txt);
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let dst = tub.treedir();
+    let dst = tub.treedir().to_owned();
     //let store = tub.into_store();
     let mut scanner = DefaultTree::new(&mut tub.store, &dst);
     scanner.restore_tree(&hash)?;

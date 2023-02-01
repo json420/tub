@@ -2,13 +2,13 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{PathBuf, Path};
-use std::fs;
-use std::io;
 use std::io::Result as IoResult;
-use std::io::{BufRead, BufReader, Write, BufWriter};
-use std::convert::Into;
+use std::io::prelude::*;
+use std::io::{BufReader, BufWriter};
+use std::fs::{File, Permissions, read_dir, read_link, metadata, create_dir_all};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix;
+use std::convert::Into;
 
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
@@ -109,9 +109,10 @@ impl<const N: usize> Dir<N> {
         let mut offset = 0;
         while offset < buf.len() {
             let kind: Kind = buf[offset].into();
-            let size = buf[offset + 1] as usize;
+            offset += 1;
+            let size = buf[offset] as usize;
             assert!(size > 0);
-            offset += 2;
+            offset += 1;
 
             let key = String::from_utf8(
                 buf[offset..offset + size].to_vec()
@@ -355,7 +356,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         self.ignore.clear();
         self.ignore.insert(".git".to_string());
         self.ignore.insert(DOTDIR.to_string());
-        if let Ok(file) = fs::File::open(&filename) {
+        if let Ok(file) = File::open(&filename) {
             let file = BufReader::new(file);
             for relpath in file.lines() {
                 let relpath = relpath?;
@@ -377,7 +378,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
     pub fn save_ignore(&mut self) -> IoResult<()> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
-        let file = fs::File::create(&filename)?;
+        let file = File::create(&filename)?;
         let mut file = BufWriter::new(file);
         for relpath in self.sorted_ignore_vec() {
             file.write_all(relpath.as_bytes())?;
@@ -393,7 +394,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         let mut tree = Dir::new();
-        for entry in fs::read_dir(dir)? {
+        for entry in read_dir(dir)? {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
@@ -403,15 +404,15 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
             }
             let name = path.file_name().unwrap().to_str().unwrap().to_string();
             let item = if ft.is_symlink() {
-                let target = fs::read_link(&path)?.to_str().unwrap().to_string();
+                let target = read_link(&path)?.to_str().unwrap().to_string();
                 //println!("S {:?} {}", path, target);
                 tree.add_symlink(name, target)
             }
             else if ft.is_file() {
-                let meta = fs::metadata(&path)?;
+                let meta = metadata(&path)?;
                 let size = meta.len();
                 if size > 0 {
-                    let file = fs::File::open(&path)?;
+                    let file = File::open(&path)?;
                     let hash = match self.mode {
                         ScanMode::Scan => {
                             hash_file(&mut self.obj, file, size)?
@@ -483,25 +484,25 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         }
         if self.store.load(root, &mut self.obj)? {
             let tree = Dir::deserialize(&self.obj.as_data());
-            fs::create_dir_all(&path)?;
+            create_dir_all(&path)?;
             for (name, entry) in tree.as_map() {
                 let mut pb = path.to_path_buf();
                 pb.push(name);
                 match entry {
                     Item::EmptyDir => {
-                        fs::create_dir_all(&pb)?;
+                        create_dir_all(&pb)?;
                     }
                     Item::EmptyFile => {
-                        fs::File::create(&pb)?;
+                        File::create(&pb)?;
                     }
                     Item::Dir(hash) => {
                         self.restore_tree_inner(&hash, &pb, depth + 1)?;
                     }
                     Item::File(hash) | Item::ExeFile(hash) => {
                         if self.store.load(&hash, &mut self.obj)? {
-                            let mut file = fs::File::create(&pb)?;
+                            let mut file = File::create(&pb)?;
                             if let Item::ExeFile(_) = entry {
-                                file.set_permissions(fs::Permissions::from_mode(0o755))?;
+                                file.set_permissions(Permissions::from_mode(0o755))?;
                             }
                             restore_file(
                                 &mut self.store, &mut self.obj, &mut file, &hash

@@ -1,21 +1,22 @@
 //! Higher level repository built on `chaos`.
 
 use std::path::{Path, PathBuf};
-use std::{io, fs};
+use std::io::Result as IoResult;
 use crate::base::*;
+use std::fs::{File, create_dir};
 use crate::protocol::{Hasher, DefaultHasher};
 use crate::chaos::{Object, Store, Name};
 use crate::blockchain::Chain;
 
-
-
 pub type DefaultTub = Tub<DefaultHasher, 30>;
 
-pub fn create_dotdir(path: &Path) -> io::Result<PathBuf>
+pub type TestType<R, E> = Result<R, E>;
+
+pub fn create_dotdir(path: &Path) -> IoResult<PathBuf>
 {
     let mut pb = PathBuf::from(path);
     pb.push(DOTDIR);
-    fs::create_dir(&pb)?;
+    create_dir(&pb)?;
     Ok(pb)
 }
 
@@ -33,18 +34,18 @@ pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
     }
 }
 
-pub fn create_for_append(path: &Path) -> io::Result<fs::File> {
-    fs::File::options().read(true).append(true).create_new(true).open(path)
+pub fn create_for_append(path: &Path) -> IoResult<File> {
+    File::options().read(true).append(true).create_new(true).open(path)
 }
 
-pub fn open_for_append(path: &Path) -> io::Result<fs::File> {
-    fs::File::options().read(true).append(true).open(path)
+pub fn open_for_append(path: &Path) -> IoResult<File> {
+    File::options().read(true).append(true).open(path)
 }
 
 pub struct HashingFileReaderIter {
     size: u64,
     remaining: u64,
-    file: fs::File,
+    file: File,
 }
 
 
@@ -69,7 +70,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         self.store
     }
 
-    pub fn create(parent: &Path) -> io::Result<Self> {
+    pub fn create(parent: &Path) -> IoResult<Self> {
         let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
@@ -78,7 +79,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         Ok( Self {dotdir: dotdir, store: store} )
     }
 
-    pub fn open(dotdir: PathBuf) -> io::Result<Self> {
+    pub fn open(dotdir: PathBuf) -> IoResult<Self> {
         let mut filename = dotdir.clone();
         filename.push(PACKFILE);
         let file = open_for_append(&filename)?;
@@ -86,7 +87,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         Ok( Self {dotdir: dotdir, store: store} )
     }
 
-    pub fn idx_file(&self) -> io::Result<fs::File> {
+    pub fn idx_file(&self) -> IoResult<File> {
         let mut pb = self.dotdir.clone();
         pb.push(INDEX_FILE);
         if let Ok(file) = open_for_append(&pb) {
@@ -104,18 +105,18 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         pb
     }
 
-    pub fn check(&mut self) -> io::Result<()> {
+    pub fn check(&mut self) -> IoResult<()> {
         let mut obj: Object<H, N> = Object::new();
         self.store.reindex(&mut obj)
     }
 
-    pub fn reindex(&mut self) -> io::Result<()> {
+    pub fn reindex(&mut self) -> IoResult<()> {
         let mut obj: Object<H, N> = Object::new();
         self.store.reindex_from(&mut obj, self.idx_file()?)?;
         Ok(())
     }
 
-    pub fn create_branch(&self) -> io::Result<Chain> {
+    pub fn create_branch(&self) -> IoResult<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = create_for_append(&filename)?;
@@ -128,17 +129,17 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         Ok(chain)
     }
 
-    pub fn open_branch(&self) -> io::Result<Chain> {
+    pub fn open_branch(&self) -> IoResult<Chain> {
         let mut filename = self.dotdir.clone();
         filename.push("fixme.branch");
         let file = open_for_append(&filename)?;
         Chain::open(file)
     }
 
-    pub fn load_branch_seckey(&self, chain: &mut Chain) -> io::Result<bool> {
+    pub fn load_branch_seckey(&self, chain: &mut Chain) -> IoResult<bool> {
         let mut filename = self.dotdir.clone();
         filename.push("omg.fixme.soon");
-        if let Ok(file) = fs::File::open(&filename) {
+        if let Ok(file) = File::open(&filename) {
             chain.load_secret_key(file)
         }
         else {

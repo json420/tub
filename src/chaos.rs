@@ -32,15 +32,16 @@
 //! custom... we already have a hash!  Maybe hash the Tub hash with aHash?
 
 
-use crate::base::*;
-use crate::protocol::{Hasher, Blake3};
-use crate::dbase32::{db32enc, db32dec_into};
-use crate::util::getrandom;
 use std::{fs, io, cmp, fmt};
 use std::collections::HashMap;
 use std::os::unix::fs::FileExt;
 use std::io::prelude::*;
 use std::marker::PhantomData;
+use std::io::Result as IoResult;
+use crate::base::*;
+use crate::protocol::{Hasher, Blake3};
+use crate::dbase32::{db32enc, db32dec_into};
+use crate::util::getrandom;
 
 
 pub type DefaultName = Name<30>;
@@ -329,7 +330,7 @@ impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
         }
     }
 
-    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
+    pub fn read_next(&mut self, obj: &mut Object<H, N>) -> IoResult<bool> {
         obj.clear();
         if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
             obj.resize_to_info();
@@ -394,7 +395,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Vec::from_iter(self.map.keys().cloned())
     }
 
-    pub fn reindex(&mut self, obj: &mut Object<H, N>) -> io::Result<()> {
+    pub fn reindex(&mut self, obj: &mut Object<H, N>) -> IoResult<()> {
         self.map.clear();
         self.offset = 0;
         self.file.seek(io::SeekFrom::Start(0))?;
@@ -414,7 +415,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn reindex_from(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> io::Result<()> {
+    pub fn reindex_from(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> IoResult<()> {
         self.map.clear();
         self.offset = 0;
 
@@ -451,7 +452,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         Ok(())
     }
 
-    pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+    pub fn load_unchecked(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> IoResult<bool> {
         if let Some(entry) = self.map.get(hash) {
             obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
@@ -466,7 +467,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> io::Result<bool> {
+    pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> IoResult<bool> {
         if self.load_unchecked(hash, obj)? {
             if ! obj.validate_against(hash) {
                 panic!("{} hash does not match", hash);
@@ -478,7 +479,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn save(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
+    pub fn save(&mut self, obj: &Object<H, N>) -> IoResult<bool> {
         //assert!(obj.is_valid());
         let hash = obj.hash();
         let info = obj.info();
@@ -493,7 +494,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         }
     }
 
-    pub fn delete(&mut self, _hash: Name<N>) -> io::Result<bool> {
+    pub fn delete(&mut self, _hash: Name<N>) -> IoResult<bool> {
         // FIXME: Decide how tombstones should work with new new
         Ok(true)
     }

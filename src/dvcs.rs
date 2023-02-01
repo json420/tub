@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{PathBuf, Path};
 use std::fs;
 use std::io;
+use std::io::Result as IoResult;
 use std::io::{BufRead, BufReader, Write, BufWriter};
 use std::convert::Into;
 use std::os::unix::fs::PermissionsExt;
@@ -348,7 +349,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         self.mode = ScanMode::Import;
     }
 
-    pub fn load_ignore(&mut self) -> io::Result<bool> {
+    pub fn load_ignore(&mut self) -> IoResult<bool> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
         self.ignore.clear();
@@ -373,7 +374,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         vec
     }
 
-    pub fn save_ignore(&mut self) -> io::Result<()> {
+    pub fn save_ignore(&mut self) -> IoResult<()> {
         let mut filename = self.dir.clone();
         filename.push(DOTIGNORE);
         let file = fs::File::create(&filename)?;
@@ -386,7 +387,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         Ok(())
     }
 
-    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> io::Result<Option<Name<N>>>
+    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> IoResult<Option<Name<N>>>
     {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
@@ -471,12 +472,12 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         }
     }
 
-    pub fn scan_tree(&mut self) -> io::Result<Option<Name<N>>> {
+    pub fn scan_tree(&mut self) -> IoResult<Option<Name<N>>> {
         let dir = self.dir.clone();
         self.scan_tree_inner(&dir, 0)
     }
 
-    fn restore_tree_inner(&mut self, root: &Name<N>, path: &Path, depth: usize) -> io::Result<()> {
+    fn restore_tree_inner(&mut self, root: &Name<N>, path: &Path, depth: usize) -> IoResult<()> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
@@ -521,13 +522,13 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         Ok(())
     }
 
-    pub fn restore_tree(&mut self, root: &Name<N>) -> io::Result<()> {
+    pub fn restore_tree(&mut self, root: &Name<N>) -> IoResult<()> {
         let dir = self.dir.clone();
         self.restore_tree_inner(root, &dir, 0)
     }
 
     fn flatten_tree_inner(&mut self, flat: &mut ItemMap<N>, root: &Name<N>, parent: &Path, depth: usize)
-            -> io::Result<()>
+            -> IoResult<()>
     {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
@@ -551,7 +552,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
         Ok(())
     }
 
-    pub fn flatten_tree(&mut self, root: &Name<N>) -> io::Result<ItemMap<N>> {
+    pub fn flatten_tree(&mut self, root: &Name<N>) -> IoResult<ItemMap<N>> {
         let parent = PathBuf::from("");
         let mut flat: ItemMap<N> = HashMap::new();
         self.flatten_tree_inner(&mut flat, root, &parent, 0)?;

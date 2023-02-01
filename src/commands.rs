@@ -87,9 +87,6 @@ enum Commands {
 
     #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
-        #[arg(help="Tree directory (defaults to current CWD)")]
-        source: Option<PathBuf>,
-
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
@@ -97,16 +94,13 @@ enum Commands {
 
     #[command(about = "💖 Take a snapshot 📸 of your work 🤓")]
     Commit {
-        #[arg(help="Tree directory (defaults to current CWD)")]
-        source: Option<PathBuf>,
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory", hide=true)]
+        tub: Option<PathBuf>,
 
         #[arg(short, long, value_name="MESSAGE")]
         #[arg(help="Short description of this commit")]
         msg: Option<String>,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory", hide=true)]
-        tub: Option<PathBuf>,
     },
 
     #[command(about = "🧬 Bring changes from one branch into another 😍")]
@@ -175,11 +169,11 @@ pub fn run() -> io::Result<()> {
         Commands::Dif {} => {
             not_yet()
         }
-        Commands::Status {source, tub} => {
-            cmd_status(source, tub)
+        Commands::Status {tub} => {
+            cmd_status(tub)
         }
-        Commands::Commit {source, msg, tub} => {
-            cmd_commit(source, msg, tub)
+        Commands::Commit {tub, msg} => {
+            cmd_commit(tub, msg)
         }
         Commands::Revert {hash, dst, tub} => {
             cmd_revert(hash, dst, tub)
@@ -282,10 +276,10 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
 }
 
 
-fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<()>
+fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 {
-    let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut source = tub.treedir();
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
@@ -313,10 +307,10 @@ fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<
 }
 
 
-fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
+fn cmd_status(tub: OptPath) -> io::Result<()>
 {
-    let source = dir_or_cwd(source)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let source = tub.treedir();
     let mut chain = tub.open_branch()?;
     if chain.load_last_block()? {
         let mut store = tub.into_store();
@@ -374,8 +368,7 @@ fn cmd_status(source: OptPath, tub: OptPath) -> io::Result<()>
 fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut source = tub.dotdir().to_owned();
-    source.pop();
+    let mut source = tub.treedir();
     let store = tub.into_store();
     let mut obj = store.new_object();
     let mut tree = DefaultTree::new(store, &source);

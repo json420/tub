@@ -59,6 +59,12 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         &self.dotdir
     }
 
+    pub fn treedir(&self) -> PathBuf {
+        let mut pb = self.dotdir.clone();
+        pb.pop();
+        pb
+    }
+
     pub fn into_store(self) -> Store<H, N> {
         self.store
     }

@@ -38,8 +38,8 @@ enum Commands {
 
     #[command(about = "🔴 Add paths to tracking list")]
     Add {
-        #[arg(help="Path to add")]
-        paths: Vec<String>,
+        #[arg(help="Paths to add to tracking list")]
+        paths: Vec<PathBuf>,
 
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -161,7 +161,7 @@ pub fn run() -> io::Result<()> {
             not_yet()
         }
         Commands::Add {tub, paths} => {
-            not_yet()
+            cmd_add(tub, paths)
         }
         Commands::Mov {tub, src, dst} => {
             not_yet()
@@ -268,6 +268,20 @@ fn cmd_init(target: OptPath) -> io::Result<()>
     }
 }
 
+
+fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    for p in paths {
+        if ! p.exists() {
+            eprintln!("🛁❗Path does not exists: {:?}", p);
+            exit(42);
+        }
+        println!("{:?}", p);
+    }
+    Ok(())
+}
+
+
 fn cmd_commit(source: OptPath, msg: Option<String>, tub: OptPath) -> io::Result<()>
 {
     let source = dir_or_cwd(source)?;
@@ -367,11 +381,13 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
     let mut tree = DefaultTree::new(store, &source);
 
     tree.load_ignore()?;
-    for relpath in paths.iter() {
-        if remove {
+    if remove {
+        for relpath in paths.iter() {
             tree.unignore(relpath);
         }
-        else {
+    }
+    else {
+        for relpath in paths.iter() {
             tree.ignore(relpath.to_owned());
         }
     }

@@ -306,12 +306,18 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 
 fn cmd_status(tub: OptPath) -> io::Result<()>
 {
+
+    /*
+    tub.
+    */
+
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir();
     let mut chain = tub.open_branch()?;
     if chain.load_last_block()? {
+        let mut obj = tub.store.new_object();
+
         let mut store = tub.into_store();
-        let mut obj = store.new_object();
 
         if store.load(&chain.block.payload(), &mut obj)? {
             let commit = DefaultCommit::deserialize(obj.as_data());

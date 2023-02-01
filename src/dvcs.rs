@@ -1,14 +1,13 @@
 //! Doodles on version control software built on Bathtub DB
 
 use std::collections::{HashMap, HashSet};
+use std::convert::Into;
 use std::path::{PathBuf, Path};
 use std::io::Result as IoResult;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::fs::{File, Permissions, read_dir, read_link, metadata, create_dir_all};
-use std::os::unix::fs::PermissionsExt;
-use std::os::unix;
-use std::convert::Into;
+use std::os::unix::fs::{PermissionsExt, symlink};
 
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
@@ -46,7 +45,6 @@ impl From<u8> for Kind {
 }
 
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Item<const N: usize> {
     EmptyDir,
@@ -56,6 +54,7 @@ pub enum Item<const N: usize> {
     ExeFile(Name<N>),
     SymLink(String),
 }
+
 
 pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
 
@@ -501,7 +500,7 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
                     }
                     Item::SymLink(target) => {
                         let target = PathBuf::from(target);
-                        unix::fs::symlink(&target, &pb)?;
+                        symlink(&target, &pb)?;
                     }
                 }
             }

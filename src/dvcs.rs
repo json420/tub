@@ -398,7 +398,6 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
             let path = entry.path();
             let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
             if self.ignore.contains(&relpath) {
-                eprintln!("Ignoring: {}", relpath);
                 continue;
             }
             let name = path.file_name().unwrap().to_str().unwrap().to_string();

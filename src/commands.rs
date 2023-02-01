@@ -108,15 +108,12 @@ enum Commands {
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]
     Revert {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+
         #[arg(help="Dbase32-encoded hash")]
         hash: String,
-
-        #[arg(help="Target directory (defaults to current CWD)")]
-        dst: Option<PathBuf>,
-
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
-        tub: Option<PathBuf>,
     },
 
     #[command(about = "📜 View commit history")]
@@ -175,8 +172,8 @@ pub fn run() -> io::Result<()> {
         Commands::Commit {tub, msg} => {
             cmd_commit(tub, msg)
         }
-        Commands::Revert {hash, dst, tub} => {
-            cmd_revert(hash, dst, tub)
+        Commands::Revert {tub, hash} => {
+            cmd_revert(tub, hash)
         }
         Commands::Log {tub} => {
             cmd_log(tub)
@@ -396,10 +393,10 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 }
 
 
-fn cmd_revert(txt: String, dst: OptPath, tub: OptPath) -> io::Result<()> {
+fn cmd_revert(tub: OptPath, txt: String) -> io::Result<()> {
     let hash = DefaultName::from_str(&txt);
-    let dst = dir_or_cwd(dst)?;
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let dst = tub.treedir();
     let store = tub.into_store();
     let mut scanner = DefaultTree::new(store, &dst);
     scanner.restore_tree(&hash)?;

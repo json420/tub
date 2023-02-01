@@ -66,10 +66,6 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         pb
     }
 
-    pub fn into_store(self) -> Store<H, N> {
-        self.store
-    }
-
     pub fn create(parent: &Path) -> IoResult<Self> {
         let dotdir = create_dotdir(parent)?;
         let mut filename = dotdir.clone();

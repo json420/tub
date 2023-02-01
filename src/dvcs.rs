@@ -16,7 +16,7 @@ use crate::base::{DOTDIR, DOTIGNORE};
 
 
 const MAX_DEPTH: usize = 32;
-pub type DefaultTree = Tree<Blake3, 30>;
+pub type DefaultTree<'a> = Tree<'a, Blake3, 30>;
 pub type DefaultCommit = Commit<30>;
 
 
@@ -300,17 +300,17 @@ pub enum ScanMode {
 }
 
 
-pub struct Tree<H: Hasher, const N: usize> {
+pub struct Tree<'a, H: Hasher, const N: usize> {
     mode: ScanMode,
     obj: Object<H, N>,
-    store: Store<H, N>,
+    store: &'a mut Store<H, N>,
     flatmap: ItemMap<N>,
     ignore: HashSet<String>,
     dir: PathBuf,
 }
 
-impl<H: Hasher, const N: usize> Tree<H, N> {
-    pub fn new(store: Store<H, N>, dir: &Path) -> Self {
+impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
+    pub fn new(store: &'a mut Store<H, N>, dir: &Path) -> Self {
         Self {
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
@@ -327,10 +327,6 @@ impl<H: Hasher, const N: usize> Tree<H, N> {
 
     pub fn unignore(&mut self, relpath: &String) -> bool {
         self.ignore.remove(relpath)
-    }
-
-    pub fn into_store(self) -> Store<H, N> {
-        self.store
     }
 
     pub fn enable_import(&mut self) {

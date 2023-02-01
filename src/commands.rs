@@ -275,16 +275,15 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
 
 fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 {
-    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.treedir();
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
         exit(42);
     }
-    let store = tub.into_store();
-    let mut obj = store.new_object();
-    let mut scanner = DefaultTree::new(store, &source);
+    let mut obj = tub.store.new_object();
+    let mut scanner = DefaultTree::new(&mut tub.store, &source);
     scanner.load_ignore()?;
     scanner.enable_import();
     eprintln!("🛁 Writing commit...");
@@ -294,8 +293,7 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
         obj.clear();
         commit.serialize(obj.as_mut_vec());
         obj.finalize_with_kind(69);
-        let mut store = scanner.into_store();
-        store.save(&obj)?;
+        tub.store.save(&obj)?;
         chain.sign_next(&obj.hash())?;
         println!("{}", &obj.hash());
     }
@@ -311,21 +309,19 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
     tub.
     */
 
-    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir();
     let mut chain = tub.open_branch()?;
     if chain.load_last_block()? {
         let mut obj = tub.store.new_object();
 
-        let mut store = tub.into_store();
-
-        if store.load(&chain.block.payload(), &mut obj)? {
+        if tub.store.load(&chain.block.payload(), &mut obj)? {
             let commit = DefaultCommit::deserialize(obj.as_data());
             eprintln!(" block: {}", chain.block.hash());
             eprintln!("commit: {}", chain.block.payload());
             eprintln!("   old: {}", commit.tree);
 
-            let mut scanner = DefaultTree::new(store, &source);
+            let mut scanner = DefaultTree::new(&mut tub.store, &source);
             scanner.load_ignore()?;
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
@@ -370,11 +366,10 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
 // FIXME: Use this - https://docs.rs/glob/latest/glob/struct.Pattern.html
 fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 {
-    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.treedir();
-    let store = tub.into_store();
-    let mut obj = store.new_object();
-    let mut tree = DefaultTree::new(store, &source);
+    let mut obj = tub.store.new_object();
+    let mut tree = DefaultTree::new(&mut tub.store, &source);
 
     tree.load_ignore()?;
     if remove {
@@ -401,25 +396,24 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 
 fn cmd_revert(tub: OptPath, txt: String) -> io::Result<()> {
     let hash = DefaultName::from_str(&txt);
-    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let dst = tub.treedir();
-    let store = tub.into_store();
-    let mut scanner = DefaultTree::new(store, &dst);
+    //let store = tub.into_store();
+    let mut scanner = DefaultTree::new(&mut tub.store, &dst);
     scanner.restore_tree(&hash)?;
     Ok(())
 }
 
 fn cmd_log(tub: OptPath) -> io::Result<()>
 {
-    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     if let Ok(mut chain) = tub.open_branch() {
-        let mut store = tub.into_store();
-        let mut obj = store.new_object();
+        let mut obj = tub.store.new_object();
         chain.seek_to_beyond();
         while chain.load_previous()? {
             println!(" block: {} {}", chain.block.hash(), chain.block.index());
             println!("commit: {}", chain.block.payload());
-            if store.load(&chain.block.payload(), &mut obj)? {
+            if tub.store.load(&chain.block.payload(), &mut obj)? {
                 let commit = DefaultCommit::deserialize(obj.as_data());
                 println!("  tree: {}", commit.tree);
                 println!("📜 {}", commit.msg);

@@ -32,12 +32,15 @@
 //! custom... we already have a hash!  Maybe hash the Tub hash with aHash?
 
 
-use std::{fs, io, cmp, fmt};
+use std::{cmp, fmt};
 use std::collections::HashMap;
+use std::fs::File;
 use std::os::unix::fs::FileExt;
-use std::io::prelude::*;
-use std::marker::PhantomData;
 use std::io::Result as IoResult;
+use std::io::prelude::*;
+use std::io::{SeekFrom, BufReader, BufWriter};
+use std::marker::PhantomData;
+
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::{db32enc, db32dec_into};
@@ -315,13 +318,13 @@ impl Entry {
 
 
 // Read objects from an object stream.
-pub struct ObjectReader<'a, R: io::Read, H: Hasher, const N: usize> {
+pub struct ObjectReader<'a, R: Read, H: Hasher, const N: usize> {
     phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
     inner: &'a mut R,
 }
 
-impl<'a, R: io::Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
+impl<'a, R: Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
     pub fn new(reader: &'a mut R) -> Self {
         Self {
             phantom1: PhantomData,
@@ -363,14 +366,14 @@ just like everything else, yo.
 
 /// Organizes objects in an append-only file.
 pub struct Store<H: Hasher, const N: usize> {
-    file: fs::File,
+    file: File,
     _hasher: H,
     map: HashMap<Name<N>, Entry>,
     offset: u64,
 }
 
 impl<H: Hasher, const N: usize> Store<H, N> {
-    pub fn new(file: fs::File) -> Self {
+    pub fn new(file: File) -> Self {
         Self {
             file: file,
             _hasher: H::new(),
@@ -398,9 +401,9 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> IoResult<()> {
         self.map.clear();
         self.offset = 0;
-        self.file.seek(io::SeekFrom::Start(0))?;
-        let mut br = io::BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N> = ObjectReader::new(&mut br);
+        self.file.seek(SeekFrom::Start(0))?;
+        let mut br = BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<BufReader<File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
                 obj.hash(),
@@ -409,18 +412,18 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += obj.len() as u64;
         }
         // Truncate to end of valid object stream, discarding any partial object
-        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Needed on Windows
+        self.file.seek(SeekFrom::Start(self.offset))?;  // Needed on Windows
         self.file.set_len(self.offset)?;
         obj.clear();
         Ok(())
     }
 
-    pub fn reindex_from(&mut self, obj: &mut Object<H, N>, idx: fs::File) -> IoResult<()> {
+    pub fn reindex_from(&mut self, obj: &mut Object<H, N>, idx: File) -> IoResult<()> {
         self.map.clear();
         self.offset = 0;
 
         // Load entries from the saved index file
-        let mut idx = io::BufReader::new(idx);
+        let mut idx = BufReader::new(idx);
         while let Ok(_) = idx.read_exact(obj.as_mut_header()) {
             self.map.insert(
                 obj.hash(),
@@ -431,10 +434,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         // FIXME: truncate if needed based on OFFSET % HEADER_LEN
 
         // Index plus verify remaining objects, adding to index file
-        let mut idx = io::BufWriter::new(idx.into_inner());
-        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Very important!
-        let mut br = io::BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<io::BufReader<fs::File>, H, N>
+        let mut idx = BufWriter::new(idx.into_inner());
+        self.file.seek(SeekFrom::Start(self.offset))?;  // Very important!
+        let mut br = BufReader::new(self.file.try_clone()?);
+        let mut reader: ObjectReader<BufReader<File>, H, N>
             = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
             self.map.insert(
@@ -445,7 +448,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += (N + 4 + obj.info().size()) as u64;
         }
         // Truncate to end of valid object stream, discarding any partial object
-        self.file.seek(io::SeekFrom::Start(self.offset))?;  // Needed on Windows
+        self.file.seek(SeekFrom::Start(self.offset))?;  // Needed on Windows
         self.file.set_len(self.offset)?;
         idx.flush()?;
         obj.clear();
@@ -457,7 +460,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             obj.reset(entry.info.size(), entry.info.kind());
             self.file.read_exact_at(obj.as_mut_buf(), entry.offset)?;
             /* This is the slow path without pread64():
-            self.file.seek(io::SeekFrom::Start(entry.offset))?;
+            self.file.seek(SeekFrom::Start(entry.offset))?;
             self.file.read_exact(obj.as_mut_buf())?;
             */
             Ok(true)
@@ -639,7 +642,7 @@ mod tests {
     fn test_store() {
         let tmp = TestTempDir::new();
         let path = tmp.build(&["foo"]);
-        let file = fs::File::options().read(true).append(true).create(true).open(&path).unwrap();
+        let file = File::options().read(true).append(true).create(true).open(&path).unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
         let mut obj = store.new_object();
         store.reindex(&mut obj).unwrap();

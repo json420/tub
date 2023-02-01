@@ -63,24 +63,12 @@ pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
 #[inline]
 fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
     match item {
-        Item::EmptyDir => {
-            Kind::EmptyDir
-        }
-        Item::EmptyFile => {
-            Kind::EmptyFile
-        }
-        Item::Dir(_hash) => {
-            Kind::Dir
-        }
-        Item::File(_hash) => {
-            Kind::File
-        }
-        Item::ExeFile(_hash) => {
-            Kind::ExeFile
-        }
-        Item::SymLink(_target) => {
-            Kind::SymLink
-        }
+        Item::EmptyDir   => { Kind::EmptyDir }
+        Item::EmptyFile  => { Kind::EmptyFile }
+        Item::Dir(_)     => { Kind::Dir }
+        Item::File(_)    => { Kind::File }
+        Item::ExeFile(_) => { Kind::ExeFile }
+        Item::SymLink(_) => { Kind::SymLink }
     }
 }
 

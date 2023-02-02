@@ -20,6 +20,9 @@ pub type DefaultTree<'a> = Tree<'a, Blake3, 30>;
 pub type DefaultCommit = Commit<30>;
 
 
+// Use this for diff command: https://docs.rs/imara-diff/latest/imara_diff/
+
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
     EmptyDir,
@@ -833,6 +836,19 @@ mod tests {
             4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
+    }
+
+    #[test]
+    fn test_imara() {
+        use imara_diff::intern::InternedInput;
+        use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
+
+        let a = "foo\nbar\nbaz\n";
+        let b = "foo\nbaz\nbar\n";
+
+        let input = InternedInput::new(a, b);
+        let diff = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
+        assert_eq!(diff, "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n");
     }
 }
 

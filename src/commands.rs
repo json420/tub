@@ -346,8 +346,12 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
             let mut scanner = DefaultTree::new(&mut tub.store, &source);
             scanner.load_ignore()?;
             let a = scanner.diff(&commit.tree)?;
-            for (k, v) in a.iter() {
-                println!("{}", k);
+            let mut items = Vec::from_iter(a.iter());
+            items.sort_by(|a, b| a.0.cmp(b.0));
+            for (k, v) in items.iter() {
+                println!("--- a/{}", k);
+                println!("+++ bS/{}", k);
+                println!("{}", v);
             }
         }
     }

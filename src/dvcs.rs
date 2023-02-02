@@ -547,7 +547,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         compare_trees(other, &self.flatmap)
     }
 
-    fn diff_inner(&mut self, flat: &mut ItemMap<N>, root: &Name<N>, parent: &Path, depth: usize)
+    fn diff_inner(&mut self, flat: &mut HashMap<String, String>, root: &Name<N>, parent: &Path, depth: usize)
             -> IoResult<()>
     {
         if depth >= MAX_DEPTH {
@@ -570,10 +570,17 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             let file = File::open(&pb)?;
                             let newhash = hash_file(&mut self.obj, file, size)?;
                             if &newhash != hash {
-                                println!("{:?}", &pb);
+                                let after = String::from_utf8(
+                                    self.obj.as_data().to_vec()
+                                ).unwrap();
+                                assert!(self.store.load(hash, &mut self.obj)?);
+                                let before = String::from_utf8(
+                                    self.obj.as_data().to_vec()
+                                ).unwrap();
+                                let diff = compute_diff(before.as_ref(), after.as_ref());
                                 flat.insert(
                                     dir.to_str().unwrap().to_owned(),
-                                    val.to_owned()
+                                    diff
                                 );
                             }
                         }
@@ -587,9 +594,9 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         Ok(())
     }
 
-    pub fn diff(&mut self, root: &Name<N>) -> IoResult<ItemMap<N>> {
+    pub fn diff(&mut self, root: &Name<N>) -> IoResult<HashMap<String, String>> {
         let parent = PathBuf::from("");
-        let mut flat: ItemMap<N> = HashMap::new();
+        let mut flat = HashMap::new();
         self.diff_inner(&mut flat, root, &parent, 0)?;
         Ok(flat)
     }

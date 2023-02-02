@@ -348,11 +348,8 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
             let mut status = scanner.compare_with_flatmap(&a);
-            if status.changed.len() > 0 {
-                println!("Changed:");
-                for relname in status.changed.iter() {
-                    println!("  {}", relname);
-                }
+            for (relname, old, new) in status.newch.iter() {
+                println!("{:?} {:?} {}", old, new ,relname);
             }
         }
     }

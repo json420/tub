@@ -543,30 +543,32 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         Ok(flat)
     }
 
-    pub fn compare_with_flatmap(&self, other: &ItemMap<N>) -> Status {
+    pub fn compare_with_flatmap(&self, other: &ItemMap<N>) -> Status<N> {
         compare_trees(other, &self.flatmap)
     }
 }
 
 
-pub struct Status {
+pub struct Status<const N: usize> {
     pub removed: Vec<String>,
     pub changed: Vec<String>,
     pub unknown: Vec<String>,
+    pub newch: Vec<(String, Item<N>, Item<N>)>,
 }
 
-impl Status {
+impl<const N: usize> Status<N> {
     pub fn new() -> Self {
         Self {
             removed: Vec::new(),
             changed: Vec::new(),
             unknown: Vec::new(),
+            newch: Vec::new(),
         }
     }
 }
 
 
-pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
+pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N>
 {
     let mut status = Status::new();
     let mut keys = Vec::from_iter(a.keys());
@@ -578,6 +580,7 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
         if let Some(new) = b.get(p) {
             if new != old {
                 status.changed.push(p.to_string());
+                status.newch.push((p.to_string(), old.to_owned(), new.to_owned()));
             }
         }
         else {
@@ -593,13 +596,13 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
 }
 
 
+
 pub fn compute_diff(before: &str, after: &str) -> String {
     use imara_diff::intern::InternedInput;
     use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
     let input = InternedInput::new(before, after);
     diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input))
 }
-
 
 
 #[cfg(test)]

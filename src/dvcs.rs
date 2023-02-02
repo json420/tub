@@ -602,6 +602,14 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status
 }
 
 
+pub fn compute_diff(before: &str, after: &str) -> String {
+    use imara_diff::intern::InternedInput;
+    use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
+    let input = InternedInput::new(before, after);
+    diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input))
+}
+
+
 
 #[cfg(test)]
 mod tests {
@@ -845,10 +853,13 @@ mod tests {
 
         let a = "foo\nbar\nbaz\n";
         let b = "foo\nbaz\nbar\n";
+        let expected = "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n";
+
+        assert_eq!(compute_diff(a, b), expected);
 
         let input = InternedInput::new(a, b);
-        let diff = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
-        assert_eq!(diff, "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n");
+        let d = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
+        assert_eq!(d, expected);
     }
 }
 

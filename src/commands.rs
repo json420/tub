@@ -6,11 +6,12 @@ use std::io;
 use std::fs;
 use std::process::exit;
 use std::time::Instant;
+
 use clap::{Parser, Subcommand};
 use sodiumoxide;
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::{DefaultTree, DefaultCommit};
+use crate::dvcs::{DefaultTree, DefaultCommit, compute_diff};
 use crate::inception::hash_file;
 
 type OptPath = Option<PathBuf>;
@@ -83,7 +84,11 @@ enum Commands {
     },
 
     #[command(about = "🔎 Examine changes in working tree")]
-    Dif {},
+    Dif {
+        #[arg(short, long, value_name="DIR")]
+        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        tub: Option<PathBuf>,
+    },
 
     #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
@@ -163,8 +168,8 @@ pub fn run() -> io::Result<()> {
         Commands::Ignore {tub, paths, remove} => {
             cmd_ignore(tub, paths, remove)
         }
-        Commands::Dif {} => {
-            not_yet()
+        Commands::Dif {tub} => {
+            cmd_dif(tub)
         }
         Commands::Status {tub} => {
             cmd_status(tub)
@@ -323,6 +328,37 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 }
 
 
+fn cmd_dif(tub: OptPath) -> io::Result<()>
+{
+    let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let source = tub.treedir().to_owned();
+    let mut chain = tub.open_branch()?;
+    if chain.load_last_block()? {
+        let mut obj = tub.store.new_object();
+
+        if tub.store.load(&chain.block.payload(), &mut obj)? {
+            let commit = DefaultCommit::deserialize(obj.as_data());
+            eprintln!(" block: {}", chain.block.hash());
+            eprintln!("commit: {}", chain.block.payload());
+            eprintln!("   old: {}", commit.tree);
+
+            let mut scanner = DefaultTree::new(&mut tub.store, &source);
+            scanner.load_ignore()?;
+            let a = scanner.flatten_tree(&commit.tree)?;
+            let root = scanner.scan_tree()?.unwrap();
+            let mut status = scanner.compare_with_flatmap(&a);
+            if status.changed.len() > 0 {
+                println!("Changed:");
+                for relname in status.changed.iter() {
+                    println!("  {}", relname);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+
 fn cmd_status(tub: OptPath) -> io::Result<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
@@ -370,6 +406,8 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
     }
     Ok(())
 }
+
+
 
 
 // FIXME: Use this - https://docs.rs/glob/latest/glob/struct.Pattern.html

@@ -546,6 +546,53 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
     pub fn compare_with_flatmap(&self, other: &ItemMap<N>) -> Status<N> {
         compare_trees(other, &self.flatmap)
     }
+
+    fn diff_inner(&mut self, flat: &mut ItemMap<N>, root: &Name<N>, parent: &Path, depth: usize)
+            -> IoResult<()>
+    {
+        if depth >= MAX_DEPTH {
+            panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
+        }
+        if self.store.load(root, &mut self.obj)? {
+            let tree: Dir<N> = Dir::deserialize(&self.obj.as_data());
+            for (key, val) in tree.as_map().iter() {
+                let mut dir = parent.to_path_buf();
+                dir.push(&key);
+                match val {
+                    Item::Dir(hash) => {
+                        self.diff_inner(flat, &hash, &dir, depth + 1)?;
+                    }
+                    Item::File(hash) | Item::ExeFile(hash) => {
+                        let mut pb = self.dir.clone();
+                        pb.push(&dir);
+                        if pb.is_file() {
+                            let size = metadata(&pb)?.len();
+                            let file = File::open(&pb)?;
+                            let newhash = hash_file(&mut self.obj, file, size)?;
+                            if &newhash != hash {
+                                println!("{:?}", &pb);
+                                flat.insert(
+                                    dir.to_str().unwrap().to_owned(),
+                                    val.to_owned()
+                                );
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        } else {
+            panic!("Could not find tree object {}", root);
+        }
+        Ok(())
+    }
+
+    pub fn diff(&mut self, root: &Name<N>) -> IoResult<ItemMap<N>> {
+        let parent = PathBuf::from("");
+        let mut flat: ItemMap<N> = HashMap::new();
+        self.diff_inner(&mut flat, root, &parent, 0)?;
+        Ok(flat)
+    }
 }
 
 

@@ -345,11 +345,9 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
 
             let mut scanner = DefaultTree::new(&mut tub.store, &source);
             scanner.load_ignore()?;
-            let a = scanner.flatten_tree(&commit.tree)?;
-            let root = scanner.scan_tree()?.unwrap();
-            let mut status = scanner.compare_with_flatmap(&a);
-            for (relname, old, new) in status.newch.iter() {
-                println!("{:?} {:?} {}", old, new ,relname);
+            let a = scanner.diff(&commit.tree)?;
+            for (k, v) in a.iter() {
+                println!("{}", k);
             }
         }
     }

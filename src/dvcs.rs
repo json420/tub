@@ -20,9 +20,6 @@ pub type DefaultTree<'a> = Tree<'a, Blake3, 30>;
 pub type DefaultCommit = Commit<30>;
 
 
-// Use this for diff command: https://docs.rs/imara-diff/latest/imara_diff/
-
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
     EmptyDir,
@@ -565,12 +562,6 @@ impl Status {
             changed: Vec::new(),
             unknown: Vec::new(),
         }
-    }
-
-    pub fn sort(&mut self) {
-        self.removed.sort();
-        self.changed.sort();
-        self.unknown.sort();
     }
 }
 

@@ -62,7 +62,7 @@ enum Commands {
     #[command(about = "🟢 Remove paths from tracking list")]
     Rem {
         #[arg(help="Path to remove")]
-        paths: Vec<String>,
+        paths: Vec<PathBuf>,
 
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
@@ -158,7 +158,7 @@ pub fn run() -> io::Result<()> {
             not_yet()
         }
         Commands::Rem {tub, paths} => {
-            not_yet()
+            cmd_rem(tub, paths)
         }
         Commands::Ignore {tub, paths, remove} => {
             cmd_ignore(tub, paths, remove)
@@ -270,6 +270,23 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
             exit(42);
         }
         if tl.add(p.to_str().unwrap().to_owned()) {
+            println!("{:?}", p);
+        }
+    }
+    tub.save_tracking_list(&mut obj, &tl)
+}
+
+
+fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut obj = tub.store.new_object();
+    let mut tl = tub.load_tracking_list(&mut obj)?;
+    for p in paths {
+        if ! p.exists() {
+            eprintln!("🛁❗Path does not exists: {:?}", p);
+            exit(42);
+        }
+        if tl.remove(&p.to_str().unwrap().to_owned()) {
             println!("{:?}", p);
         }
     }

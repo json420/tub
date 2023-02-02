@@ -38,7 +38,7 @@ enum Commands {
     #[command(about = "👷 Fork 🥄 history into a new indpendent branch 🪛")]
     Branch {},
 
-    #[command(about = "🔴 Add paths to tracking list")]
+    #[command(about = "🟢 Add paths to tracking list")]
     Add {
         #[arg(help="Paths to add to tracking list")]
         paths: Vec<PathBuf>,
@@ -61,7 +61,7 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🟢 Remove paths from tracking list")]
+    #[command(about = "🔴 Remove paths from tracking list")]
     Rem {
         #[arg(help="Path to remove")]
         paths: Vec<PathBuf>,
@@ -350,7 +350,7 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
             items.sort_by(|a, b| a.0.cmp(b.0));
             for (k, v) in items.iter() {
                 println!("--- a/{}", k);
-                println!("+++ bS/{}", k);
+                println!("+++ b/{}", k);
                 println!("{}", v);
             }
         }

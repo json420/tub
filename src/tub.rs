@@ -12,7 +12,6 @@ use crate::dvcs::TrackingList;
 
 pub type DefaultTub = Tub<DefaultHasher, 30>;
 
-pub type TestType<R, E> = Result<R, E>;
 
 pub fn create_dotdir(path: &Path) -> IoResult<PathBuf>
 {

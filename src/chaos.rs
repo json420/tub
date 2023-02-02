@@ -349,21 +349,6 @@ impl<'a, R: Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
     }
 }
 
-
-/*
-Notes on saving loading index:
-
-No need to write to index every new object write.
-
-On load, use highest offset + object total size to figure out to what part
-the object stream has been index.  We only need to index from that part on,
-which will be fast.
-
-Periodically write new index.  Index should probably be framed in an Object,
-just like everything else, yo.
-*/
-
-
 /// Organizes objects in an append-only file.
 pub struct Store<H: Hasher, const N: usize> {
     file: File,

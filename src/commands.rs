@@ -325,11 +325,6 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 
 fn cmd_status(tub: OptPath) -> io::Result<()>
 {
-
-    /*
-    tub.
-    */
-
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
@@ -373,13 +368,6 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
         eprintln!("🛁 Status: it's complicated! 🤣");
         eprintln!("🛁 Status: empty project, get to work, yo!");
     }
-    /*
-    let mut scanner = DefaultTree::new(tub.into_store(), &source);
-    eprintln!("🛁 Scanning tree state, wont take long...");
-    if let Some(root) = scanner.scan_tree()? {
-        println!("{}", root);
-    }
-    */
     Ok(())
 }
 

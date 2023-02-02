@@ -1,6 +1,7 @@
 //! Higher level repository built on `chaos`.
 
 use std::path::{Path, PathBuf};
+use std::io::prelude::*;
 use std::io::Result as IoResult;
 use std::fs::{File, create_dir};
 use crate::base::*;
@@ -145,7 +146,34 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         }
     }
 
-   // pub fn load_tracking_list(&
+    pub fn load_tracking_list(&self, obj: &mut Object<H, N>) -> IoResult<TrackingList> {
+        let mut filename = self.dotdir.clone();
+        filename.push("staged.tub");
+        obj.clear();
+        if let Ok(mut file) = File::open(&filename) {
+            if let Ok(_) = file.read_exact(obj.as_mut_header()) {
+                obj.resize_to_info();
+                file.read_exact(obj.as_mut_data())?;
+                if ! obj.is_valid() {
+                    panic!("Invalid object: {}", obj.hash());
+                }
+            }
+        }
+        Ok(
+            TrackingList::deserialize(obj.as_data())
+        )
+    }
+
+    pub fn save_tracking_list(&self, obj: &mut Object<H, N>, tl: &TrackingList) -> IoResult<()> {
+        let mut filename = self.dotdir.clone();
+        filename.push("staged.tub");
+        let mut file = File::create(&filename)?;
+        obj.clear();
+        tl.serialize(obj.as_mut_vec());
+        obj.finalize();
+        file.write_all(obj.as_buf())?;
+        file.flush()
+    }
 }
 
 

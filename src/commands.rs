@@ -262,14 +262,18 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 
 fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut obj = tub.store.new_object();
+    let mut tl = tub.load_tracking_list(&mut obj)?;
     for p in paths {
         if ! p.exists() {
             eprintln!("🛁❗Path does not exists: {:?}", p);
             exit(42);
         }
-        println!("{:?}", p);
+        if tl.add(p.to_str().unwrap().to_owned()) {
+            println!("{:?}", p);
+        }
     }
-    Ok(())
+    tub.save_tracking_list(&mut obj, &tl)
 }
 
 

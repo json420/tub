@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::env;
 use std::io;
+use std::io::Result as IoResult;
 use std::fs;
 use std::process::exit;
 use std::time::Instant;
@@ -143,7 +144,7 @@ enum Commands {
 }
 
 
-pub fn run() -> io::Result<()> {
+pub fn run() -> IoResult<()> {
     sodiumoxide::init().unwrap();
     let args = Cli::parse();
     match args.command {
@@ -200,7 +201,7 @@ macro_rules! other_err {
 }
 
 
-fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
+fn dir_or_cwd(target: OptPath) -> IoResult<PathBuf>
 {
     let pb = match target {
         Some(dir) => dir,
@@ -216,7 +217,7 @@ fn dir_or_cwd(target: OptPath) -> io::Result<PathBuf>
 }
 
 
-fn get_tub(target: &Path) -> io::Result<DefaultTub>
+fn get_tub(target: &Path) -> IoResult<DefaultTub>
 {
     if let Some(dotdir) = find_dotdir(&target) {
         let mut tub = DefaultTub::open(dotdir)?;
@@ -229,7 +230,7 @@ fn get_tub(target: &Path) -> io::Result<DefaultTub>
 }
 
 
-fn get_tub_exit(target: &Path) -> io::Result<DefaultTub>
+fn get_tub_exit(target: &Path) -> IoResult<DefaultTub>
 {
     if let Ok(tub) = get_tub(&target) {
         Ok(tub)
@@ -241,14 +242,14 @@ fn get_tub_exit(target: &Path) -> io::Result<DefaultTub>
 }
 
 
-fn not_yet() -> io::Result<()>
+fn not_yet() -> IoResult<()>
 {
     eprintln!("🛁❗ Yo dawg, this command hasn't been implemented yet! 🤪");
     Ok(())
 }
 
 
-fn cmd_init(target: OptPath) -> io::Result<()>
+fn cmd_init(target: OptPath) -> IoResult<()>
 {
     let target = dir_or_cwd(target)?;
     if let Ok(tub) = get_tub(&target) {
@@ -265,7 +266,7 @@ fn cmd_init(target: OptPath) -> io::Result<()>
 }
 
 
-fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
+fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut obj = tub.store.new_object();
     let mut tl = tub.load_tracking_list(&mut obj)?;
@@ -282,7 +283,7 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
 }
 
 
-fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
+fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut obj = tub.store.new_object();
     let mut tl = tub.load_tracking_list(&mut obj)?;
@@ -299,7 +300,7 @@ fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> io::Result<()> {
 }
 
 
-fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
+fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.treedir().to_owned();
@@ -328,7 +329,7 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> io::Result<()>
 }
 
 
-fn cmd_dif(tub: OptPath) -> io::Result<()>
+fn cmd_dif(tub: OptPath) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
@@ -347,6 +348,7 @@ fn cmd_dif(tub: OptPath) -> io::Result<()>
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
             let mut status = scanner.compare_with_flatmap(&a);
+            status.sort();
             if status.changed.len() > 0 {
                 println!("Changed:");
                 for relname in status.changed.iter() {
@@ -359,7 +361,7 @@ fn cmd_dif(tub: OptPath) -> io::Result<()>
 }
 
 
-fn cmd_status(tub: OptPath) -> io::Result<()>
+fn cmd_status(tub: OptPath) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
@@ -411,7 +413,7 @@ fn cmd_status(tub: OptPath) -> io::Result<()>
 
 
 // FIXME: Use this - https://docs.rs/glob/latest/glob/struct.Pattern.html
-fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
+fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut source = tub.treedir().to_owned();
@@ -441,7 +443,7 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> io::Result<()>
 }
 
 
-fn cmd_revert(tub: OptPath, txt: String) -> io::Result<()> {
+fn cmd_revert(tub: OptPath, txt: String) -> IoResult<()> {
     let hash = DefaultName::from_str(&txt);
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let dst = tub.treedir().to_owned();
@@ -451,7 +453,7 @@ fn cmd_revert(tub: OptPath, txt: String) -> io::Result<()> {
     Ok(())
 }
 
-fn cmd_log(tub: OptPath) -> io::Result<()>
+fn cmd_log(tub: OptPath) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     if let Ok(mut chain) = tub.open_branch() {
@@ -474,7 +476,7 @@ fn cmd_log(tub: OptPath) -> io::Result<()>
     Ok(())
 }
 
-fn cmd_check(tub: OptPath) -> io::Result<()>
+fn cmd_check(tub: OptPath) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let start = Instant::now();
@@ -488,7 +490,7 @@ fn cmd_check(tub: OptPath) -> io::Result<()>
 }
 
 
-fn cmd_hash(path: &Path) -> io::Result<()>
+fn cmd_hash(path: &Path) -> IoResult<()>
 {
     let start = Instant::now();
     let pb = path.canonicalize()?;

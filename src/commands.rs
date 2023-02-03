@@ -10,6 +10,8 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use sodiumoxide;
+use ansi_term::Color;
+
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
 use crate::dvcs::{DefaultTree, DefaultCommit, compute_diff};
@@ -351,7 +353,17 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
             for (k, v) in items.iter() {
                 println!("--- a/{}", k);
                 println!("+++ b/{}", k);
-                println!("{}", v);
+                for line in v.lines() {
+                    if line.starts_with("-") {
+                        println!("{}", Color::Red.paint(line));
+                    }
+                    else if line.starts_with("+") {
+                        println!("{}", Color::Green.paint(line));
+                    }
+                    else {
+                        println!("{}", line);
+                    }
+                }
             }
         }
     }

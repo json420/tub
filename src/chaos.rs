@@ -258,6 +258,14 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         Info::from_le_bytes(&self.buf[N..N + INFO_LEN])
     }
 
+    pub fn kind(&self) -> ObjKind {
+        self.buf[N + 3].into()
+    }
+
+    pub fn set_kind(&mut self, kind: ObjKind) {
+        self.buf[N + 3] = kind as u8;
+    }
+
     pub fn raw_kind(&self) -> u8 {
         self.buf[N + 3]
     }

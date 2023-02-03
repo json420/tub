@@ -38,6 +38,34 @@ impl From<u8> for ObjectType {
     }
 }
 
+pub enum ObjKind {
+    Invalid,
+    Data,
+    BigData,
+    Key,
+    Block,
+    Stream,
+    Tree,
+    Commit,
+}
+
+impl From<u8> for ObjKind {
+    fn from(item: u8) -> Self {
+        match item {
+            0 => Self::Invalid,
+            1 => Self::Key,
+            2 => Self::Block,
+            3 => Self::Data,
+            4 => Self::BigData,
+            5 => Self::Stream,
+            6 => Self::Tree,
+            7 => Self::Commit,
+            _ => panic!("Unknown ObjKind: {}", item),
+        }
+    }
+}
+
+
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BlockType {

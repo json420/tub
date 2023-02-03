@@ -40,9 +40,9 @@ enum Commands {
     #[command(about = "👷 Fork 🥄 history into a new indpendent branch 🪛")]
     Branch {},
 
-    #[command(about = "🟢 Add paths to tracking list")]
-    Add {
-        #[arg(help="Paths to add to tracking list")]
+    #[command(about = "🔴 Remove paths from tracking list")]
+    Rem {
+        #[arg(help="Path to remove")]
         paths: Vec<PathBuf>,
 
         #[arg(short, long, value_name="DIR")]
@@ -63,9 +63,9 @@ enum Commands {
         tub: Option<PathBuf>,
     },
 
-    #[command(about = "🔴 Remove paths from tracking list")]
-    Rem {
-        #[arg(help="Path to remove")]
+    #[command(about = "🟢 Add paths to tracking list")]
+    Add {
+        #[arg(help="Paths to add to tracking list")]
         paths: Vec<PathBuf>,
 
         #[arg(short, long, value_name="DIR")]

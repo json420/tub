@@ -55,10 +55,10 @@ impl From<u8> for ObjKind {
     fn from(item: u8) -> Self {
         match item {
             0 => Self::Invalid,
-            1 => Self::Key,
-            2 => Self::Block,
-            3 => Self::Data,
-            4 => Self::BigData,
+            1 => Self::Data,
+            2 => Self::BigData,
+            3 => Self::Key,
+            4 => Self::Block,
             5 => Self::Stream,
             6 => Self::Tree,
             7 => Self::Commit,

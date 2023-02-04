@@ -325,6 +325,13 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 }
 
+impl<H: Hasher, const N: usize> fmt::Display for Object<H, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} {:?}", self.hash(), self.info().size(), self.kind())
+    }
+}
+
+
 
 /// A value in the `Store.map` HashMap index.
 pub struct Entry {
@@ -491,6 +498,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
     pub fn save(&mut self, obj: &Object<H, N>) -> IoResult<bool> {
         //assert!(obj.is_valid());
+        eprintln!("save {}", obj);
         let hash = obj.hash();
         let info = obj.info();
         if let Some(_entry) = self.map.get(&hash) {

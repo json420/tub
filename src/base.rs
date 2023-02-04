@@ -18,27 +18,7 @@ What's even more relaxing than a Couch?  A Bathtub!
 ";
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum ObjectType {
-    Data,
-    Tree,
-    Block,
-    Commit,
-}
-
-impl From<u8> for ObjectType {
-    fn from(item: u8) -> Self {
-        match item {
-            0 => Self::Data,
-            1 => Self::Tree,
-            2 => Self::Block,
-            3 => Self::Commit,
-            _ => panic!("Unknown ObjectType: {}", item),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ObjKind {
     Invalid,
     Data,
@@ -104,34 +84,6 @@ mod tests {
                 assert_eq!(kind as u8, 9);
             }
         }
-    }
-
-    #[test]
-    fn test_objtype() {
-        for k in 0..3 {
-            let ot: ObjectType = k.into();
-            assert_eq!(ot as u8, k);
-        }
-        assert_eq!(ObjectType::Data as u8, 0);
-        assert_eq!(ObjectType::Data, 0.into());
-        assert_eq!(ObjectType::Tree as u8, 1);
-        assert_eq!(ObjectType::Tree, 1.into());
-        assert_eq!(ObjectType::Block as u8, 2);
-        assert_eq!(ObjectType::Block, 2.into());
-        assert_eq!(ObjectType::Commit as u8, 3);
-        assert_eq!(ObjectType::Commit, 3.into());
-    }
-
-    #[test]
-    #[should_panic(expected = "Unknown ObjectType: 4")]
-    fn test_objtype_panic1() {
-        let _kind: ObjectType = 4.into();
-    }
-
-    #[test]
-    #[should_panic(expected = "Unknown ObjectType: 255")]
-    fn test_objtype_panic2() {
-        let _kind: ObjectType = 255.into();
     }
 
     #[test]

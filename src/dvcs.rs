@@ -445,7 +445,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         if tree.len() > 0 {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
-            let hash = self.obj.finalize();
+            let hash = self.obj.finalize_with_kind(6);
             if self.mode == ScanMode::Import {
                 self.store.save(&self.obj)?;
             }

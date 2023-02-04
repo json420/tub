@@ -12,7 +12,7 @@ use std::os::unix::fs::{PermissionsExt, symlink};
 use crate::protocol::{Hasher, Blake3};
 use crate::chaos::{Object, Store, Name};
 use crate::inception::{import_file, restore_file, hash_file};
-use crate::base::{DOTDIR, DOTIGNORE};
+use crate::base::{DOTDIR, DOTIGNORE, ObjKind};
 
 
 const MAX_DEPTH: usize = 32;
@@ -445,7 +445,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         if tree.len() > 0 {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
-            let hash = self.obj.finalize_with_kind(6);
+            let hash = self.obj.finalize_with_kind(ObjKind::Tree as u8);
             if self.mode == ScanMode::Import {
                 self.store.save(&self.obj)?;
             }

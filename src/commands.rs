@@ -16,6 +16,7 @@ use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
 use crate::dvcs::{DefaultTree, DefaultCommit, compute_diff};
 use crate::inception::hash_file;
+use crate::base::ObjKind;
 
 type OptPath = Option<PathBuf>;
 
@@ -321,7 +322,7 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()>
         let commit = DefaultCommit::new(root, msg);
         obj.clear();
         commit.serialize(obj.as_mut_vec());
-        obj.finalize_with_kind(69);
+        obj.finalize_with_kind(ObjKind::Commit as u8);
         tub.store.save(&obj)?;
         chain.sign_next(&obj.hash())?;
         println!("{}", &obj.hash());

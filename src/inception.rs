@@ -413,16 +413,16 @@ pub fn hash_file<H: Hasher, const N: usize> (
         while remaining > 0 {
             let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
             remaining -= s;
-            obj.reset(s as usize, 0);
+            obj.reset(s as usize, ObjKind::Data as u8);
             file.read_exact(obj.as_mut_data())?;
             leaves.append_leaf(obj.finalize(), obj.info().size());
         }
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
-        Ok(obj.finalize_with_kind(1))
+        Ok(obj.finalize_with_kind(ObjKind::BigData as u8))
     }
     else {
-        obj.reset(size as usize, 0);
+        obj.reset(size as usize, ObjKind::Data as u8);
         file.read_exact(obj.as_mut_data())?;
         Ok(obj.finalize())
     }
@@ -444,19 +444,19 @@ pub fn import_file<H: Hasher, const N: usize>(
         while remaining > 0 {
             let s = cmp::min(remaining, OBJECT_MAX_SIZE as u64);
             remaining -= s;
-            obj.reset(s as usize, 0);
+            obj.reset(s as usize, ObjKind::Data as u8);
             file.read_exact(obj.as_mut_data())?;
             leaves.append_leaf(obj.finalize(), obj.info().size());
             store.save(&obj)?;
         }
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
-        let root = obj.finalize_with_kind(1);
+        let root = obj.finalize_with_kind(ObjKind::BigData as u8);
         store.save(&obj)?;
         Ok(root)
     }
     else {
-        obj.reset(size as usize, 0);
+        obj.reset(size as usize, ObjKind::Data as u8);
         file.read_exact(obj.as_mut_data())?;
         let hash = obj.finalize();
         store.save(&obj)?;
@@ -471,12 +471,12 @@ pub fn restore_file<H: Hasher, const N: usize> (
         root: &Name<N>,
     ) -> io::Result<bool> {
     if store.load(root, obj)? {
-        let kind = obj.info().kind();
+        let kind = obj.kind();
         match kind {
-            0 => {
+            ObjKind::Data => {
                 file.write_all(obj.as_data())?;
             }
-            1 => {
+            ObjKind::BigData => {
                 let hashes = LeafHashes::<N>::deserialize(obj.as_data());
                 for hash in hashes.iter() {
                     if store.load(&hash, obj)? {

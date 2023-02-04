@@ -183,6 +183,9 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn reset(&mut self, size: usize, kind: u8) {
+        if kind > 8 {
+            panic!("kind = {} {}", size, kind);
+        }
         self.buf.clear();
         self.buf.resize(N + INFO_LEN + size, 0);
         self.set_info(Info::new(size, kind));
@@ -227,7 +230,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         }
         self.resize_to_info();
         getrandom(self.as_mut_data());
-        self.finalize()
+        self.finalize_with_kind(ObjKind::Data as u8)
     }
 
     pub fn compute(&self) -> Name<N> {
@@ -618,6 +621,7 @@ mod tests {
         for k in 0_u8..=255 {
             obj.set_raw_kind(k);
             assert_eq!(obj.raw_kind(), k);
+            assert_eq!(obj.info().kind(), k);
         }
     }
 

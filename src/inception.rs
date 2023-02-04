@@ -245,7 +245,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
                 self.map.insert(key, val);
                 self.obj.clear();
                 self.map.serialize(self.obj.as_mut_vec());
-                self.obj.finalize_with_kind(5);
+                self.obj.finalize_with_kind(ObjKind::Fanout as u8);
                 self.store.save(&mut self.obj)?;
                 self.table[i] = Some(self.obj.hash());
             }
@@ -257,7 +257,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             self.map.insert(key, val);
             self.obj.clear();
             self.map.serialize(self.obj.as_mut_vec());
-            self.obj.finalize_with_kind(5);
+            self.obj.finalize_with_kind(ObjKind::Fanout as u8);
             self.store.save(&mut self.obj)?;
             self.table[i] = Some(self.obj.hash());
         }
@@ -321,7 +321,7 @@ impl<H: Hasher, const N: usize> Encoder<H, N> {
 
     fn finish(self) -> io::Result<Object<H, N>> {
         let mut obj = self.inner.finish()?.into_inner();
-        obj.finalize_with_kind(5);  // FIXME: How to handle kind?
+        obj.finalize_with_kind(ObjKind::Stream as u8);  // FIXME: How to handle kind?
         Ok(obj)
     }
 }
@@ -472,7 +472,8 @@ pub fn restore_file<H: Hasher, const N: usize> (
     ) -> io::Result<bool> {
     if store.load(root, obj)? {
         let kind = obj.kind();
-        match kind {
+        //assert_eq!(kind as u8, obj.info().kind());
+        match obj.kind() {
             ObjKind::Data => {
                 file.write_all(obj.as_data())?;
             }
@@ -488,7 +489,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
                 }
             }
             _ => {
-                panic!("No good, yo, no good at all! 😵‍💫");
+                panic!("No good, yo, no good at all! 😵‍💫 {:?}", kind);
             }
         }
         Ok(true)

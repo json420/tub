@@ -38,6 +38,7 @@ impl From<u8> for ObjectType {
     }
 }
 
+#[derive(Debug)]
 pub enum ObjKind {
     Invalid,
     Data,
@@ -47,6 +48,7 @@ pub enum ObjKind {
     Stream,
     Tree,
     Commit,
+    Fanout,
 }
 
 impl From<u8> for ObjKind {
@@ -60,6 +62,7 @@ impl From<u8> for ObjKind {
             5 => Self::Stream,
             6 => Self::Tree,
             7 => Self::Commit,
+            8 => Self::Fanout,
             _ => panic!("Unknown ObjKind: {}", item),
         }
     }

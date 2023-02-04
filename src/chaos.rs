@@ -146,6 +146,20 @@ impl Info {
     }
 }
 
+/*
+Three cases:
+
+.clear() resizes data to zero
+write with obj.extend()
+.finalize_with_kind() sets hash + size + kind
+
+.reset() resizes data to size plus sets size + kind
+read into obj.as_mut_data()
+.finalize() sets hash
+
+
+*/
+
 
 /// Buffer containing a single object's header plus data.
 #[derive(Debug)]
@@ -177,6 +191,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     pub fn clear(&mut self) {
         self.buf.clear();
         self.buf.resize(N + INFO_LEN, 0);
+        self.buf.fill(0);
         self.cur = 0;
     }
 
@@ -230,8 +245,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn finalize(&mut self) -> Name<N> {
-        let kind = self.info().kind();
-        self.set_info(Info::new(self.as_data().len(), kind));
+        assert_eq!(self.info().size(), self.as_data().len());
         assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
         let hash = self.compute();
         self.buf[0..N].copy_from_slice(hash.as_buf());
@@ -240,10 +254,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn finalize_with_kind(&mut self, kind: u8) -> Name<N> {
         self.set_info(Info::new(self.as_data().len(), kind));
-        assert_eq!(self.buf.len(), N + INFO_LEN + self.info().size());
-        let hash = self.compute();
-        self.buf[0..N].copy_from_slice(hash.as_buf());
-        hash
+        self.finalize()
     }
 
     pub fn hash(&self) -> Name<N> {

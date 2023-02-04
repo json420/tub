@@ -245,7 +245,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
                 self.map.insert(key, val);
                 self.obj.clear();
                 self.map.serialize(self.obj.as_mut_vec());
-                self.obj.finalize();
+                self.obj.finalize_with_kind(5);
                 self.store.save(&mut self.obj)?;
                 self.table[i] = Some(self.obj.hash());
             }
@@ -257,7 +257,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             self.map.insert(key, val);
             self.obj.clear();
             self.map.serialize(self.obj.as_mut_vec());
-            self.obj.finalize();
+            self.obj.finalize_with_kind(5);
             self.store.save(&mut self.obj)?;
             self.table[i] = Some(self.obj.hash());
         }
@@ -321,7 +321,7 @@ impl<H: Hasher, const N: usize> Encoder<H, N> {
 
     fn finish(self) -> io::Result<Object<H, N>> {
         let mut obj = self.inner.finish()?.into_inner();
-        obj.finalize();  // FIXME: How to handle kind?
+        obj.finalize_with_kind(5);  // FIXME: How to handle kind?
         Ok(obj)
     }
 }

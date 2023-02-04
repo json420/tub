@@ -49,6 +49,7 @@ pub enum ObjKind {
     Tree,
     Commit,
     Fanout,
+    Unknown,
 }
 
 impl From<u8> for ObjKind {
@@ -63,7 +64,7 @@ impl From<u8> for ObjKind {
             6 => Self::Tree,
             7 => Self::Commit,
             8 => Self::Fanout,
-            _ => panic!("Unknown ObjKind: {}", item),
+            _ => Self::Unknown,
         }
     }
 }
@@ -91,6 +92,19 @@ impl From<u8> for BlockType {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_obj_kind() {
+        for k in 0_u8..=255 {
+            let kind: ObjKind = k.into();
+            if k < 9 {
+                assert_eq!(kind as u8, k);
+            }
+            else {
+                assert_eq!(kind as u8, 9);
+            }
+        }
+    }
 
     #[test]
     fn test_objtype() {

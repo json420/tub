@@ -207,7 +207,7 @@ impl<const N: usize> Dir<N> {
 
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Whatever {
+pub enum Tracked {
     Invalid,
     Added,
     Changed,
@@ -216,7 +216,7 @@ pub enum Whatever {
     Unknown,
 }
 
-impl From<u8> for Whatever {
+impl From<u8> for Tracked {
     fn from(item: u8) -> Self {
         match item {
             0 => Self::Invalid,
@@ -233,7 +233,7 @@ impl From<u8> for Whatever {
 /// List of paths to be tracked
 #[derive(Debug, PartialEq)]
 pub struct TrackingList {
-    map: HashMap<String, Whatever>,
+    map: HashMap<String, Tracked>,
 }
 
 impl TrackingList {
@@ -245,7 +245,7 @@ impl TrackingList {
         let mut tl = Self::new();
         let mut offset = 0;
         while offset < buf.len() {
-            let kind: Whatever = buf[offset].into();
+            let kind: Tracked = buf[offset].into();
             offset += 1;
             let size = u16::from_le_bytes(
                 buf[offset..offset + 2].try_into().expect("oops")
@@ -271,7 +271,7 @@ impl TrackingList {
         }
     }
 
-    pub fn as_sorted_vec(&self) -> Vec<(&String, &Whatever)> {
+    pub fn as_sorted_vec(&self) -> Vec<(&String, &Tracked)> {
         let mut list = Vec::from_iter(self.map.iter());
         list.sort_by(|a, b|  a.0.cmp(b.0));
         list
@@ -285,7 +285,7 @@ impl TrackingList {
         self.map.contains_key(key)
     }
 
-    pub fn add(&mut self, path: String, kind: Whatever) -> bool {
+    pub fn add(&mut self, path: String, kind: Tracked) -> bool {
         self.map.insert(path, kind).is_none()
     }
 
@@ -875,11 +875,11 @@ mod tests {
 
         let pb = String::from("test");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Whatever::Added);
+        tl.add(pb.clone(), Tracked::Added);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 1);
         assert_eq!(tl.as_sorted_vec(),
-            vec![(&String::from("test"), &Whatever::Added)]
+            vec![(&String::from("test"), &Tracked::Added)]
         );
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![1, 4, 0, 116, 101, 115, 116]);
@@ -887,12 +887,12 @@ mod tests {
 
         let pb = String::from("foo");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Whatever::Renamed);
+        tl.add(pb.clone(), Tracked::Renamed);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &Whatever::Renamed),
-            (&String::from("test"), &Whatever::Added),
+            (&String::from("foo"), &Tracked::Renamed),
+            (&String::from("test"), &Tracked::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
@@ -904,13 +904,13 @@ mod tests {
 
         let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Whatever::Missing);
+        tl.add(pb.clone(), Tracked::Missing);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &Whatever::Renamed),
-            (&String::from("sparse"), &Whatever::Missing),
-            (&String::from("test"), &Whatever::Added),
+            (&String::from("foo"), &Tracked::Renamed),
+            (&String::from("sparse"), &Tracked::Missing),
+            (&String::from("test"), &Tracked::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);

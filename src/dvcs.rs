@@ -210,8 +210,7 @@ impl<const N: usize> Dir<N> {
 pub enum Tracked {
     Invalid,
     Added,
-    Changed,
-    Missing,
+    Removed,
     Renamed,
     Unknown,
 }
@@ -221,9 +220,8 @@ impl From<u8> for Tracked {
         match item {
             0 => Self::Invalid,
             1 => Self::Added,
-            2 => Self::Changed,
-            3 => Self::Missing,
-            4 => Self::Renamed,
+            2 => Self::Removed,
+            3 => Self::Renamed,
             _ => Self::Unknown,
         }
     }
@@ -897,26 +895,26 @@ mod tests {
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            4, 3, 0, 102, 111, 111,
+            3, 3, 0, 102, 111, 111,
             1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Tracked::Missing);
+        tl.add(pb.clone(), Tracked::Removed);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
             (&String::from("foo"), &Tracked::Renamed),
-            (&String::from("sparse"), &Tracked::Missing),
+            (&String::from("sparse"), &Tracked::Removed),
             (&String::from("test"), &Tracked::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            4, 3, 0, 102, 111, 111,
-            3, 6, 0, 115, 112, 97, 114, 115, 101,
+            3, 3, 0, 102, 111, 111,
+            2, 6, 0, 115, 112, 97, 114, 115, 101,
             1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);

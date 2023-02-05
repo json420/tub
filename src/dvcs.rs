@@ -258,7 +258,7 @@ impl TrackingList {
     }
 
     pub fn deserialize(buf: &[u8]) -> Self {
-        let mut tl = Self::new();
+        let mut map = HashMap::new();
         let mut offset = 0;
         while offset < buf.len() {
             let kind: Tracked = buf[offset].into();
@@ -288,10 +288,10 @@ impl TrackingList {
                 }
                 _ => { panic!("nope") }
             };
-            tl.add(path, item);
+            map.insert(path, item);
         }
         assert_eq!(offset, buf.len());
-        tl
+        Self {map: map}
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
@@ -324,16 +324,17 @@ impl TrackingList {
         self.map.contains_key(key)
     }
 
-    pub fn add(&mut self, path: String, kind: TrackedItem) -> bool {
-        self.map.insert(path, kind).is_none()
+    pub fn add(&mut self, path: String) -> Option<TrackedItem> {
+        self.map.insert(path, TrackedItem::Added)
     }
 
-    pub fn remove(&mut self, path: &String) -> bool {
-        self.map.remove(path).is_none()
+    pub fn remove(&mut self, path: String) -> Option<TrackedItem> {
+        self.map.insert(path, TrackedItem::Removed)
     }
 
-    pub fn rename(&mut self, old: &str, new: &str) {
-        let item = TrackedItem::Renamed(new.to_owned());        
+    pub fn rename(&mut self, old: String, new: String) -> Option<TrackedItem> {
+        let item = TrackedItem::Renamed(new);
+        self.map.insert(old, item)
     }
 }
 
@@ -918,7 +919,7 @@ mod tests {
 
         let pb = String::from("test");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), TrackedItem::Added);
+        tl.add(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 1);
         assert_eq!(tl.as_sorted_vec(),
@@ -930,7 +931,7 @@ mod tests {
 
         let pb = String::from("foo");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), TrackedItem::Renamed("bar".to_owned()));
+        tl.rename(pb.clone(), "bar".to_owned());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
@@ -947,7 +948,7 @@ mod tests {
 
         let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), TrackedItem::Removed);
+        tl.remove(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![

@@ -278,10 +278,7 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
             eprintln!("🛁❗Path does not exists: {:?}", p);
             exit(42);
         }
-        /*
-        if tl.add(p.to_str().unwrap().to_owned()) {
-            println!("{:?}", p);
-        }*/
+        tl.add(p.to_str().unwrap().to_owned());
     }
     tub.save_tracking_list(&mut obj, &tl)
 }
@@ -296,11 +293,8 @@ fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
             eprintln!("🛁❗Path does not exists: {:?}", p);
             exit(42);
         }
-        /*
-        if tl.remove(&p.to_str().unwrap().to_owned()) {
-            println!("{:?}", p);
-        }
-        */
+        tl.remove(p.to_str().unwrap().to_owned());
+    
     }
     tub.save_tracking_list(&mut obj, &tl)
 }

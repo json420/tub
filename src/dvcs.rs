@@ -272,10 +272,23 @@ impl TrackingList {
             ).unwrap();
             offset += size;
 
-            match kind {
+            let item = match kind {
+                Tracked::Added   => { TrackedItem::Added }
+                Tracked::Removed => { TrackedItem::Removed }
+                Tracked::Renamed => {
+                    let size = u16::from_le_bytes(
+                        buf[offset..offset + 2].try_into().expect("oops")
+                    ) as usize;
+                    offset += 2;
+                    let new = String::from_utf8(
+                        buf[offset..offset + size].to_vec()
+                    ).unwrap();
+                    offset += size;
+                    TrackedItem::Renamed(new)
+                }
                 _ => { panic!("nope") }
-            }
-            //tl.add(path, kind);
+            };
+            tl.add(path, item);
         }
         assert_eq!(offset, buf.len());
         tl
@@ -288,6 +301,12 @@ impl TrackingList {
             buf.push(item_to_tracked(item) as u8);
             buf.extend_from_slice(&size.to_le_bytes());
             buf.extend_from_slice(path);
+            if let TrackedItem::Renamed(new) = item {
+                let new = new.as_bytes();
+                let size = new.len() as u16;
+                buf.extend_from_slice(&size.to_le_bytes());
+                buf.extend_from_slice(new);
+            }
         }
     }
 

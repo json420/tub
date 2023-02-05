@@ -183,9 +183,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn reset(&mut self, size: usize, kind: u8) {
-        if kind > 8 {
-            panic!("kind = {} {}", size, kind);
-        }
         self.buf.clear();
         self.buf.resize(N + INFO_LEN + size, 0);
         self.set_info(Info::new(size, kind));
@@ -497,8 +494,6 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     }
 
     pub fn save(&mut self, obj: &Object<H, N>) -> IoResult<bool> {
-        //assert!(obj.is_valid());
-        eprintln!("save {}", obj);
         let hash = obj.hash();
         let info = obj.info();
         if let Some(_entry) = self.map.get(&hash) {

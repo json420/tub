@@ -930,17 +930,17 @@ mod tests {
 
         let pb = String::from("foo");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), TrackedItem::Removed);
+        tl.add(pb.clone(), TrackedItem::Renamed("bar".to_owned()));
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &TrackedItem::Removed),
+            (&String::from("foo"),  &TrackedItem::Renamed("bar".to_owned())),
             (&String::from("test"), &TrackedItem::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            2, 3, 0, 102, 111, 111,
+            3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114,
             1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
@@ -951,14 +951,14 @@ mod tests {
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &TrackedItem::Removed),
+            (&String::from("foo"),    &TrackedItem::Renamed("bar".to_owned())),
             (&String::from("sparse"), &TrackedItem::Removed),
-            (&String::from("test"), &TrackedItem::Added),
+            (&String::from("test"),   &TrackedItem::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            2, 3, 0, 102, 111, 111,
+            3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114,
             2, 6, 0, 115, 112, 97, 114, 115, 101,
             1, 4, 0, 116, 101, 115, 116,
         ]);

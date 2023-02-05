@@ -53,15 +53,15 @@ enum Commands {
 
     #[command(about = "🟡 Rename a tracked path")]
     Mov {
-        #[arg(help="Path to rename")]
-        src: String,
-
-        #[arg(help="New name")]
-        dst: String,
-
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
+
+        #[arg(help="Path to rename")]
+        src: PathBuf,
+
+        #[arg(help="New name")]
+        dst: PathBuf,
     },
 
     #[command(about = "🟢 Add paths to tracking list")]
@@ -164,7 +164,7 @@ pub fn run() -> IoResult<()> {
             cmd_add(tub, paths)
         }
         Commands::Mov {tub, src, dst} => {
-            not_yet()
+            cmd_mov(tub, src, dst)
         }
         Commands::Rem {tub, paths} => {
             cmd_rem(tub, paths)
@@ -282,6 +282,18 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     }
     tub.save_tracking_list(&mut obj, &tl)
 }
+
+
+fn cmd_mov(tub: OptPath, old: PathBuf, new: PathBuf) -> IoResult<()> {
+    let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
+    let mut obj = tub.store.new_object();
+    let mut tl = tub.load_tracking_list(&mut obj)?;
+    let old = old.to_str().unwrap().to_owned();
+    let new = new.to_str().unwrap().to_owned();
+    tl.rename(old, new);
+    tub.save_tracking_list(&mut obj, &tl)
+}
+
 
 
 fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {

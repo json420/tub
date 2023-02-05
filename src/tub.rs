@@ -169,7 +169,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let mut file = File::create(&filename)?;
         obj.clear();
         tl.serialize(obj.as_mut_vec());
-        obj.finalize();
+        obj.finalize_with_kind(0);
         file.write_all(obj.as_buf())?;
         file.flush()
     }

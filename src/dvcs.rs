@@ -864,7 +864,6 @@ mod tests {
         let _kind: Kind = 255.into();
     }
 
-/*
     #[test]
     fn test_tracking_list() {
         let mut tl  = TrackingList::new();
@@ -876,51 +875,53 @@ mod tests {
 
         let pb = String::from("test");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone());
+        tl.add(pb.clone(), Whatever::Added);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 1);
-        assert_eq!(tl.as_sorted_vec(), vec![&String::from("test")]);
+        assert_eq!(tl.as_sorted_vec(),
+            vec![(&String::from("test"), &Whatever::Added)]
+        );
         tl.serialize(&mut buf);
-        assert_eq!(buf, vec![4, 0, 116, 101, 115, 116]);
+        assert_eq!(buf, vec![1, 4, 0, 116, 101, 115, 116]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("foo");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone());
+        tl.add(pb.clone(), Whatever::Renamed);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
-            &String::from("foo"),
-            &String::from("test"),
+            (&String::from("foo"), &Whatever::Renamed),
+            (&String::from("test"), &Whatever::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            3, 0, 102, 111, 111,
-            4, 0, 116, 101, 115, 116,
+            4, 3, 0, 102, 111, 111,
+            1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone());
+        tl.add(pb.clone(), Whatever::Missing);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
-            &String::from("foo"),
-            &String::from("sparse"),
-            &String::from("test"),
+            (&String::from("foo"), &Whatever::Renamed),
+            (&String::from("sparse"), &Whatever::Missing),
+            (&String::from("test"), &Whatever::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            3, 0, 102, 111, 111,
-            6, 0, 115, 112, 97, 114, 115, 101,
-            4, 0, 116, 101, 115, 116,
+            4, 3, 0, 102, 111, 111,
+            3, 6, 0, 115, 112, 97, 114, 115, 101,
+            1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
     }
-*/
+
     #[test]
     fn test_imara() {
         use imara_diff::intern::InternedInput;

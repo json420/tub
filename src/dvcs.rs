@@ -906,7 +906,7 @@ mod tests {
     fn test_kind_panic2() {
         let _kind: Kind = 255.into();
     }
-/*
+
     #[test]
     fn test_tracking_list() {
         let mut tl  = TrackingList::new();
@@ -930,41 +930,41 @@ mod tests {
 
         let pb = String::from("foo");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Tracked::Renamed);
+        tl.add(pb.clone(), TrackedItem::Removed);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &Tracked::Renamed),
-            (&String::from("test"), &Tracked::Added),
+            (&String::from("foo"), &TrackedItem::Removed),
+            (&String::from("test"), &TrackedItem::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            3, 3, 0, 102, 111, 111,
+            2, 3, 0, 102, 111, 111,
             1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("sparse");
         assert!(! tl.contains(&pb));
-        tl.add(pb.clone(), Tracked::Removed);
+        tl.add(pb.clone(), TrackedItem::Removed);
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
         assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"), &Tracked::Renamed),
-            (&String::from("sparse"), &Tracked::Removed),
-            (&String::from("test"), &Tracked::Added),
+            (&String::from("foo"), &TrackedItem::Removed),
+            (&String::from("sparse"), &TrackedItem::Removed),
+            (&String::from("test"), &TrackedItem::Added),
         ]);
         buf.clear();
         tl.serialize(&mut buf);
         assert_eq!(buf, vec![
-            3, 3, 0, 102, 111, 111,
+            2, 3, 0, 102, 111, 111,
             2, 6, 0, 115, 112, 97, 114, 115, 101,
             1, 4, 0, 116, 101, 115, 116,
         ]);
         assert_eq!(TrackingList::deserialize(&buf), tl);
     }
-*/
+
     #[test]
     fn test_imara() {
         use imara_diff::intern::InternedInput;

@@ -42,7 +42,7 @@ enum Commands {
     Branch {},
 
     #[command(about = "🔴 Remove paths from tracking list")]
-    Rem {
+    Rm {
         #[arg(help="Path to remove")]
         paths: Vec<PathBuf>,
 
@@ -52,7 +52,7 @@ enum Commands {
     },
 
     #[command(about = "🟡 Rename a tracked path")]
-    Mov {
+    Mv {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
@@ -88,7 +88,7 @@ enum Commands {
     },
 
     #[command(about = "🔎 Examine changes in working tree")]
-    Dif {
+    Diff {
         #[arg(short, long, value_name="DIR")]
         #[arg(help="Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
@@ -163,16 +163,16 @@ pub fn run() -> IoResult<()> {
         Commands::Add {tub, paths} => {
             cmd_add(tub, paths)
         }
-        Commands::Mov {tub, src, dst} => {
+        Commands::Mv {tub, src, dst} => {
             cmd_mov(tub, src, dst)
         }
-        Commands::Rem {tub, paths} => {
+        Commands::Rm {tub, paths} => {
             cmd_rem(tub, paths)
         }
         Commands::Ignore {tub, paths, remove} => {
             cmd_ignore(tub, paths, remove)
         }
-        Commands::Dif {tub} => {
+        Commands::Diff {tub} => {
             cmd_dif(tub)
         }
         Commands::Status {tub} => {
@@ -291,6 +291,9 @@ fn cmd_mov(tub: OptPath, old: PathBuf, new: PathBuf) -> IoResult<()> {
     let old = old.to_str().unwrap().to_owned();
     let new = new.to_str().unwrap().to_owned();
     tl.rename(old, new);
+    for (key, item) in tl.as_sorted_vec().iter() {
+        println!("{} {:+?}", key, item);
+    }
     tub.save_tracking_list(&mut obj, &tl)
 }
 

@@ -644,18 +644,14 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             let file = File::open(&pb)?;
                             let newhash = hash_file(&mut self.obj, file, size)?;
                             if &newhash != hash {
-                                let after = String::from_utf8(
-                                    self.obj.as_data().to_vec()
-                                ).unwrap();
+                                let after = self.obj.as_data().to_vec();
                                 assert!(self.store.load(hash, &mut self.obj)?);
-                                let before = String::from_utf8(
-                                    self.obj.as_data().to_vec()
-                                ).unwrap();
-                                let diff = compute_diff(before.as_ref(), after.as_ref());
-                                flat.insert(
-                                    dir.to_str().unwrap().to_owned(),
-                                    diff
-                                );
+                                if let Some(diff) = compute_raw_diff(self.obj.as_data(), after.as_ref()) {
+                                    flat.insert(
+                                        dir.to_str().unwrap().to_owned(),
+                                        diff
+                                    );
+                                }
                             }
                         }
                     }

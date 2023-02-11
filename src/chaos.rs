@@ -230,6 +230,14 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         self.finalize_with_kind(ObjKind::Data as u8)
     }
 
+    pub fn fast_randomize(&mut self) -> Name<N> {
+        use blake3;
+        let mut h = blake3::Hasher::new();
+        h.update(self.as_data());
+        h.finalize_xof().fill(self.as_mut_data());
+        self.finalize()
+    }
+
     pub fn compute(&self) -> Name<N> {
         let mut hash: Name<N> = Name::new();
         self.hasher.hash_into(self.as_payload(), hash.as_mut_buf());

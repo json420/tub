@@ -17,9 +17,12 @@ fn main() -> io::Result<()> {
     println!("");
 
     println!("🛁 Saving {} random 16-256 byte sized objects...", COUNT);
+    obj.reset(128, 1);
+
     let start = Instant::now();
     for _ in 0..COUNT {
-        obj.randomize(true);
+        //obj.randomize(true);
+        obj.fast_randomize();
         store.save(&mut obj)?;
     }
     let elapsed = start.elapsed().as_secs_f64();

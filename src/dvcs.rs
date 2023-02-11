@@ -733,6 +733,17 @@ pub fn compute_diff(before: &str, after: &str) -> String {
 }
 
 
+pub fn compute_raw_diff(before: &[u8], after: &[u8]) -> Option<String> {
+    use std::str::from_utf8;
+    if let Ok(a) = from_utf8(before) {
+        if let Ok(b) = from_utf8(after) {
+            return Some(compute_diff(a, b));
+        }
+    }
+    None
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -984,6 +995,22 @@ mod tests {
         let input = InternedInput::new(a, b);
         let d = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
         assert_eq!(d, expected);
+    }
+
+    #[test]
+    fn test_compute_raw_diff() {
+
+        let bad = [255_u8; 10];
+        assert_eq!(compute_raw_diff(&bad, &bad), None);
+
+        let a = b"foo\nbar\nbaz\n";
+        let b = b"foo\nbaz\nbar\n";
+
+        assert_eq!(compute_raw_diff(a, &bad), None);
+        assert_eq!(compute_raw_diff(&bad, b), None);
+
+        let expected = "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n";
+        assert_eq!(compute_raw_diff(a, b), Some(expected.to_owned()));
     }
 }
 

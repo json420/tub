@@ -27,6 +27,7 @@ fn main() -> io::Result<()> {
     println!("🚀 {} Store.save() calls per second", rate as u64);
     println!("");
 
+    // Store.load()
     println!("🛁 Requesting all objects in random order...");
     let keys = store.keys();
     assert_eq!(keys.len(), COUNT);
@@ -39,6 +40,21 @@ fn main() -> io::Result<()> {
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
     println!("🚀 {} Store.load() validated reads per second", rate as u64);
+    println!("");
+
+    // Store.load_unchecked()
+    println!("🛁 Requesting all objects in random order, UNCHECKED...");
+    let keys = store.keys();
+    assert_eq!(keys.len(), COUNT);
+    let start = Instant::now();
+    for _ in 0..LOOPS {
+        for hash in keys.iter() {
+            assert!(store.load_unchecked(&hash, &mut obj)?);
+        }
+    }
+    let elapsed = start.elapsed().as_secs_f64();
+    let rate = (COUNT * LOOPS) as f64 / elapsed;
+    println!("🚀 {} Store.load_unchecked() reads per second", rate as u64);
     println!("");
 
     println!("🛁 Reindexing objects...");

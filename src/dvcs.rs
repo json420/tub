@@ -646,7 +646,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             if &newhash != hash {
                                 let after = self.obj.as_data().to_vec();
                                 assert!(self.store.load(hash, &mut self.obj)?);
-                                if let Some(diff) = compute_raw_diff(self.obj.as_data(), after.as_ref()) {
+                                if let Some(diff) = compute_diff(self.obj.as_data(), after.as_ref()) {
                                     flat.insert(
                                         dir.to_str().unwrap().to_owned(),
                                         diff
@@ -721,7 +721,7 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N>
 
 
 
-pub fn compute_diff(before: &str, after: &str) -> String {
+fn compute_diff_inner(before: &str, after: &str) -> String {
     use imara_diff::intern::InternedInput;
     use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
     let input = InternedInput::new(before, after);
@@ -729,11 +729,11 @@ pub fn compute_diff(before: &str, after: &str) -> String {
 }
 
 
-pub fn compute_raw_diff(before: &[u8], after: &[u8]) -> Option<String> {
+pub fn compute_diff(before: &[u8], after: &[u8]) -> Option<String> {
     use std::str::from_utf8;
     if let Ok(a) = from_utf8(before) {
         if let Ok(b) = from_utf8(after) {
-            return Some(compute_diff(a, b));
+            return Some(compute_diff_inner(a, b));
         }
     }
     None
@@ -986,7 +986,7 @@ mod tests {
         let b = "foo\nbaz\nbar\n";
         let expected = "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n";
 
-        assert_eq!(compute_diff(a, b), expected);
+        assert_eq!(compute_diff_inner(a, b), expected);
 
         let input = InternedInput::new(a, b);
         let d = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
@@ -994,19 +994,19 @@ mod tests {
     }
 
     #[test]
-    fn test_compute_raw_diff() {
+    fn test_compute_diff() {
 
         let bad = [255_u8; 10];
-        assert_eq!(compute_raw_diff(&bad, &bad), None);
+        assert_eq!(compute_diff(&bad, &bad), None);
 
         let a = b"foo\nbar\nbaz\n";
         let b = b"foo\nbaz\nbar\n";
 
-        assert_eq!(compute_raw_diff(a, &bad), None);
-        assert_eq!(compute_raw_diff(&bad, b), None);
+        assert_eq!(compute_diff(a, &bad), None);
+        assert_eq!(compute_diff(&bad, b), None);
 
         let expected = "@@ -1,3 +1,3 @@\n foo\n-bar\n baz\n+bar\n";
-        assert_eq!(compute_raw_diff(a, b), Some(expected.to_owned()));
+        assert_eq!(compute_diff(a, b), Some(expected.to_owned()));
     }
 }
 

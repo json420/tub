@@ -324,6 +324,10 @@ impl TrackingList {
         self.map.contains_key(key)
     }
 
+    pub fn clear(&mut self, path: &String) -> Option<TrackedItem> {
+        self.map.remove(path)
+    }
+
     pub fn add(&mut self, path: String) -> Option<TrackedItem> {
         self.map.insert(path, TrackedItem::Added)
     }

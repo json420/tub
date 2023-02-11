@@ -4,6 +4,7 @@ use tub::chaos::{DefaultObject, DefaultStore};
 use tub::helpers::TestTempDir;
 
 
+const SIZE: usize = 128;
 const COUNT: usize = 1_000_000;
 const LOOPS: usize = 3;
 
@@ -16,8 +17,8 @@ fn main() -> io::Result<()> {
     println!("🤔 Is Tub 🛁 fast? 🚀");
     println!("");
 
-    println!("🛁 Saving {} random 16-256 byte sized objects...", COUNT);
-    obj.reset(128, 1);
+    println!("🛁 Saving {} random {} byte sized objects...", COUNT, SIZE);
+    obj.reset(SIZE, 1);
 
     let start = Instant::now();
     for _ in 0..COUNT {

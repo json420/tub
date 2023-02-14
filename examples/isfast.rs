@@ -21,9 +21,10 @@ fn main() -> io::Result<()> {
     obj.reset(SIZE, 1);
 
     let start = Instant::now();
-    for _ in 0..COUNT {
-        //obj.randomize(true);
-        obj.fast_randomize();
+    for i in 0..COUNT {
+        //obj.fast_randomize();
+        obj.as_mut_data()[0..8].copy_from_slice(&(i as u64).to_le_bytes());
+        obj.finalize();
         store.save(&mut obj)?;
     }
     let elapsed = start.elapsed().as_secs_f64();

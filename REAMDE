@@ -13,15 +13,16 @@ Then build and install Tub like this:
 The `tub` CLI tool is our current toy DVCS app built on top of the Bathtub DB
 object store.
 
-Initialize a Tub and import some objects (files) like this:
+For available commands, run `tub` with no arguments:
+
+    $ tub
+
+For example, initialize a Tub repository like this:
 
     $ tub init
-    $ tub commit /usr/share/doc
-
-Yes, that's goofy, but things are still getting hooked up in the CLI.
 
 Oh and definetly hash a big file (like a GB or more) with `tub hash <filename>`
-and then do this same with `git hash-object <filename>`:
+and then do the same with `git hash-object <filename>`:
 
     $ time tub hash /some/big/file
     $ time git hash-object /some/big/file
@@ -34,7 +35,7 @@ systems (companies, governments, nonprofits, etc).  Go faster, solve harder
 problems, make the world a better place... that kinda stuff.
 
 Tub is made for *ALL* of your data.  From source code to raw video files to
-structured data to AI training sets.  The way Tub can improve operational
+structured data to ML training sets.  The way Tub can improve operational
 efficiency is by unifying all your data into a single, coherent system.
 
 The Tub vision goes something like this... take a design like Git, generalize it

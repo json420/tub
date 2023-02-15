@@ -8,9 +8,9 @@ noun: tubification; plural noun: tubifications
         organization to a hyper modern, unified data system called Bathtub DB
         (or Tub for short).
 
-    2.  Early 21st century software design trend in which content addressable
-        storage became way more awesome; sometimes called Gitification, in
-        reference to Tub's predecessor, Git.
+    2.  Early 21st century software design trend during which content
+        addressable storage became like way more awesome and stuff; sometimes
+        called Gitification, in reference to Tub's predecessor, Git.
 
 The goal of Tub isn't to replace Git.  The goal of Tub is to bring Git-like
 technology into every last market corner where Git-like technology can and
@@ -23,7 +23,8 @@ HELP SPREAD THE MIND VIRUS!
 Tub 💖 Git
 ----------
 
-Obviously Linus Torvalds could today write something that could kick Git's ass.
+Obviously Linus Torvalds could today write something that could kick Git's ass
+(especially if he wrote it in Rust, haha).
 
 Jason just wants to make the point that he can too :D
 

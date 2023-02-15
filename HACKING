@@ -16,13 +16,13 @@ compression happens.
 Guidelines for making Tub all like kickass and shit, yo
 =======================================================
 
-    *   Never add unnecessary complexity or attack surface
+    *   Never add unnecessary complexity or attack surface.
 
     *   If we find ourselves with unnecessary complexity (which will happen as
         we work through finalizing the Tub protocols), rip it the fuck out.
 
     *   Never leave performance on the table... the faster Tub is, the more
-        widely it can be used (and the moo mooney we can make!)
+        widely it can be used, and the moo mooney we can make!
 
     *   Never store or transmit unnecessary data.
 
@@ -42,15 +42,10 @@ Guidelines for making Tub all like kickass and shit, yo
         stupid to waste clycle(s) to swap byte order!  All Tub protocols and
         formats will be LITLE MOTHER FUCKING ENDIAN!  If the Internet were
         designed today (and people weren't being fucking stupid),
-        "network-byte-order" would obviously be little-endian.  (This is one of
-        very few technical decisions that Jason disagrees with in Git.)
+        "network-byte-order" would obviously be little-endian.
 
-    *   The network-wire-format is the in-memory-format is the on-disk-format;
-        whenever possible, we want to read from the AF_UNIX sockets into a
-        buffer, validate the request, and then in the case of a write, write the
-        exact content of that buffer to disk, with no in-memory transformation
-        or copying whenever possible; note that transformation can be required
-        for deltas
+    *   The network-wire-format is the in-memory-format is the on-disk-format...
+        there is no reason for more complexity than this.
 
     *   Zero copy is cool; do all like zero copy and shit whenever you can, yo
 
@@ -73,7 +68,7 @@ Guidelines for making Tub all like kickass and shit, yo
         at the first error, you not only leak potentially exploitable timing
         information, you also make exectution for the non-error case slower!
         Branches, yo!  Gah, fucking stupid!
-        (FIXME: we aren't yet doing constant time compare on TubHash / TubID)
+        (FIXME: we aren't yet doing constant time compare on chaos::Name)
         (FIXME: let's help Rust be kickass and safe for constant time stuff.
         Jason thinks there should be contant_time{}, a bit like unsafe{},
         that indicates a contract with the compiler: the compliler, to the
@@ -87,32 +82,23 @@ Guidelines for making Tub all like kickass and shit, yo
         what Git does (with whatever needed Tubification).  A few planned
         deviations from Git (asside from those mentioned above):
 
+        -   Hash function and hashing protocols need to be configurable and
+            upgradeable; this is more or less done as stuff like Object<H, N>,
+            and Store<H, N> are already generic on the hash function and digest
+            size.  TODO: Add hash protocol info in a header at the start of an
+            object stream.
+
         -   Compression algorithm needs to be configurable and upgradable; best
             way to make sure this happens is to immediately add two compression
             algorithms and get lots of iterations on that problem before the
             protocols are finalized
 
-        -   Hash function and hashing protocols need to be configurable and
-            upgradeable; Jason knows this is pain city because he tried to work
-            through this problem preemptively in the Dmedia (Novacut) file
-            hashing protocols[1], and despite his best efforts, he never
-            actually got the code paths to support mulitple protcols at once
-            (because when it tried, it exploded into such a mess he felt he
-            couldn't justify the time investment at the moment).  UPDATE: Yo,
-            Jason is already almost done with this!  All the key code paths are
-            now generic on <H, N>, the hashing protocol H and the digest size in
-            bytes N.
-
-        *   Git's CLI is, hmmm... let's try to improve on that quite a lot.
+        -   Git's CLI is, hmmm... let's try to improve on that quite a lot.
             Jason thinks the Bazaar CLI is quite well done, worth looking at if
             you've never played with it.  But really we're going to de a clean
             slate design, considering all that's changed since Git was desgined.
 
-    *   Needless complexity is to nut cancer what the devil is to diarrhea.  It
-        doesn't make sense, it's fucking stupid, and it should be avoided at all
-        cost.
+        -   We're tackling the authetication problem head on; Tub's signed
+            block-chain is the magic sauce here.
 
-
-[1] Dmedia file hashing protocol:
-    https://bazaar.launchpad.net/~dmedia/filestore/trunk/view/head:/filestore/protocols.py
 

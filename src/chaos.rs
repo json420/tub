@@ -231,7 +231,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn fast_randomize(&mut self) -> Name<N> {
-        use blake3;
         let mut h = blake3::Hasher::new();
         h.update(self.as_data());
         h.finalize_xof().fill(self.as_mut_data());

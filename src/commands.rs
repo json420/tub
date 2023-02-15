@@ -14,7 +14,7 @@ use ansi_term::Color;
 
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::{DefaultTree, DefaultCommit, compute_diff};
+use crate::dvcs::{DefaultTree, DefaultCommit};
 use crate::inception::hash_file;
 use crate::base::ObjKind;
 
@@ -318,7 +318,7 @@ fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
 fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut source = tub.treedir().to_owned();
+    let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
     if ! tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
@@ -403,7 +403,7 @@ fn cmd_status(tub: OptPath) -> IoResult<()>
             let a = scanner.flatten_tree(&commit.tree)?;
             let root = scanner.scan_tree()?.unwrap();
             eprintln!("   new: {}", root);
-            let mut status = scanner.compare_with_flatmap(&a);
+            let status = scanner.compare_with_flatmap(&a);
             if status.removed.len() > 0 {
                 println!("Removed:");
                 for relname in status.removed.iter() {
@@ -438,8 +438,7 @@ fn cmd_status(tub: OptPath) -> IoResult<()>
 fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
 {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    let mut source = tub.treedir().to_owned();
-    let mut obj = tub.store.new_object();
+    let source = tub.treedir().to_owned();
     let mut tree = DefaultTree::new(&mut tub.store, &source);
 
     tree.load_ignore()?;

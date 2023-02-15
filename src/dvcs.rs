@@ -241,7 +241,6 @@ fn item_to_tracked(val: &TrackedItem) -> Tracked {
         TrackedItem::Added      => { Tracked::Added }
         TrackedItem::Removed    => { Tracked::Removed }
         TrackedItem::Renamed(_) => { Tracked::Renamed }
-        _ => { panic!("nope") }
     }
 }
 

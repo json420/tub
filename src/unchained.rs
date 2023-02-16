@@ -2,6 +2,7 @@
 
 use std::ops::Range;
 use sodiumoxide::crypto::sign;
+use crate::chaos::Name;
 
 
 
@@ -41,18 +42,63 @@ impl<const N: usize> Math<N> {
 
 
 pub struct Block<'a, const N: usize> {
-    buf: &'a mut [u8],
+    buf: &'a [u8],
 }
 
 impl<'a, const N: usize> Block<'a, N> {
+    pub fn new(buf: &'a [u8]) -> Self {
+        Self {buf}
+    }
+
+    pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
+        let range = Math::<N>::signature_range();
+        sign::Signature::try_from(&self.buf[range])
+    }
+
+    pub fn previous(&self) -> Name<N> {
+        let range = Math::<N>::previous_range();
+        Name::from(&self.buf[range])
+    }
+
+    pub fn payload(&self) -> Name<N> {
+        let range = Math::<N>::payload_range();
+        Name::from(&self.buf[range])
+    }
+
+    pub fn index(&self) -> u64 {
+        let range = Math::<N>::index_range();
+        u64::from_le_bytes( self.buf[range].try_into().unwrap() )
+    }
+}
+
+
+pub struct MutBlock<'a, const N: usize> {
+    buf: &'a mut [u8],
+}
+
+impl<'a, const N: usize> MutBlock<'a, N> {
     pub fn new(buf: &'a mut [u8]) -> Self {
         Self {buf}
     }
 
-    // Note not all signature values are structurally valid
-    pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
+    pub fn set_signature(&mut self, sig: &sign::Signature) {
         let range = Math::<N>::signature_range();
-        sign::Signature::try_from(&self.buf[range])
+        self.buf[range].copy_from_slice(sig.as_ref());
+    }
+
+    pub fn set_previous(&mut self, hash: &Name<N>) {
+        let range = Math::<N>::previous_range();
+        self.buf[range].copy_from_slice(hash.as_buf());
+    }
+
+    pub fn set_payload(&mut self, hash: &Name<N>) {
+        let range = Math::<N>::payload_range();
+        self.buf[range].copy_from_slice(hash.as_buf());
+    }
+
+    pub fn set_index(&mut self, index: u64) {
+        let range = Math::<N>::index_range();
+        self.buf[range].copy_from_slice(&index.to_le_bytes());
     }
 }
 

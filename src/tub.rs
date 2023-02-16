@@ -72,7 +72,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push(PACKFILE);
         let file = create_for_append(&filename)?;
         let store = Store::<H, N>::new(file);
-        Ok( Self {dotdir: dotdir, treedir: parent.to_owned(), store: store} )
+        Ok( Self {dotdir, treedir: parent.to_owned(), store} )
     }
 
     pub fn open(dotdir: PathBuf) -> IoResult<Self> {
@@ -82,7 +82,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let store = Store::<H, N>::new(file);
         let mut treedir = dotdir.clone();
         treedir.pop();
-        Ok( Self {dotdir: dotdir, treedir: treedir, store: store} )
+        Ok( Self {dotdir, treedir, store} )
     }
 
     pub fn idx_file(&self) -> IoResult<File> {
@@ -150,7 +150,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push("staged.tub");
         obj.clear();
         if let Ok(mut file) = File::open(&filename) {
-            if let Ok(_) = file.read_exact(obj.as_mut_header()) {
+            if file.read_exact(obj.as_mut_header()).is_ok() {
                 obj.resize_to_info();
                 file.read_exact(obj.as_mut_data())?;
                 if ! obj.is_valid() {

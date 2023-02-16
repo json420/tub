@@ -9,7 +9,7 @@ use tempfile;
 
 
 
-
+#[derive(Debug)]
 pub struct TestTempDir {
     tmp: tempfile::TempDir,
 }
@@ -43,13 +43,11 @@ impl TestTempDir {
         let path = self.build(parts);
         let mut names: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(path) {
-            for result in entries {
-                if let Ok(entry) = result {
-                    names.push(
-                        entry.file_name().into_string().unwrap()
-                    );
-                    println!("{:?}", entry.file_name());
-                }
+            for entry in entries.flatten() {
+                names.push(
+                    entry.file_name().into_string().unwrap()
+                );
+                println!("{:?}", entry.file_name());
             }
         }
         names.sort();
@@ -102,6 +100,12 @@ impl TestTempDir {
     }
 }
 
+impl Default for TestTempDir {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 
 pub fn flip_bit_in(buf: &mut [u8], bit: usize) {
     assert!(bit < buf.len() * 8);
@@ -124,7 +128,7 @@ pub struct BitFlipIter<'a> {
 
 impl<'a> BitFlipIter<'a> {
     pub fn new(src: &'a [u8]) -> Self {
-        Self {src: src, bit: 0}
+        Self {src, bit: 0}
     }
 }
 

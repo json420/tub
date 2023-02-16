@@ -19,7 +19,7 @@ impl Hasher for Blake3 {
     }
 
     fn hash_into(&self, payload: &[u8], hash: &mut [u8]) {
-        assert!(hash.len() > 0 && hash.len() % 5 == 0);
+        assert!(! hash.is_empty() && hash.len() % 5 == 0);
         let mut h = blake3::Hasher::new();
         if payload.len() > 131072 {
             h.update_rayon(payload);

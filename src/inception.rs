@@ -84,7 +84,7 @@ pub struct Container<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> Container<H, N> {
     pub fn new(inner: Object<H, N>) -> Self {
-        Self {inner: inner}
+        Self {inner}
     }
 
     pub fn has_space(&self, obj: &Object<H, N>) -> bool {
@@ -102,7 +102,7 @@ pub struct ReadFrom<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> ReadFrom<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
-        Self {obj: obj, pos: 0}
+        Self {obj, pos: 0}
     }
 
     pub fn into_inner(self) -> Object<H, N> {
@@ -138,7 +138,7 @@ pub struct WriteTo<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> WriteTo<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
-        Self {obj: obj}
+        Self {obj}
     }
 
     pub fn into_inner(self) -> Object<H, N> {
@@ -167,6 +167,7 @@ impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
 
 
 // FIXME: This is currently way the fuck too slow (but is ok for now).
+#[derive(Debug, Default)]
 pub struct LocationMap<const N: usize> {
     map: HashMap<Name<N>, Name<N>>,
 }
@@ -191,7 +192,7 @@ impl<const N: usize> LocationMap<N> {
     }
 
     pub fn deserialize(&mut self, buf: &[u8]) {
-        assert!(buf.len() > 0);
+        assert!(! buf.is_empty());
         assert!(buf.len() % (N + N) == 0);
         self.map.clear();
         let mut offset = 0;
@@ -217,18 +218,18 @@ impl<const N: usize> LocationMap<N> {
 
 
 pub struct Fanout<H: Hasher, const N: usize> {
-    table: [Option<Name<N>>; 256],
     store: Store<H, N>,
     obj: Object<H, N>,
+    table: [Option<Name<N>>; 256],
     map: LocationMap<N>,
 }
 
 impl<H: Hasher, const N: usize> Fanout<H, N> {
     pub fn new(store: Store<H, N>, obj: Object<H, N>) -> Self {
         Self {
+            store,
+            obj,
             table: [None; 256],
-            store: store,
-            obj: obj,
             map: LocationMap::new(),
         }
     }
@@ -246,7 +247,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
                 self.obj.clear();
                 self.map.serialize(self.obj.as_mut_vec());
                 self.obj.finalize_with_kind(ObjKind::Fanout as u8);
-                self.store.save(&mut self.obj)?;
+                self.store.save(&self.obj)?;
                 self.table[i] = Some(self.obj.hash());
             }
             else {
@@ -258,7 +259,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             self.obj.clear();
             self.map.serialize(self.obj.as_mut_vec());
             self.obj.finalize_with_kind(ObjKind::Fanout as u8);
-            self.store.save(&mut self.obj)?;
+            self.store.save(&self.obj)?;
             self.table[i] = Some(self.obj.hash());
         }
         Ok(())
@@ -270,7 +271,7 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             if self.store.load(&container, &mut self.obj)? {
                 let data = self.obj.as_data();
                 let mut offset = 0;
-                assert!(data.len() > 0 && data.len() % (N * 2) == 0);
+                assert!(! data.is_empty() && data.len() % (N * 2) == 0);
                 // FIXME: Make faster and more better
                 while offset < data.len() {
                     if &data[offset..offset + N] == key.as_buf() {
@@ -342,7 +343,7 @@ impl<H: Hasher, const N: usize> Decoder<H, N> {
 
     pub fn read_next(&mut self, obj: &mut Object<H, N>) -> io::Result<bool> {
         obj.clear();
-        if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
+        if self.inner.read_exact(obj.as_mut_header()).is_ok() {
             obj.resize_to_info();
             self.inner.read_exact(obj.as_mut_data())?;
             if ! obj.is_valid() {
@@ -357,7 +358,7 @@ impl<H: Hasher, const N: usize> Decoder<H, N> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct LeafHashes<const N: usize> {
     total: u64,
     hashes: Vec<Name<N>>,
@@ -394,7 +395,7 @@ impl<const N: usize> LeafHashes<N> {
             offset += N;
         }
         assert_eq!(offset, buf.len());
-        Self {total: total, hashes: hashes}
+        Self {total, hashes}
     }
 }
 
@@ -447,19 +448,19 @@ pub fn import_file<H: Hasher, const N: usize>(
             obj.reset(s as usize, ObjKind::Data as u8);
             file.read_exact(obj.as_mut_data())?;
             leaves.append_leaf(obj.finalize(), obj.info().size());
-            store.save(&obj)?;
+            store.save(obj)?;
         }
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
         let root = obj.finalize_with_kind(ObjKind::BigData as u8);
-        store.save(&obj)?;
+        store.save(obj)?;
         Ok(root)
     }
     else {
         obj.reset(size as usize, ObjKind::Data as u8);
         file.read_exact(obj.as_mut_data())?;
         let hash = obj.finalize();
-        store.save(&obj)?;
+        store.save(obj)?;
         Ok(hash)
     }
 }
@@ -480,7 +481,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
             ObjKind::BigData => {
                 let hashes = LeafHashes::<N>::deserialize(obj.as_data());
                 for hash in hashes.iter() {
-                    if store.load(&hash, obj)? {
+                    if store.load(hash, obj)? {
                         file.write_all(obj.as_data())?;
                     }
                     else {

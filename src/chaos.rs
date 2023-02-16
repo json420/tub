@@ -66,13 +66,13 @@ impl<const N: usize> Name<N> {
 
     pub fn from(src: &[u8]) -> Self {
         let buf: [u8; N] = src.try_into().expect("oops");
-        Self {buf: buf}
+        Self {buf}
     }
 
-    pub fn from_str(txt: &str) -> Self {
+    pub fn from_dbase32(txt: &str) -> Self {
         let mut buf = [0_u8; N];
         if db32dec_into(txt.as_bytes(), &mut buf) {
-            Self {buf: buf}
+            Self {buf}
         }
         else {
             panic!("Handle this better, yo");
@@ -91,6 +91,10 @@ impl<const N: usize> Name<N> {
         self.buf.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
+    }
+
     pub fn as_buf(&self) -> &[u8] {
         &self.buf
     }
@@ -99,14 +103,20 @@ impl<const N: usize> Name<N> {
         &mut self.buf
     }
 
-    pub fn to_string(&self) -> String {
+    pub fn to_dbase32(&self) -> String {
         db32enc(&self.buf)
     }
 }
 
 impl<const N: usize> fmt::Display for Name<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.to_dbase32())
+    }
+}
+
+impl<const N: usize> Default for Name<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -119,7 +129,7 @@ pub struct Info {
 
 impl Info {
     fn new(size: usize, kind: u8) -> Self {
-        if size < 1 || size > OBJECT_MAX_SIZE {
+        if ! (1..=OBJECT_MAX_SIZE).contains(&size) {
             panic!("Info: Need 1 <= size <= {}; got size={}", OBJECT_MAX_SIZE, size);
         }
         Self {val: (size - 1) as u32 | (kind as u32) << 24}
@@ -162,7 +172,7 @@ read into obj.as_mut_data()
 
 
 /// Buffer containing a single object's header plus data.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Object<H: Hasher, const N: usize> {
     hasher: H,
     buf: Vec<u8>,
@@ -189,7 +199,6 @@ impl<H: Hasher, const N: usize> Object<H, N> {
     }
 
     pub fn clear(&mut self) {
-        self.buf.clear();
         self.buf.resize(N + INFO_LEN, 0);
         self.buf.fill(0);
         self.cur = 0;
@@ -201,6 +210,10 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
     }
 
     pub fn remaining(&self) -> usize {
@@ -345,7 +358,7 @@ pub struct Entry {
 
 impl Entry {
     pub fn new(info: Info, offset: u64) -> Self {
-        Self {info: info, offset: offset}
+        Self {info, offset}
     }
 }
 
@@ -368,7 +381,7 @@ impl<'a, R: Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
 
     pub fn read_next(&mut self, obj: &mut Object<H, N>) -> IoResult<bool> {
         obj.clear();
-        if let Ok(_) = self.inner.read_exact(obj.as_mut_header()) {
+        if self.inner.read_exact(obj.as_mut_header()).is_ok() {
             obj.resize_to_info();
             self.inner.read_exact(obj.as_mut_data())?;
             if ! obj.is_valid() {
@@ -393,7 +406,7 @@ pub struct Store<H: Hasher, const N: usize> {
 impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn new(file: File) -> Self {
         Self {
-            file: file,
+            file,
             _hasher: H::new(),
             map: HashMap::new(),
             offset: 0,
@@ -406,6 +419,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 
     pub fn size(&self) -> u64 {
@@ -442,7 +459,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 
         // Load entries from the saved index file
         let mut idx = BufReader::new(idx);
-        while let Ok(_) = idx.read_exact(obj.as_mut_header()) {
+        while idx.read_exact(obj.as_mut_header()).is_ok() {
             self.map.insert(
                 obj.hash(),
                 Entry::new(obj.info(), self.offset)

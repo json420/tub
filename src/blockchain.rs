@@ -43,6 +43,7 @@ const HEADER_PUBKEY_RANGE: Range<usize> = 94..126;
 const HEADER_HASHED_RANGE: Range<usize> = 30..126;
 
 // HASH SIG PUBKEY
+#[derive(Debug)]
 pub struct Header {
     buf: [u8; HEADER_LEN],
 }
@@ -54,6 +55,10 @@ impl Header {
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
     }
 
     pub fn compute(&self) -> DefaultName {
@@ -120,6 +125,13 @@ impl Header {
     }
 }
 
+impl Default for Header {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 const BLOCK_LEN: usize = 162;
 const BLOCK_PREVIOUS_RANGE: Range<usize> = 94..124;
 const BLOCK_PAYLOAD_RANGE: Range<usize> = 124..154;
@@ -137,11 +149,15 @@ pub struct Block {
 
 impl Block {
     pub fn new(pk: sign::PublicKey) -> Self{
-        Self {buf: [0; BLOCK_LEN], pk: pk}
+        Self {buf: [0; BLOCK_LEN], pk}
     }
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buf.is_empty()
     }
 
     pub fn as_buf(&self) -> &[u8] {
@@ -256,10 +272,10 @@ impl Chain {
         file.write_all(header.as_buf())?;
         let block = Block::new(header.pubkey());
         Ok( Self {
-            header: header,
-            block: block,
-            previous: previous,
-            file: file,
+            header,
+            block,
+            previous,
+            file,
             index: 0,
             current: 0,
             sk: Some(sk),
@@ -269,7 +285,7 @@ impl Chain {
     pub fn load_secret_key(&mut self, mut file: fs::File) -> io::Result<bool> {
         assert!(self.sk.is_none());
         let mut buf = [0_u8; 64];
-        if let Ok(_) = file.read_exact(&mut buf) {
+        if file.read_exact(&mut buf).is_ok() {
             self.sk = sign::SecretKey::from_slice(&buf);
         }
         Ok(self.sk.is_some())
@@ -291,10 +307,10 @@ impl Chain {
         let block = Block::new(header.pubkey());
         let previous = header.hash();
         let mut me = Self {
-            header: header,
-            block: block,
-            previous: previous,
-            file: file,
+            header,
+            block,
+            previous,
+            file,
             index: 0,
             current: 0,
             sk: None,
@@ -349,7 +365,7 @@ impl Chain {
             panic!("Bad header: {}", self.header.hash());
         }
         self.previous = self.header.hash();
-        while let Ok(_) = br.read_exact(self.block.as_mut_buf()) {
+        while br.read_exact(self.block.as_mut_buf()).is_ok() {
             if ! self.block.verify_against(&self.previous) {
                 panic!("Bad block: {} {}", self.block.hash(), &self.previous);
             }

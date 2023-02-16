@@ -73,7 +73,7 @@ fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
 
 
 /// Stores entries in a directory
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct Dir<const N: usize> {
     map: ItemMap<N>,
 }
@@ -85,6 +85,10 @@ impl<const N: usize> Dir<N> {
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 
     pub fn as_map(&self) -> &HashMap<String, Item<N>> {
@@ -144,14 +148,14 @@ impl<const N: usize> Dir<N> {
             map.insert(key, val);
         }
         assert_eq!(offset, buf.len());
-        Self {map: map}
+        Self {map}
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
         let mut pairs = Vec::from_iter(self.map.iter());
         pairs.sort_by(|a, b| a.0.cmp(b.0));
         for (name, item) in pairs.iter() {
-            let kind = item_to_kind(&item);
+            let kind = item_to_kind(item);
             let name = name.as_bytes();
             let size = name.len() as u8;
             buf.push(kind as u8);
@@ -246,7 +250,7 @@ fn item_to_tracked(val: &TrackedItem) -> Tracked {
 
 
 /// List of paths to be tracked
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub struct TrackingList {
     map: HashMap<String, TrackedItem>,
 }
@@ -290,7 +294,7 @@ impl TrackingList {
             map.insert(path, item);
         }
         assert_eq!(offset, buf.len());
-        Self {map: map}
+        Self {map}
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
@@ -317,6 +321,10 @@ impl TrackingList {
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
     }
 
     pub fn contains(&self, key: &String) -> bool {
@@ -350,7 +358,7 @@ pub struct Commit<const N: usize> {
 
 impl<const N: usize> Commit<N> {
     pub fn new(tree: Name<N>, msg: String) -> Self {
-        Self {tree: tree, msg: msg}
+        Self {tree, msg}
     }
 
     pub fn deserialize(buf: &[u8]) -> Self {
@@ -385,9 +393,9 @@ pub struct Tree<'a, H: Hasher, const N: usize> {
 impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
     pub fn new(store: &'a mut Store<H, N>, dir: &Path) -> Self {
         Self {
+            store,
             mode: ScanMode::Scan,
             obj: Object::<H, N>::new(),
-            store: store,
             flatmap: ItemMap::new(),
             ignore: HashSet::new(),
             dir: dir.to_path_buf(),
@@ -474,7 +482,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             hash_file(&mut self.obj, file, size)?
                         }
                         ScanMode::Import => {
-                            import_file(&mut self.store, &mut self.obj, file, size)?
+                            import_file(self.store, &mut self.obj, file, size)?
                         }
                     };
                     if meta.permissions().mode() & 0o111 != 0 {  // Executable?
@@ -515,7 +523,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 self.flatmap.insert(relpath, item);
             }
         }
-        if tree.len() > 0 {
+        if ! tree.is_empty() {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
             let hash = self.obj.finalize_with_kind(ObjKind::Tree as u8);
@@ -539,8 +547,8 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree = Dir::deserialize(&self.obj.as_data());
-            create_dir_all(&path)?;
+            let tree = Dir::deserialize(self.obj.as_data());
+            create_dir_all(path)?;
             for (name, entry) in tree.as_map() {
                 let mut pb = path.to_path_buf();
                 pb.push(name);
@@ -552,16 +560,16 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                         File::create(&pb)?;
                     }
                     Item::Dir(hash) => {
-                        self.restore_tree_inner(&hash, &pb, depth + 1)?;
+                        self.restore_tree_inner(hash, &pb, depth + 1)?;
                     }
                     Item::File(hash) | Item::ExeFile(hash) => {
-                        if self.store.load(&hash, &mut self.obj)? {
+                        if self.store.load(hash, &mut self.obj)? {
                             let mut file = File::create(&pb)?;
                             if let Item::ExeFile(_) = entry {
                                 file.set_permissions(Permissions::from_mode(0o755))?;
                             }
                             restore_file(
-                                &mut self.store, &mut self.obj, &mut file, &hash
+                                self.store, &mut self.obj, &mut file, hash
                             )?;
                         } else {
                             panic!("could not find object {}", hash);
@@ -591,15 +599,12 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree: Dir<N> = Dir::deserialize(&self.obj.as_data());
+            let tree: Dir<N> = Dir::deserialize(self.obj.as_data());
             for (key, val) in tree.as_map().iter() {
                 let mut dir = parent.to_path_buf();
-                dir.push(&key);
-                match val {
-                    Item::Dir(hash) => {
-                        self.flatten_tree_inner(flat, &hash, &dir, depth + 1)?;
-                    }
-                    _ => {}
+                dir.push(key);
+                if let Item::Dir(hash) = val {
+                    self.flatten_tree_inner(flat, hash, &dir, depth + 1)?;
                 }
                 flat.insert(dir.to_str().unwrap().to_owned(), val.to_owned());
             }
@@ -627,13 +632,13 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
         if self.store.load(root, &mut self.obj)? {
-            let tree: Dir<N> = Dir::deserialize(&self.obj.as_data());
+            let tree: Dir<N> = Dir::deserialize(self.obj.as_data());
             for (key, val) in tree.as_map().iter() {
                 let mut dir = parent.to_path_buf();
-                dir.push(&key);
+                dir.push(key);
                 match val {
                     Item::Dir(hash) => {
-                        self.diff_inner(flat, &hash, &dir, depth + 1)?;
+                        self.diff_inner(flat, hash, &dir, depth + 1)?;
                     }
                     Item::File(hash) | Item::ExeFile(hash) => {
                         let mut pb = self.dir.clone();
@@ -672,6 +677,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
 }
 
 
+#[derive(Debug, Default)]
 pub struct Status<const N: usize> {
     pub removed: Vec<String>,
     pub changed: Vec<String>,
@@ -698,7 +704,7 @@ pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N>
     keys.sort();
     let keys = keys;
     for path in keys.iter() {
-        let p = path.clone();  // FIXME
+        let p = &(*path).clone();  // FIXME
         let old = a.get(p).unwrap();
         if let Some(new) = b.get(p) {
             if new != old {

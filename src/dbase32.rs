@@ -157,7 +157,7 @@ static REVERSE: &[u8; 256] = &[
 
 /// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DirNameIter {
     i: usize,
 }
@@ -207,8 +207,8 @@ macro_rules! rotate {
 
 
 fn check_bin_txt(bin: &[u8], txt: &[u8]) {
-    if bin.len() == 0 || bin.len() % 5 != 0
-    || txt.len() == 0 || txt.len() % 8 != 0
+    if bin.is_empty() || bin.len() % 5 != 0
+    || txt.is_empty() || txt.len() % 8 != 0
     || txt.len() != bin.len() * 8 / 5
     {
         panic!("Bad dbase32 call: bin.len()=={}, txt.len()=={}",
@@ -237,7 +237,7 @@ pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
         txt_at!(txt, i, 4) = FORWARD[((taxi >> 15) & 31) as usize];
         txt_at!(txt, i, 5) = FORWARD[((taxi >> 10) & 31) as usize];
         txt_at!(txt, i, 6) = FORWARD[((taxi >>  5) & 31) as usize];
-        txt_at!(txt, i, 7) = FORWARD[((taxi >>  0) & 31) as usize];
+        txt_at!(txt, i, 7) = FORWARD[(taxi & 31) as usize];
     }
 }
 
@@ -250,7 +250,7 @@ pub fn db32enc(bin: &[u8]) -> String {
 
 
 pub fn isdb32(txt: &[u8]) -> bool {
-    if txt.len() != 0 && txt.len() % 8 == 0 {
+    if ! txt.is_empty() && txt.len() % 8 == 0 {
         let mut r = 0_u8;
         for i in 0..txt.len() / 8 {
             r |= rotate!(txt, i, 0);
@@ -286,11 +286,11 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
         r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
 
         /* Unpack 40 bits from the taxi (8 bits at a time) */
-        bin_at!(bin, i, 0) = (taxi >> 32) as u8 & 255;
-        bin_at!(bin, i, 1) = (taxi >> 24) as u8 & 255;
-        bin_at!(bin, i, 2) = (taxi >> 16) as u8 & 255;
-        bin_at!(bin, i, 3) = (taxi >>  8) as u8 & 255;
-        bin_at!(bin, i, 4) = (taxi >>  0) as u8 & 255;
+        bin_at!(bin, i, 0) = (taxi >> 32) as u8;
+        bin_at!(bin, i, 1) = (taxi >> 24) as u8;
+        bin_at!(bin, i, 2) = (taxi >> 16) as u8;
+        bin_at!(bin, i, 3) = (taxi >>  8) as u8;
+        bin_at!(bin, i, 4) = taxi as u8;
     }
     /*
          31: 00011111 <= bits set in REVERSE for valid characters

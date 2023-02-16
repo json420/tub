@@ -222,7 +222,7 @@ fn dir_or_cwd(target: OptPath) -> IoResult<PathBuf>
 
 fn get_tub(target: &Path) -> IoResult<DefaultTub>
 {
-    if let Some(dotdir) = find_dotdir(&target) {
+    if let Some(dotdir) = find_dotdir(target) {
         let mut tub = DefaultTub::open(dotdir)?;
         tub.reindex()?;
         Ok(tub)
@@ -235,7 +235,7 @@ fn get_tub(target: &Path) -> IoResult<DefaultTub>
 
 fn get_tub_exit(target: &Path) -> IoResult<DefaultTub>
 {
-    if let Ok(tub) = get_tub(&target) {
+    if let Ok(tub) = get_tub(target) {
         Ok(tub)
     }
     else {
@@ -367,10 +367,10 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
                 println!("--- a/{}", k);
                 println!("+++ b/{}", k);
                 for line in v.lines() {
-                    if line.starts_with("-") {
+                    if line.starts_with('-') {
                         println!("{}", Color::Red.paint(line));
                     }
-                    else if line.starts_with("+") {
+                    else if line.starts_with('+') {
                         println!("{}", Color::Green.paint(line));
                     }
                     else {
@@ -404,19 +404,19 @@ fn cmd_status(tub: OptPath) -> IoResult<()>
             let root = scanner.scan_tree()?.unwrap();
             eprintln!("   new: {}", root);
             let status = scanner.compare_with_flatmap(&a);
-            if status.removed.len() > 0 {
+            if ! status.removed.is_empty() {
                 println!("Removed:");
                 for relname in status.removed.iter() {
                     println!("  {}", relname);
                 }
             }
-            if status.changed.len() > 0 {
+            if ! status.changed.is_empty() {
                 println!("Changed:");
                 for relname in status.changed.iter() {
                     println!("  {}", relname);
                 }
             }
-            if status.unknown.len() > 0 {
+            if ! status.unknown.is_empty() {
                 println!("Unknown:");
                 for relname in status.unknown.iter() {
                     println!("  {}", relname);
@@ -452,7 +452,7 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
             tree.ignore(relpath.to_owned());
         }
     }
-    if paths.len() > 0 {
+    if ! paths.is_empty() {
         tree.save_ignore()?;
     }
 
@@ -465,7 +465,7 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
 
 
 fn cmd_revert(tub: OptPath, txt: String) -> IoResult<()> {
-    let hash = DefaultName::from_str(&txt);
+    let hash = DefaultName::from_dbase32(&txt);
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let dst = tub.treedir().to_owned();
     //let store = tub.into_store();
@@ -488,7 +488,7 @@ fn cmd_log(tub: OptPath) -> IoResult<()>
                 println!("  tree: {}", commit.tree);
                 println!("📜 {}", commit.msg);
             }
-            println!("");
+            println!();
         }
     }
     else {

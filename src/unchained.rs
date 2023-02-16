@@ -1,6 +1,7 @@
 //! New blockchain stuffs
 
 use std::ops::Range;
+use sodiumoxide::crypto::sign;
 
 
 
@@ -47,6 +48,33 @@ impl<'a, const N: usize> Block<'a, N> {
     pub fn new(buf: &'a mut [u8]) -> Self {
         Self {buf}
     }
+
+    // Note not all signature values are structurally valid
+    pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
+        let range = Math::<N>::signature_range();
+        sign::Signature::try_from(&self.buf[range])
+    }
+}
+
+
+pub struct Read<'a> {
+    buf: &'a [u8],
+}
+
+impl<'a> Read<'a> {
+    pub fn new(buf: &'a [u8]) -> Self {
+        Self {buf}
+    }
+}
+
+pub struct Write<'a> {
+    buf: &'a mut [u8],
+}
+
+impl<'a> Write<'a> {
+    pub fn new(buf: &'a mut [u8]) -> Self {
+        Self {buf}
+    }
 }
 
 
@@ -57,6 +85,13 @@ mod tests {
 
     type Math30 = Math<30>;
     type Math40 = Math<40>;
+
+    #[test]
+    fn test_stuff() {
+        let mut buf = [0_u8; 30];
+        let r = Read::new(&buf);
+        let w = Write::new(&mut buf);
+    }
 
     #[test]
     fn test_math() {

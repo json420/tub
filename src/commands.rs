@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use sodiumoxide;
-use ansi_term::Color;
+use yansi::Paint;
 
 use crate::chaos::{DefaultObject, DefaultName};
 use crate::tub::{find_dotdir, DefaultTub};
@@ -368,10 +368,10 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
                 println!("+++ b/{}", k);
                 for line in v.lines() {
                     if line.starts_with('-') {
-                        println!("{}", Color::Red.paint(line));
+                        println!("{}", Paint::red(line));
                     }
                     else if line.starts_with('+') {
-                        println!("{}", Color::Green.paint(line));
+                        println!("{}", Paint::green(line));
                     }
                     else {
                         println!("{}", line);

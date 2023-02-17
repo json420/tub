@@ -48,6 +48,31 @@ fn bm_ed25519_verify(c: &mut Criterion) {
 }
 
 
+fn bm_dalek_s(c: &mut Criterion) {
+    let buf = [7_u8; 30];
+    use rand::rngs::OsRng;
+    use ed25519_dalek::{SigningKey, Signature, Signer};
+    let mut csprng = OsRng;
+    let sk = SigningKey::generate(&mut csprng);
+    c.bench_function("ed25519-dalek sign",
+        |b| b.iter(|| sk.sign(black_box(&buf)))
+    );
+}
+
+fn bm_dalek_v(c: &mut Criterion) {
+    let buf = [7_u8; 30];
+    use rand::rngs::OsRng;
+    use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
+    let mut csprng = OsRng;
+    let sk = SigningKey::generate(&mut csprng);
+    let sig = sk.sign(&buf);
+    let pk = sk.verifying_key();
+    c.bench_function("ed25519-dalek verify",
+        |b| b.iter(|| pk.verify(black_box(&buf), black_box(&sig)))
+    );
+}
+
+
 fn bm_db32enc(c: &mut Criterion) {
     let mut src = DefaultName::new();
     c.bench_function("db32enc: Name.to_string()",
@@ -60,7 +85,7 @@ fn bm_db32dec(c: &mut Criterion) {
     hash.randomize();
     let src = &hash.to_string();
     c.bench_function("db32dec: Name::from_str()",
-        |b| b.iter(|| DefaultName::from_str(black_box(src)))
+        |b| b.iter(|| DefaultName::from_dbase32(black_box(src)))
     );
 }
 
@@ -68,7 +93,7 @@ fn bm_db32dec(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_hash, bm_hash2, bm_ed25519, bm_ed25519_verify, bm_db32enc, bm_db32dec
+    targets = bm_hash, bm_hash2, bm_ed25519, bm_ed25519_verify, bm_dalek_s, bm_dalek_v, bm_db32enc, bm_db32dec
 }
 
 criterion_main!(benches);

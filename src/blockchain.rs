@@ -423,7 +423,7 @@ mod tests {
     fn test_header_verify_hash() {
         let mut header = Header::new();
         assert!(! header.verify_hash());
-        getrandom(header.as_mut_buf());
+        getrandom(header.as_mut_buf()).unwrap();
         assert!(! header.verify_hash());
         header.set_hash(&header.compute());
         assert!(header.verify_hash());
@@ -498,7 +498,7 @@ mod tests {
     fn test_block_verify_hash() {
         let mut block = Header::new();
         assert!(! block.verify_hash());
-        getrandom(block.as_mut_buf());
+        getrandom(block.as_mut_buf()).unwrap();
         assert!(! block.verify_hash());
         block.set_hash(&block.compute());
         assert!(block.verify_hash());

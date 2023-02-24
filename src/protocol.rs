@@ -45,7 +45,7 @@ mod tests {
     fn test_blake3() {
         let mut hash = [0_u8; 30];
         let mut data = [0_u8; 69];
-        getrandom(&mut data);
+        getrandom(&mut data).unwrap();
         let b3 = Blake3::new();
         b3.hash_into(&data, &mut hash);
         let mut set: HashSet<[u8; 30]> = HashSet::new();

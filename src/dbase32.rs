@@ -488,7 +488,7 @@ mod tests {
         let mut bin = [0_u8; 15];
         let mut set: HashSet<[u8; 15]> = HashSet::new();
         for _ in 0..4269 {
-            getrandom(&mut bin);
+            getrandom(&mut bin).unwrap();
             set.insert(bin.clone());
             let txt = db32enc(&bin);
             let bin2 = db32dec(&txt.as_bytes()).unwrap();
@@ -500,7 +500,7 @@ mod tests {
     #[test]
     fn test_bad_txt() {
         let mut bin = [0_u8; 15];
-        getrandom(&mut bin);
+        getrandom(&mut bin).unwrap();
         let bin = bin;
         let txt = db32enc(&bin);
         assert_eq!(isdb32(&txt.as_bytes()), true);

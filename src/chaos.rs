@@ -80,7 +80,7 @@ impl<const N: usize> Name<N> {
     }
 
     pub fn randomize(&mut self) {
-        getrandom(&mut self.buf);
+        getrandom(&mut self.buf).unwrap();
     }
 
     pub fn into_buf(self) -> [u8; N] {
@@ -232,14 +232,14 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     // FIXME: We should not have this in the API, but super handy for testing and play
     pub fn randomize(&mut self, small: bool) -> Name<N> {
-        getrandom(&mut self.buf[N..N + INFO_LEN]);
+        getrandom(&mut self.buf[N..N + INFO_LEN]).unwrap();
         if small {
             self.buf[N] = cmp::max(self.buf[N], 15);
             self.buf[N + 1] = 0;
             self.buf[N + 2] = 0;
         }
         self.resize_to_info();
-        getrandom(self.as_mut_data());
+        getrandom(self.as_mut_data()).unwrap();
         self.finalize_with_kind(ObjKind::Data as u8)
     }
 

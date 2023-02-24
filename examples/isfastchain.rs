@@ -17,7 +17,7 @@ fn main() -> io::Result<()> {
 
     let mut obj = DefaultObject::new();
     obj.reset(124, 0);
-    getrandom(obj.as_mut_data());
+    getrandom(obj.as_mut_data()).unwrap();
     let mut block: Block = Block::new(pk);
 
     println!("🛁 Signing {} times...", COUNT);

@@ -3,15 +3,18 @@ use std::time::Instant;
 use tub::chaos::DefaultObject;
 use tub::blockchain::Block;
 use tub::util::getrandom;
-//use sodium
-use sodiumoxide;
+use rand::rngs::OsRng;
+use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
 
 
 const COUNT: usize = 100_000;
 
 fn main() -> io::Result<()> {
     sodiumoxide::init().unwrap();
-    let (pk, sk) = sodiumoxide::crypto::sign::gen_keypair();
+    
+    let mut csprng = OsRng;
+    let sk = SigningKey::generate(&mut csprng);
+    let pk = sk.verifying_key();
 
     let mut obj = DefaultObject::new();
     obj.reset(124, 0);

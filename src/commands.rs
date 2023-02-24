@@ -9,7 +9,6 @@ use std::process::exit;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
-use sodiumoxide;
 use yansi::Paint;
 
 use crate::chaos::{DefaultObject, DefaultName};
@@ -148,7 +147,6 @@ enum Commands {
 
 
 pub fn run() -> IoResult<()> {
-    sodiumoxide::init().unwrap();
     let args = Cli::parse();
     match args.command {
         Commands::Init {target} => {

@@ -10,7 +10,6 @@ use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
 const COUNT: usize = 100_000;
 
 fn main() -> io::Result<()> {
-    sodiumoxide::init().unwrap();
     
     let mut csprng = OsRng;
     let sk = SigningKey::generate(&mut csprng);

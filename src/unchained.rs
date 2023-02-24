@@ -1,8 +1,17 @@
 //! New blockchain stuffs
 
 use std::ops::Range;
-use sodiumoxide::crypto::sign;
+use rand::rngs::OsRng;
+use ed25519_dalek::{
+    SigningKey,
+    Signer,
+    Signature,
+    SignatureError,
+    VerifyingKey,
+    Verifier,
+};
 use crate::chaos::Name;
+
 
 
 
@@ -50,9 +59,9 @@ impl<'a, const N: usize> Block<'a, N> {
         Self {buf}
     }
 
-    pub fn signature(&self) -> Result<sign::Signature, sign::Error> {
+    pub fn signature(&self) -> Signature {
         let range = Math::<N>::signature_range();
-        sign::Signature::try_from(&self.buf[range])
+        Signature::from_bytes(&self.buf[range].try_into().unwrap())
     }
 
     pub fn previous(&self) -> Name<N> {
@@ -81,9 +90,9 @@ impl<'a, const N: usize> MutBlock<'a, N> {
         Self {buf}
     }
 
-    pub fn set_signature(&mut self, sig: &sign::Signature) {
+    pub fn set_signature(&mut self, sig: &Signature) {
         let range = Math::<N>::signature_range();
-        self.buf[range].copy_from_slice(sig.as_ref());
+        self.buf[range].copy_from_slice(&sig.to_bytes());
     }
 
     pub fn set_previous(&mut self, hash: &Name<N>) {

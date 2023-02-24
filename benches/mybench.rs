@@ -1,6 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use blake3;
-use sodiumoxide::crypto::sign;
 use tub::util::getrandom;
 use tub::chaos::DefaultName;
 
@@ -24,29 +23,6 @@ fn bm_hash2(c: &mut Criterion) {
     getrandom(&mut buf[..]);
     c.bench_function("blake3 64 KiB", |b| b.iter(|| hash_blake3(black_box(&buf[..]))));
 }
-
-fn bm_ed25519(c: &mut Criterion) {
-    let mut buf = [0_u8; 30];
-    getrandom(&mut buf);
-    let (_pk, sk) = sign::gen_keypair();
-    c.bench_function("sodiumoxide ed25519 sign",
-        |b| b.iter(|| sign::sign_detached(black_box(&buf), black_box(&sk)))
-    );
-}
-
-
-fn bm_ed25519_verify(c: &mut Criterion) {
-    sodiumoxide::init().unwrap();
-    let mut buf = [0_u8; 30];
-    getrandom(&mut buf);
-    let (pk, sk) = sign::gen_keypair();
-    let sig = sign::sign_detached(&buf, &sk);
-    assert!(sign::verify_detached(&sig, &buf, &pk));
-    c.bench_function("sodiumoxide ed25519 verify",
-        |b| b.iter(|| sign::verify_detached(black_box(&sig), black_box(&buf), black_box(&pk)))
-    );
-}
-
 
 fn bm_dalek_s(c: &mut Criterion) {
     let buf = [7_u8; 30];
@@ -93,7 +69,7 @@ fn bm_db32dec(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_hash, bm_hash2, bm_ed25519, bm_ed25519_verify, bm_dalek_s, bm_dalek_v, bm_db32enc, bm_db32dec
+    targets = bm_hash, bm_hash2, bm_dalek_s, bm_dalek_v, bm_db32enc, bm_db32dec
 }
 
 criterion_main!(benches);

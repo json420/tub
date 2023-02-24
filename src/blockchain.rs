@@ -5,6 +5,14 @@ use std::ops::Range;
 use std::io::prelude::*;
 use std::os::unix::fs::FileExt;
 use sodiumoxide::crypto::sign;
+use rand::rngs::OsRng;
+use ed25519_dalek::{
+    SigningKey,
+    Signer,
+    Signature,
+    VerifyingKey,
+    Verifier,
+};
 use blake3;
 use crate::chaos::DefaultName;
 
@@ -71,6 +79,13 @@ impl Header {
         self.set_signature(&sig);
         self.set_pubkey(&pk);
         self.set_hash(&self.compute());
+        sig
+    }
+
+    pub fn sign2(&mut self, sk: SigningKey) -> Signature {
+        let vk = sk.verifying_key();
+        let sig = sk.sign(vk.as_bytes());
+        //self.set_pubkey(
         sig
     }
 
@@ -501,7 +516,12 @@ mod tests {
     }
 
     #[test]
-    fn test_block_chain() {
+    fn test_ed25519_dalek() {
+        let mut csprng = OsRng;
+        let sk = SigningKey::generate(&mut csprng);
+        let sig = sk.sign(b"hello");
+        let pk = sk.verifying_key();
+        assert!(pk.verify(b"hello", &sig).is_ok());
     }
 
     #[test]

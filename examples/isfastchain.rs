@@ -2,7 +2,7 @@ use std::io;
 use std::time::Instant;
 use tub::chaos::DefaultObject;
 use tub::blockchain::Block;
-use tub::util::getrandom;
+use getrandom::getrandom;
 use rand::rngs::OsRng;
 use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
 

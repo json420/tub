@@ -390,7 +390,7 @@ impl Chain {
 
 #[cfg(test)]
 mod tests {
-    use crate::util::getrandom;
+    use getrandom::getrandom;
     use crate::helpers::flip_bit_in;
     use crate::chaos::DefaultName;
     use super::*;

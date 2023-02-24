@@ -504,7 +504,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::getrandom;
+    use getrandom::getrandom;
     use crate::protocol::Blake3;
     use crate::chaos::{DefaultName, DefaultObject, DefaultStore};
     use crate::helpers::TestTempDir;

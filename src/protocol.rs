@@ -37,7 +37,7 @@ pub type DefaultHasher = Blake3;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::getrandom;
+    use getrandom::getrandom;
     use crate::helpers::flip_bit_in;
     use std::collections::HashSet;
 

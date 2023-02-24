@@ -312,7 +312,7 @@ pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
-    use crate::util::getrandom;
+    use getrandom::getrandom;
     use super::*;
 
     #[test]

@@ -152,7 +152,7 @@ impl<'a> Iterator for BitFlipIter<'a> {
 mod tests {
     use std::collections::HashSet;
     use super::*;
-    use crate::util::getrandom;
+    use getrandom::getrandom;
 
     #[test]
     fn test_tempdir() {

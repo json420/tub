@@ -40,11 +40,11 @@ use std::io::Result as IoResult;
 use std::io::prelude::*;
 use std::io::{SeekFrom, BufReader, BufWriter};
 use std::marker::PhantomData;
+use getrandom::getrandom;
 
 use crate::base::*;
 use crate::protocol::{Hasher, Blake3};
 use crate::dbase32::{db32enc, db32dec_into};
-use crate::util::getrandom;
 
 
 pub type DefaultName = Name<30>;

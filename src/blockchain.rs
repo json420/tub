@@ -312,7 +312,7 @@ impl Chain {
     }
 
     pub fn open(mut file: fs::File) -> io::Result<Self> {
-        file.seek(io::SeekFrom::Start(0))?;
+        file.rewind()?;
         let mut header = Header::new();
         file.read_exact(header.as_mut_buf())?;
         let block = Block::new(header.pubkey());
@@ -370,7 +370,7 @@ impl Chain {
     pub fn verify(&mut self) -> io::Result<bool> {
         self.index = 0;
         let mut br = io::BufReader::new(self.file.try_clone()?);
-        br.seek(io::SeekFrom::Start(0))?;
+        br.rewind()?;
         br.read_exact(self.header.as_mut_buf())?;
         if ! self.header.verify() {
             panic!("Bad header: {}", self.header.hash());

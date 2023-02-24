@@ -436,7 +436,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     pub fn reindex(&mut self, obj: &mut Object<H, N>) -> IoResult<()> {
         self.map.clear();
         self.offset = 0;
-        self.file.seek(SeekFrom::Start(0))?;
+        self.file.rewind()?;
         let mut br = BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<BufReader<File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
@@ -447,7 +447,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.offset += obj.len() as u64;
         }
         // Truncate to end of valid object stream, discarding any partial object
-        self.file.seek(SeekFrom::Start(self.offset))?;  // Needed on Windows
+        self.file.rewind()?;  // Needed on Windows
         self.file.set_len(self.offset)?;
         obj.clear();
         Ok(())

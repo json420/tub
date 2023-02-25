@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use blake3;
-use tub::util::getrandom;
+use getrandom::getrandom;
 use tub::chaos::DefaultName;
 
 
@@ -14,13 +14,13 @@ pub fn hash_blake3(data: &[u8]) -> DefaultName {
 
 fn bm_hash(c: &mut Criterion) {
     let mut buf = vec![0_u8; 4096];
-    getrandom(&mut buf[..]);
+    getrandom(&mut buf[..]).unwrap();
     c.bench_function("blake3 4 KiB", |b| b.iter(|| hash_blake3(black_box(&buf[..]))));
 }
 
 fn bm_hash2(c: &mut Criterion) {
     let mut buf = vec![0_u8; 65536];
-    getrandom(&mut buf[..]);
+    getrandom(&mut buf[..]).unwrap();
     c.bench_function("blake3 64 KiB", |b| b.iter(|| hash_blake3(black_box(&buf[..]))));
 }
 
@@ -43,8 +43,21 @@ fn bm_dalek_v(c: &mut Criterion) {
     let sk = SigningKey::generate(&mut csprng);
     let sig = sk.sign(&buf);
     let pk = sk.verifying_key();
-    c.bench_function("ed25519-dalek verify",
+    c.bench_function("ed25519_dalek verify",
         |b| b.iter(|| pk.verify(black_box(&buf), black_box(&sig)))
+    );
+}
+
+fn bm_dalek_v_strict(c: &mut Criterion) {
+    let buf = [7_u8; 30];
+    use rand::rngs::OsRng;
+    use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
+    let mut csprng = OsRng;
+    let sk = SigningKey::generate(&mut csprng);
+    let sig = sk.sign(&buf);
+    let pk = sk.verifying_key();
+    c.bench_function("ed25519_dalek verify_strict",
+        |b| b.iter(|| pk.verify_strict(black_box(&buf), black_box(&sig)))
     );
 }
 
@@ -69,7 +82,7 @@ fn bm_db32dec(c: &mut Criterion) {
 criterion_group!{
     name = benches;
     config = Criterion::default();
-    targets = bm_hash, bm_hash2, bm_dalek_s, bm_dalek_v, bm_db32enc, bm_db32dec
+    targets = bm_hash, bm_hash2, bm_dalek_s, bm_dalek_v, bm_dalek_v_strict, bm_db32enc, bm_db32dec
 }
 
 criterion_main!(benches);

@@ -1,5 +1,7 @@
 //! Object hashing protocol.
 
+use std::marker::PhantomData;
+use std::io::Result as IoResult;
 
 use blake3;
 
@@ -32,6 +34,42 @@ impl Hasher for Blake3 {
 }
 
 pub type DefaultHasher = Blake3;
+
+
+pub trait Protocol {
+    fn digest() -> usize {
+        30
+    }
+
+    fn size() -> usize {
+        3
+    }
+
+    fn header() -> usize {
+        Self::digest() + Self::size() + 1
+    }
+
+}
+
+pub struct Hash<const N: usize> {
+    buf: [u8; N],
+}
+
+pub struct Object<P: Protocol> {
+    phantom: PhantomData<P>,
+    buf: Vec<u8>,
+}
+
+impl<P: Protocol> Object<P> {
+    fn reset(&mut self) {
+        self.buf.clear();
+        self.buf.resize(P::header(), 0);
+    }
+}
+
+pub trait Store<P: Protocol> {
+    fn save(&self, obj: &Object<P>) -> IoResult<bool>;
+}
 
 
 #[cfg(test)]

@@ -98,6 +98,8 @@ byte
 
 // NOTE: This module should have no dependencies.  No use use!
 
+use std::iter::FusedIterator;
+
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
     255,255,255,255,255,255,255,255,255,
@@ -185,6 +187,10 @@ impl Iterator for DirNameIter {
         }
     }
 }
+
+impl FusedIterator for DirNameIter {}
+
+
 
 
 macro_rules! bin_at {

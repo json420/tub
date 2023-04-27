@@ -55,21 +55,51 @@ pub struct Hash<const N: usize> {
     buf: [u8; N],
 }
 
-pub struct Object<P: Protocol> {
+
+pub struct HashIter<const N: usize> {
+
+}
+
+impl<const N: usize> Iterator for HashIter<N> {
+    type Item = Hash<N>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+pub struct Object<P: Protocol, const N: usize> {
     phantom: PhantomData<P>,
     buf: Vec<u8>,
 }
 
-impl<P: Protocol> Object<P> {
+impl<P: Protocol, const N: usize> Object<P, N> {
     fn reset(&mut self) {
         self.buf.clear();
         self.buf.resize(P::header(), 0);
     }
+
+    pub fn as_header(&self) -> &[u8] {
+        &self.buf[0..P::header()]
+    }
 }
 
-pub trait Store<P: Protocol> {
-    fn save(&self, obj: &Object<P>) -> IoResult<bool>;
+pub trait Store<P: Protocol, const N: usize> {
+    fn save(&mut self, obj: &Object<P, N>) -> IoResult<bool>;
+
+    fn load(&mut self, obj: Object<P, N>, hash: &Hash<N>) -> IoResult<bool>;
+
+    fn delete(&mut self, hash: &Hash<N>) -> IoResult<bool>;
+
+    //fn iter(&self) -> HashIter2<P, N, Store<P, N>>;
 }
+
+pub struct HashIter2<P: Protocol, const N: usize, S: Store<P, N>> {
+    store: S,
+    phantom1: PhantomData<P>,
+}
+
+
 
 
 #[cfg(test)]

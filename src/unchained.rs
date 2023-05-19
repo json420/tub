@@ -10,21 +10,28 @@ use ed25519_dalek::{
     VerifyingKey,
     Verifier,
 };
-use crate::chaos::Name;
 
 
 
+/*
+First pass:
 
-// HASH SIG
+N    64        32     N    N        N
+HASH SIGNATURE PUBKEY NEXT PREVIOUS PAYLOAD
+HASH SIGNATURE PUBKEY NEXT
+
+
+Then probably add:
+N    64        32     8       8         N  N    N        N
+HASH SIGNATURE PUBKEY COUNTER TIMESTAMP ID NEXT PREVIOUS PAYLOAD
+HASH SIGNATURE PUBKEY NEXT
+*/
+
 
 pub struct Math<const N: usize> {}
 
 
 impl<const N: usize> Math<N> {
-    pub fn size() -> usize {
-        N + 64 + N + N + 8
-    }
-
     pub fn hash_range() -> Range<usize> {
         0..N
     }
@@ -33,19 +40,24 @@ impl<const N: usize> Math<N> {
         N..N + 64
     }
 
-    pub fn previous_range() -> Range<usize> {
+    pub fn pubkey_range() -> Range<usize> {
         let start = N + 64;
+        start..start + 32
+    }
+
+    pub fn next_range() -> Range<usize> {
+        let start = N + 96;
+        start..start + N
+    }
+
+    pub fn previous_range() -> Range<usize> {
+        let start = 2 * N + 96;
         start..start + N
     }
 
     pub fn payload_range() -> Range<usize> {
-        let start = N + 64 + N;
+        let start = 3 * N + 96;
         start..start + N
-    }
-
-    pub fn index_range() -> Range<usize> {
-        let start = N + 64 + N + N;
-        start..start + 8
     }
 }
 
@@ -57,26 +69,6 @@ pub struct Block<'a, const N: usize> {
 impl<'a, const N: usize> Block<'a, N> {
     pub fn new(buf: &'a [u8]) -> Self {
         Self {buf}
-    }
-
-    pub fn signature(&self) -> Signature {
-        let range = Math::<N>::signature_range();
-        Signature::from_bytes(&self.buf[range].try_into().unwrap())
-    }
-
-    pub fn previous(&self) -> Name<N> {
-        let range = Math::<N>::previous_range();
-        Name::from(&self.buf[range])
-    }
-
-    pub fn payload(&self) -> Name<N> {
-        let range = Math::<N>::payload_range();
-        Name::from(&self.buf[range])
-    }
-
-    pub fn index(&self) -> u64 {
-        let range = Math::<N>::index_range();
-        u64::from_le_bytes( self.buf[range].try_into().unwrap() )
     }
 }
 
@@ -90,25 +82,6 @@ impl<'a, const N: usize> MutBlock<'a, N> {
         Self {buf}
     }
 
-    pub fn set_signature(&mut self, sig: &Signature) {
-        let range = Math::<N>::signature_range();
-        self.buf[range].copy_from_slice(&sig.to_bytes());
-    }
-
-    pub fn set_previous(&mut self, hash: &Name<N>) {
-        let range = Math::<N>::previous_range();
-        self.buf[range].copy_from_slice(hash.as_buf());
-    }
-
-    pub fn set_payload(&mut self, hash: &Name<N>) {
-        let range = Math::<N>::payload_range();
-        self.buf[range].copy_from_slice(hash.as_buf());
-    }
-
-    pub fn set_index(&mut self, index: u64) {
-        let range = Math::<N>::index_range();
-        self.buf[range].copy_from_slice(&index.to_le_bytes());
-    }
 }
 
 
@@ -150,19 +123,19 @@ mod tests {
 
     #[test]
     fn test_math() {
-        assert_eq!(Math30::size(), 162);
         assert_eq!(Math30::hash_range(), 0..30);
         assert_eq!(Math30::signature_range(), 30..94);
-        assert_eq!(Math30::previous_range(), 94..124);
-        assert_eq!(Math30::payload_range(), 124..154);
-        assert_eq!(Math30::index_range(), 154..162);
+        assert_eq!(Math30::pubkey_range(), 94..126);
+        assert_eq!(Math30::next_range(), 126..156);
+        assert_eq!(Math30::previous_range(), 156..186);
+        assert_eq!(Math30::payload_range(), 186..216);
 
-        assert_eq!(Math40::size(), 192);
         assert_eq!(Math40::hash_range(), 0..40);
         assert_eq!(Math40::signature_range(), 40..104);
-        assert_eq!(Math40::previous_range(), 104..144);
-        assert_eq!(Math40::payload_range(), 144..184);
-        assert_eq!(Math40::index_range(), 184..192);
+        assert_eq!(Math40::pubkey_range(), 104..136);
+        assert_eq!(Math40::next_range(), 136..176);
+        assert_eq!(Math40::previous_range(), 176..216);
+        assert_eq!(Math40::payload_range(), 216..256);
     }
 }
 

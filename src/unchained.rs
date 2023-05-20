@@ -21,6 +21,7 @@ HASH SIGNATURE PUBKEY NEXT PREVIOUS PAYLOAD
 HASH SIGNATURE PUBKEY NEXT
 
 
+
 Then probably add:
 N    64        32     8       8         N  N    N        N
 HASH SIGNATURE PUBKEY COUNTER TIMESTAMP ID NEXT PREVIOUS PAYLOAD
@@ -29,7 +30,6 @@ HASH SIGNATURE PUBKEY NEXT
 
 
 pub struct Math<const N: usize> {}
-
 
 impl<const N: usize> Math<N> {
     pub fn hash_range() -> Range<usize> {
@@ -59,6 +59,10 @@ impl<const N: usize> Math<N> {
         let start = 3 * N + 96;
         start..start + N
     }
+
+    pub fn size() -> usize {
+        4 * N + 96
+    }
 }
 
 
@@ -70,6 +74,30 @@ impl<'a, const N: usize> Block<'a, N> {
     pub fn new(buf: &'a [u8]) -> Self {
         Self {buf}
     }
+
+    pub fn as_hash(&self) -> &[u8] {
+        &self.buf[Math::<N>::hash_range()]
+    }
+
+    pub fn as_signature(&self) -> &[u8] {
+        &self.buf[Math::<N>::signature_range()]
+    }
+
+    pub fn as_pubkey(&self) -> &[u8] {
+        &self.buf[Math::<N>::pubkey_range()]
+    }
+
+    pub fn as_next(&self) -> &[u8] {
+        &self.buf[Math::<N>::next_range()]
+    }
+
+    pub fn as_previous(&self) -> &[u8] {
+        &self.buf[Math::<N>::previous_range()]
+    }
+
+    pub fn as_payload(&self) -> &[u8] {
+        &self.buf[Math::<N>::payload_range()]
+    }
 }
 
 
@@ -80,6 +108,30 @@ pub struct MutBlock<'a, const N: usize> {
 impl<'a, const N: usize> MutBlock<'a, N> {
     pub fn new(buf: &'a mut [u8]) -> Self {
         Self {buf}
+    }
+
+    pub fn as_hash(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::hash_range()]
+    }
+
+    pub fn as_signature(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::signature_range()]
+    }
+
+    pub fn as_pubkey(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::pubkey_range()]
+    }
+
+    pub fn as_next(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::next_range()]
+    }
+
+    pub fn as_previous(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::previous_range()]
+    }
+
+    pub fn as_payload(&mut self) -> &mut [u8] {
+        &mut self.buf[Math::<N>::payload_range()]
     }
 
 }

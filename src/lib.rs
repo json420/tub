@@ -12,4 +12,4 @@ pub mod inception;
 pub mod protocol;
 pub mod tub;
 pub mod unchained;
-
+pub mod mapreduce;

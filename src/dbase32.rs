@@ -175,8 +175,7 @@ impl Iterator for DirNameIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.i < 1024 {
-            let mut buf = Vec::new();
-            buf.resize(2, 0);
+            let mut buf = vec![0u8; 2];
             buf[0] = FORWARD[self.i >> 5];
             buf[1] = FORWARD[self.i & 31];
             self.i += 1;

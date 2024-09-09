@@ -1,10 +1,11 @@
-Installing Tub
-==============
+# 🛁 Tub/Bathtub DB 🛁
+
+This is an early feasibility study on what will probably be called Zebra DB.
+
+## Installing Tub
 
 On account of being so kickass, Tub is written in Rust, which you can install
-from here:
-
-    https://rustup.rs/
+from https://rustup.rs/
 
 Then build and install Tub like this:
 
@@ -27,8 +28,9 @@ and then do the same with `git hash-object <filename>`:
     $ time tub hash /some/big/file
     $ time git hash-object /some/big/file
 
-WTF is Tub?  A database, version control software, or what?
-===========================================================
+## WTF is Tub?
+
+Is it database, version control software, or what?
 
 The goal of Tub is to improve the operational efficiency of complex human
 systems (companies, governments, nonprofits, etc).  Go faster, solve harder
@@ -45,8 +47,7 @@ absolutely freakin' everything!
 ALL YOUR DATUM ARE BELONG TO TUB!
 
 
-Other Rust version control projects
-===================================
+## Other Rust version control projects
 
 https://github.com/Byron/gitoxide/
 

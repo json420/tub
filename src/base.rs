@@ -9,14 +9,13 @@ pub const PACKFILE: &str = "append.tub";
 pub const INDEX_FILE: &str = "append.idx";
 pub const OBJECTDIR: &str = "objects";
 pub const TMPDIR: &str = "tmp";
-pub const README: &str = "REAMDE.txt";  // The REAMDE file
+pub const README: &str = "REAMDE.txt"; // The REAMDE file
 pub const BRANCHES: &str = "blockchain";
 
 pub static README_CONTENTS: &[u8] = b"Hello from Bathtub DB!
 
 What's even more relaxing than a Couch?  A Bathtub!
 ";
-
 
 #[derive(Debug, PartialEq)]
 pub enum ObjKind {
@@ -49,8 +48,6 @@ impl From<u8> for ObjKind {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BlockType {
     Configure,
@@ -67,8 +64,6 @@ impl From<u8> for BlockType {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,8 +74,7 @@ mod tests {
             let kind: ObjKind = k.into();
             if k < 9 {
                 assert_eq!(kind as u8, k);
-            }
-            else {
+            } else {
                 assert_eq!(kind as u8, 9);
             }
         }
@@ -110,4 +104,3 @@ mod tests {
         let _kind: BlockType = 255.into();
     }
 }
-

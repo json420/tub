@@ -3,7 +3,6 @@ use std::time::Instant;
 use tub::chaos::{DefaultObject, DefaultStore};
 use tub::helpers::TestTempDir;
 
-
 const SIZE: usize = 128;
 const COUNT: usize = 1_000_000;
 const LOOPS: usize = 3;
@@ -69,7 +68,10 @@ fn main() -> io::Result<()> {
     }
     let elapsed = start.elapsed().as_secs_f64();
     let rate = (COUNT * LOOPS) as f64 / elapsed;
-    println!("🚀 {} objects indexed plus validated per second", rate as u64);
+    println!(
+        "🚀 {} objects indexed plus validated per second",
+        rate as u64
+    );
     println!("");
     assert_eq!(store.len(), COUNT);
 

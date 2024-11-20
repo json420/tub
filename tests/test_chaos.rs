@@ -1,16 +1,19 @@
 #[cfg(test)]
-
 use std::fs;
+use tub::chaos::{Name, Object, Store};
 use tub::helpers::TestTempDir;
 use tub::protocol::Blake3;
-use tub::chaos::{Store, Object, Name};
-
 
 #[test]
 fn test_roundtrip() {
     let tmp = TestTempDir::new();
     let pb = tmp.build(&["some_file"]);
-    let file = fs::File::options().read(true).append(true).create_new(true).open(&pb).unwrap();
+    let file = fs::File::options()
+        .read(true)
+        .append(true)
+        .create_new(true)
+        .open(&pb)
+        .unwrap();
     let mut store: Store<Blake3, 30> = Store::new(file);
     let mut obj: Object<Blake3, 30> = Object::new();
     let mut objects: Vec<(Name<30>, Vec<u8>)> = Vec::new();
@@ -24,4 +27,3 @@ fn test_roundtrip() {
         assert_eq!(obj.as_mut_vec(), buf);
     }
 }
-

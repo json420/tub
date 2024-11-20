@@ -8,7 +8,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_stuff() {
-        
-    }
+    fn test_stuff() {}
 }

@@ -1,21 +1,13 @@
 //! Super cool crypto in here, yo! 💵 💵 💵
 
-use std::{io, fs};
-use std::ops::Range;
-use std::io::prelude::*;
-use std::os::unix::fs::FileExt;
-use rand::rngs::OsRng;
-use ed25519_dalek::{
-    SigningKey,
-    Signer,
-    Signature,
-    SignatureError,
-    VerifyingKey,
-    Verifier,
-};
-use blake3;
 use crate::chaos::DefaultName;
-
+use blake3;
+use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, Verifier, VerifyingKey};
+use rand::rngs::OsRng;
+use std::io::prelude::*;
+use std::ops::Range;
+use std::os::unix::fs::FileExt;
+use std::{fs, io};
 
 /*
 Rough cycles for ed25519 to sign/verify:
@@ -33,11 +25,10 @@ You can think of a Tub blockchain like a namespace or an identity.
 ROOT, SIGNATURE, PUBKEY, PREVIOUS, COUNTER, TIMESTAMP, PAYLOAD_HASH
 */
 
-
 fn compute_hash(payload: &[u8]) -> DefaultName {
     let mut h = blake3::Hasher::new();
     h.update(payload);
-    let mut hash= DefaultName::new();
+    let mut hash = DefaultName::new();
     h.finalize_xof().fill(hash.as_mut_buf());
     hash
 }
@@ -46,7 +37,6 @@ fn gen_signing_key() -> SigningKey {
     let mut csprng = OsRng;
     SigningKey::generate(&mut csprng)
 }
-
 
 const HASH_RANGE: Range<usize> = 0..30;
 const SIGNATURE_RANGE: Range<usize> = 30..94;
@@ -63,7 +53,9 @@ pub struct Header {
 
 impl Header {
     pub fn new() -> Self {
-        Self {buf: [0; HEADER_LEN]}
+        Self {
+            buf: [0; HEADER_LEN],
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -93,9 +85,10 @@ impl Header {
 
     pub fn verify_signature(&self) -> bool {
         if let Ok(sig) = self.signature() {
-            self.pubkey().verify(&self.buf[HEADER_PUBKEY_RANGE], &sig).is_ok()
-        }
-        else {
+            self.pubkey()
+                .verify(&self.buf[HEADER_PUBKEY_RANGE], &sig)
+                .is_ok()
+        } else {
             false
         }
     }
@@ -145,8 +138,6 @@ impl Default for Header {
     }
 }
 
-
-
 const BLOCK_LEN: usize = 162;
 const BLOCK_PREVIOUS_RANGE: Range<usize> = 94..124;
 const BLOCK_PAYLOAD_RANGE: Range<usize> = 124..154;
@@ -163,8 +154,11 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(pk: VerifyingKey) -> Self{
-        Self {buf: [0; BLOCK_LEN], pk}
+    pub fn new(pk: VerifyingKey) -> Self {
+        Self {
+            buf: [0; BLOCK_LEN],
+            pk,
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -205,8 +199,7 @@ impl Block {
     pub fn verify_signature(&self) -> bool {
         if let Ok(sig) = self.signature() {
             self.pk.verify(self.as_signed(), &sig).is_ok()
-        }
-        else {
+        } else {
             false
         }
     }
@@ -253,16 +246,13 @@ impl Block {
     }
 
     pub fn index(&self) -> u64 {
-        u64::from_le_bytes(
-            self.buf[BLOCK_INDEX_RANGE].try_into().unwrap()
-        )
+        u64::from_le_bytes(self.buf[BLOCK_INDEX_RANGE].try_into().unwrap())
     }
 
     pub fn set_index(&mut self, index: u64) {
         self.buf[BLOCK_INDEX_RANGE].copy_from_slice(&index.to_le_bytes());
     }
 }
-
 
 pub struct Chain {
     pub header: Header,
@@ -287,7 +277,7 @@ impl Chain {
         let previous = header.hash();
         file.write_all(header.as_buf())?;
         let block = Block::new(header.pubkey());
-        Ok( Self {
+        Ok(Self {
             header,
             block,
             previous,
@@ -349,8 +339,7 @@ impl Chain {
         if self.current > 0 {
             self.current -= 1;
             self.load_block_at(self.current)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
@@ -377,12 +366,12 @@ impl Chain {
         let mut br = io::BufReader::new(self.file.try_clone()?);
         br.rewind()?;
         br.read_exact(self.header.as_mut_buf())?;
-        if ! self.header.verify() {
+        if !self.header.verify() {
             panic!("Bad header: {}", self.header.hash());
         }
         self.previous = self.header.hash();
         while br.read_exact(self.block.as_mut_buf()).is_ok() {
-            if ! self.block.verify_against(&self.previous) {
+            if !self.block.verify_against(&self.previous) {
                 panic!("Bad block: {} {}", self.block.hash(), &self.previous);
             }
             self.index += 1;
@@ -392,19 +381,18 @@ impl Chain {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use getrandom::getrandom;
-    use crate::helpers::flip_bit_in;
-    use crate::chaos::DefaultName;
     use super::*;
+    use crate::chaos::DefaultName;
+    use crate::helpers::flip_bit_in;
+    use getrandom::getrandom;
 
     #[test]
     fn test_header_get_set() {
         let mut header = Header::new();
 
-        let mut hash= DefaultName::new();
+        let mut hash = DefaultName::new();
         assert_eq!(header.hash(), hash);
         hash.randomize();
         assert_ne!(header.hash(), hash);
@@ -428,15 +416,15 @@ mod tests {
     #[test]
     fn test_header_verify_hash() {
         let mut header = Header::new();
-        assert!(! header.verify_hash());
+        assert!(!header.verify_hash());
         getrandom(header.as_mut_buf()).unwrap();
-        assert!(! header.verify_hash());
+        assert!(!header.verify_hash());
         header.set_hash(&header.compute());
         assert!(header.verify_hash());
         let count = header.as_mut_buf().len() * 8;
         for bit in 0..count {
             flip_bit_in(header.as_mut_buf(), bit);
-            assert!(! header.verify_hash());
+            assert!(!header.verify_hash());
             flip_bit_in(header.as_mut_buf(), bit);
             assert!(header.verify_hash());
         }
@@ -467,61 +455,61 @@ mod tests {
         */
     }
 
-/*
+    /*
 
-    #[test]
-    fn test_block_get_set() {
-        let (pk, sk) = sign::gen_keypair();
-        let mut block = Block::new(pk);
+        #[test]
+        fn test_block_get_set() {
+            let (pk, sk) = sign::gen_keypair();
+            let mut block = Block::new(pk);
 
-        let mut hash= DefaultName::new();
-        assert_eq!(block.hash(), hash);
-        hash.randomize();
-        assert_ne!(block.hash(), hash);
-        block.set_hash(&hash);
-        assert_eq!(block.hash(), hash);
+            let mut hash= DefaultName::new();
+            assert_eq!(block.hash(), hash);
+            hash.randomize();
+            assert_ne!(block.hash(), hash);
+            block.set_hash(&hash);
+            assert_eq!(block.hash(), hash);
 
-        assert_eq!(block.signature().unwrap().as_ref(), [0; 64]);
-        let sig = sign::sign_detached(pk.as_ref(), &sk);
-        assert_ne!(block.signature().unwrap(), sig);
-        block.set_signature(&sig);
-        assert_eq!(block.signature().unwrap(), sig);
+            assert_eq!(block.signature().unwrap().as_ref(), [0; 64]);
+            let sig = sign::sign_detached(pk.as_ref(), &sk);
+            assert_ne!(block.signature().unwrap(), sig);
+            block.set_signature(&sig);
+            assert_eq!(block.signature().unwrap(), sig);
 
-        assert_eq!(block.previous(), DefaultName::new());
-        hash.randomize();
-        assert_ne!(block.previous(), hash);
-        block.set_previous(&hash);
-        assert_eq!(block.previous(), hash);
+            assert_eq!(block.previous(), DefaultName::new());
+            hash.randomize();
+            assert_ne!(block.previous(), hash);
+            block.set_previous(&hash);
+            assert_eq!(block.previous(), hash);
 
-        assert_eq!(block.payload(), DefaultName::new());
-        hash.randomize();
-        assert_ne!(block.payload(), hash);
-        block.set_payload(&hash);
-        assert_eq!(block.payload(), hash);
+            assert_eq!(block.payload(), DefaultName::new());
+            hash.randomize();
+            assert_ne!(block.payload(), hash);
+            block.set_payload(&hash);
+            assert_eq!(block.payload(), hash);
 
-        assert_eq!(block.index(), 0);
-        block.set_index(420);
-        assert_eq!(block.index(), 420);
-    }
-
-    #[test]
-    fn test_block_verify_hash() {
-        let mut block = Header::new();
-        assert!(! block.verify_hash());
-        getrandom(block.as_mut_buf()).unwrap();
-        assert!(! block.verify_hash());
-        block.set_hash(&block.compute());
-        assert!(block.verify_hash());
-        let count = block.as_mut_buf().len() * 8;
-        for bit in 0..count {
-            flip_bit_in(block.as_mut_buf(), bit);
-            assert!(! block.verify_hash());
-            flip_bit_in(block.as_mut_buf(), bit);
-            assert!(block.verify_hash());
+            assert_eq!(block.index(), 0);
+            block.set_index(420);
+            assert_eq!(block.index(), 420);
         }
-    }
 
-*/
+        #[test]
+        fn test_block_verify_hash() {
+            let mut block = Header::new();
+            assert!(! block.verify_hash());
+            getrandom(block.as_mut_buf()).unwrap();
+            assert!(! block.verify_hash());
+            block.set_hash(&block.compute());
+            assert!(block.verify_hash());
+            let count = block.as_mut_buf().len() * 8;
+            for bit in 0..count {
+                flip_bit_in(block.as_mut_buf(), bit);
+                assert!(! block.verify_hash());
+                flip_bit_in(block.as_mut_buf(), bit);
+                assert!(block.verify_hash());
+            }
+        }
+
+    */
 
     #[test]
     fn test_ed25519_dalek() {
@@ -531,6 +519,4 @@ mod tests {
         let pk = sk.verifying_key();
         assert!(pk.verify(b"hello", &sig).is_ok());
     }
-
 }
-

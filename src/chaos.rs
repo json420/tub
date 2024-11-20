@@ -31,27 +31,23 @@
 //! We can get a bit more performance by replacing HashMap with something
 //! custom... we already have a hash!  Maybe hash the Tub hash with aHash?
 
-
-use std::{cmp, fmt};
+use getrandom::getrandom;
 use std::collections::HashMap;
 use std::fs::File;
-use std::os::unix::fs::FileExt;
-use std::io::Result as IoResult;
 use std::io::prelude::*;
-use std::io::{SeekFrom, BufReader, BufWriter};
+use std::io::Result as IoResult;
+use std::io::{BufReader, BufWriter, SeekFrom};
 use std::marker::PhantomData;
-use getrandom::getrandom;
+use std::os::unix::fs::FileExt;
+use std::{cmp, fmt};
 
 use crate::base::*;
-use crate::protocol::{Hasher, Blake3};
-use crate::dbase32::{db32enc, db32dec_into};
-
+use crate::dbase32::{db32dec_into, db32enc};
+use crate::protocol::{Blake3, Hasher};
 
 pub type DefaultName = Name<30>;
 pub type DefaultObject = Object<Blake3, 30>;
 pub type DefaultStore = Store<Blake3, 30>;
-
-
 
 /// N byte long Tub name (content hash or random ID).
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
@@ -61,20 +57,19 @@ pub struct Name<const N: usize> {
 
 impl<const N: usize> Name<N> {
     pub fn new() -> Self {
-        Self {buf: [0_u8; N]}
+        Self { buf: [0_u8; N] }
     }
 
     pub fn from(src: &[u8]) -> Self {
         let buf: [u8; N] = src.try_into().expect("oops");
-        Self {buf}
+        Self { buf }
     }
 
     pub fn from_dbase32(txt: &str) -> Self {
         let mut buf = [0_u8; N];
         if db32dec_into(txt.as_bytes(), &mut buf) {
-            Self {buf}
-        }
-        else {
+            Self { buf }
+        } else {
             panic!("Handle this better, yo");
         }
     }
@@ -120,7 +115,6 @@ impl<const N: usize> Default for Name<N> {
     }
 }
 
-
 /// Packs 24-bit `size` and 8-bit `kind` into a `u32`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Info {
@@ -129,14 +123,21 @@ pub struct Info {
 
 impl Info {
     fn new(size: usize, kind: u8) -> Self {
-        if ! (1..=OBJECT_MAX_SIZE).contains(&size) {
-            panic!("Info: Need 1 <= size <= {}; got size={}", OBJECT_MAX_SIZE, size);
+        if !(1..=OBJECT_MAX_SIZE).contains(&size) {
+            panic!(
+                "Info: Need 1 <= size <= {}; got size={}",
+                OBJECT_MAX_SIZE, size
+            );
         }
-        Self {val: (size - 1) as u32 | (kind as u32) << 24}
+        Self {
+            val: (size - 1) as u32 | (kind as u32) << 24,
+        }
     }
 
     pub fn from_le_bytes(buf: &[u8]) -> Self {
-        Self {val: u32::from_le_bytes(buf.try_into().expect("oops"))}
+        Self {
+            val: u32::from_le_bytes(buf.try_into().expect("oops")),
+        }
     }
 
     pub fn to_le_bytes(&self) -> [u8; 4] {
@@ -169,7 +170,6 @@ read into obj.as_mut_data()
 
 
 */
-
 
 /// Buffer containing a single object's header plus data.
 #[derive(Debug, Default)]
@@ -220,8 +220,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
         let max = N + INFO_LEN + OBJECT_MAX_SIZE;
         if self.len() > max {
             0
-        }
-        else {
+        } else {
             max - self.len()
         }
     }
@@ -319,7 +318,7 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
     pub fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.buf
-    }   
+    }
 
     pub fn as_header(&self) -> &[u8] {
         &self.buf[0..N + INFO_LEN]
@@ -344,11 +343,15 @@ impl<H: Hasher, const N: usize> Object<H, N> {
 
 impl<H: Hasher, const N: usize> fmt::Display for Object<H, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {:?}", self.hash(), self.info().size(), self.kind())
+        write!(
+            f,
+            "{} {} {:?}",
+            self.hash(),
+            self.info().size(),
+            self.kind()
+        )
     }
 }
-
-
 
 /// A value in the `Store.map` HashMap index.
 pub struct Entry {
@@ -358,14 +361,13 @@ pub struct Entry {
 
 impl Entry {
     pub fn new(info: Info, offset: u64) -> Self {
-        Self {info, offset}
+        Self { info, offset }
     }
 }
 
-
 // Read objects from an object stream.
 pub struct ObjectReader<'a, R: Read, H: Hasher, const N: usize> {
-    phantom1: PhantomData<R>,  // This feels like me babysitting the compiler 🤪
+    phantom1: PhantomData<R>, // This feels like me babysitting the compiler 🤪
     phantom2: PhantomData<H>,
     inner: &'a mut R,
 }
@@ -384,12 +386,11 @@ impl<'a, R: Read, H: Hasher, const N: usize> ObjectReader<'a, R, H, N> {
         if self.inner.read_exact(obj.as_mut_header()).is_ok() {
             obj.resize_to_info();
             self.inner.read_exact(obj.as_mut_data())?;
-            if ! obj.is_valid() {
-                panic!("Not valid {}", obj.hash());  // FIXME: handle more better
+            if !obj.is_valid() {
+                panic!("Not valid {}", obj.hash()); // FIXME: handle more better
             }
             Ok(true)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
@@ -440,14 +441,12 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         let mut br = BufReader::new(self.file.try_clone()?);
         let mut reader: ObjectReader<BufReader<File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
-            self.map.insert(
-                obj.hash(),
-                Entry::new(obj.info(), self.offset)
-            );
+            self.map
+                .insert(obj.hash(), Entry::new(obj.info(), self.offset));
             self.offset += obj.len() as u64;
         }
         // Truncate to end of valid object stream, discarding any partial object
-        self.file.rewind()?;  // Needed on Windows
+        self.file.rewind()?; // Needed on Windows
         self.file.set_len(self.offset)?;
         obj.clear();
         Ok(())
@@ -460,30 +459,25 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         // Load entries from the saved index file
         let mut idx = BufReader::new(idx);
         while idx.read_exact(obj.as_mut_header()).is_ok() {
-            self.map.insert(
-                obj.hash(),
-                Entry::new(obj.info(), self.offset)
-            );
+            self.map
+                .insert(obj.hash(), Entry::new(obj.info(), self.offset));
             self.offset += (N + 4 + obj.info().size()) as u64;
         }
         // FIXME: truncate if needed based on OFFSET % HEADER_LEN
 
         // Index plus verify remaining objects, adding to index file
         let mut idx = BufWriter::new(idx.into_inner());
-        self.file.seek(SeekFrom::Start(self.offset))?;  // Very important!
+        self.file.seek(SeekFrom::Start(self.offset))?; // Very important!
         let mut br = BufReader::new(self.file.try_clone()?);
-        let mut reader: ObjectReader<BufReader<File>, H, N>
-            = ObjectReader::new(&mut br);
+        let mut reader: ObjectReader<BufReader<File>, H, N> = ObjectReader::new(&mut br);
         while reader.read_next(obj)? {
-            self.map.insert(
-                obj.hash(),
-                Entry::new(obj.info(), self.offset)
-            );
+            self.map
+                .insert(obj.hash(), Entry::new(obj.info(), self.offset));
             idx.write_all(obj.as_header())?;
             self.offset += (N + 4 + obj.info().size()) as u64;
         }
         // Truncate to end of valid object stream, discarding any partial object
-        self.file.seek(SeekFrom::Start(self.offset))?;  // Needed on Windows
+        self.file.seek(SeekFrom::Start(self.offset))?; // Needed on Windows
         self.file.set_len(self.offset)?;
         idx.flush()?;
         obj.clear();
@@ -499,20 +493,18 @@ impl<H: Hasher, const N: usize> Store<H, N> {
             self.file.read_exact(obj.as_mut_buf())?;
             */
             Ok(true)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
 
     pub fn load(&mut self, hash: &Name<N>, obj: &mut Object<H, N>) -> IoResult<bool> {
         if self.load_unchecked(hash, obj)? {
-            if ! obj.validate_against(hash) {
+            if !obj.validate_against(hash) {
                 panic!("{} hash does not match", hash);
             }
             Ok(true)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
@@ -522,8 +514,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
         let info = obj.info();
         if let Some(_entry) = self.map.get(&hash) {
             Ok(false)
-        }
-        else {
+        } else {
             self.file.write_all(obj.as_buf())?;
             self.map.insert(hash, Entry::new(info, self.offset));
             self.offset += obj.len() as u64;
@@ -537,12 +528,10 @@ impl<H: Hasher, const N: usize> Store<H, N> {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{TestTempDir, flip_bit_in};
+    use crate::helpers::{flip_bit_in, TestTempDir};
     use std::collections::HashSet;
 
     #[test]
@@ -551,12 +540,18 @@ mod tests {
         assert_eq!(n.len(), 30);
         assert_eq!(n.as_buf(), [0_u8; 30]);
         assert_eq!(n.as_mut_buf(), [0_u8; 30]);
-        assert_eq!(n.to_string(), "333333333333333333333333333333333333333333333333");
+        assert_eq!(
+            n.to_string(),
+            "333333333333333333333333333333333333333333333333"
+        );
         n.as_mut_buf().fill(255);
         assert_eq!(n.len(), 30);
         assert_eq!(n.as_buf(), [255_u8; 30]);
         assert_eq!(n.as_mut_buf(), [255_u8; 30]);
-        assert_eq!(n.to_string(), "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+        assert_eq!(
+            n.to_string(),
+            "YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY"
+        );
 
         let mut n = Name::<20>::new();
         assert_eq!(n.len(), 20);
@@ -609,13 +604,13 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected="Need 1 <= size <= 16777216; got size=0")]
+    #[should_panic(expected = "Need 1 <= size <= 16777216; got size=0")]
     fn test_info_panic_low() {
         let _sk = Info::new(0, 0);
     }
 
     #[test]
-    #[should_panic(expected="Need 1 <= size <= 16777216; got size=16777217")]
+    #[should_panic(expected = "Need 1 <= size <= 16777216; got size=16777217")]
     fn test_info_panic_high() {
         let _sk = Info::new(OBJECT_MAX_SIZE + 1, 0);
     }
@@ -659,7 +654,7 @@ mod tests {
         assert!(obj.is_valid());
         for bit in 0..obj.len() * 8 {
             flip_bit_in(obj.as_mut_buf(), bit);
-            assert!(! obj.is_valid());
+            assert!(!obj.is_valid());
             flip_bit_in(obj.as_mut_buf(), bit);
             assert!(obj.is_valid());
         }
@@ -667,7 +662,7 @@ mod tests {
         let mut hash = obj.hash();
         for bit in 0..hash.len() * 8 {
             flip_bit_in(hash.as_mut_buf(), bit);
-            assert!(! obj.validate_against(&hash));
+            assert!(!obj.validate_against(&hash));
             flip_bit_in(hash.as_mut_buf(), bit);
             assert!(obj.validate_against(&hash));
         }
@@ -677,7 +672,12 @@ mod tests {
     fn test_store() {
         let tmp = TestTempDir::new();
         let path = tmp.build(&["foo"]);
-        let file = File::options().read(true).append(true).create(true).open(&path).unwrap();
+        let file = File::options()
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(&path)
+            .unwrap();
         let mut store = Store::<Blake3, 30>::new(file);
         let mut obj = store.new_object();
         store.reindex(&mut obj).unwrap();
@@ -715,4 +715,3 @@ mod tests {
         }
     }
 }
-

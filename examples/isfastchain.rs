@@ -1,16 +1,14 @@
-use std::io;
-use std::time::Instant;
-use tub::chaos::DefaultObject;
-use tub::blockchain::Block;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use getrandom::getrandom;
 use rand::rngs::OsRng;
-use ed25519_dalek::{SigningKey, Signature, Signer, VerifyingKey, Verifier};
-
+use std::io;
+use std::time::Instant;
+use tub::blockchain::Block;
+use tub::chaos::DefaultObject;
 
 const COUNT: usize = 100_000;
 
 fn main() -> io::Result<()> {
-    
     let mut csprng = OsRng;
     let sk = SigningKey::generate(&mut csprng);
     let pk = sk.verifying_key();

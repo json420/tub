@@ -1,20 +1,18 @@
 //! Higher level repository built on `chaos`.
 
-use std::path::{Path, PathBuf};
+use crate::base::*;
+use crate::blockchain::Chain;
+use crate::chaos::{Name, Object, Store};
+use crate::dvcs::TrackingList;
+use crate::protocol::{DefaultHasher, Hasher};
+use std::fs::{create_dir, File};
 use std::io::prelude::*;
 use std::io::Result as IoResult;
-use std::fs::{File, create_dir};
-use crate::base::*;
-use crate::protocol::{Hasher, DefaultHasher};
-use crate::chaos::{Object, Store, Name};
-use crate::blockchain::Chain;
-use crate::dvcs::TrackingList;
+use std::path::{Path, PathBuf};
 
 pub type DefaultTub = Tub<DefaultHasher, 30>;
 
-
-pub fn create_dotdir(path: &Path) -> IoResult<PathBuf>
-{
+pub fn create_dotdir(path: &Path) -> IoResult<PathBuf> {
     let mut pb = PathBuf::from(path);
     pb.push(DOTDIR);
     create_dir(&pb)?;
@@ -36,7 +34,11 @@ pub fn find_dotdir(path: &Path) -> Option<PathBuf> {
 }
 
 pub fn create_for_append(path: &Path) -> IoResult<File> {
-    File::options().read(true).append(true).create_new(true).open(path)
+    File::options()
+        .read(true)
+        .append(true)
+        .create_new(true)
+        .open(path)
 }
 
 pub fn open_for_append(path: &Path) -> IoResult<File> {
@@ -48,7 +50,6 @@ pub struct HashingFileReaderIter {
     remaining: u64,
     file: File,
 }
-
 
 /// Put all your 🏴‍☠️ treasure in here, matey! 💰💵🦓
 pub struct Tub<H: Hasher, const N: usize> {
@@ -72,7 +73,11 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push(PACKFILE);
         let file = create_for_append(&filename)?;
         let store = Store::<H, N>::new(file);
-        Ok( Self {dotdir, treedir: parent.to_owned(), store} )
+        Ok(Self {
+            dotdir,
+            treedir: parent.to_owned(),
+            store,
+        })
     }
 
     pub fn open(dotdir: PathBuf) -> IoResult<Self> {
@@ -82,7 +87,11 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         let store = Store::<H, N>::new(file);
         let mut treedir = dotdir.clone();
         treedir.pop();
-        Ok( Self {dotdir, treedir, store} )
+        Ok(Self {
+            dotdir,
+            treedir,
+            store,
+        })
     }
 
     pub fn idx_file(&self) -> IoResult<File> {
@@ -90,8 +99,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         pb.push(INDEX_FILE);
         if let Ok(file) = open_for_append(&pb) {
             Ok(file)
-        }
-        else {
+        } else {
             create_for_append(&pb)
         }
     }
@@ -139,8 +147,7 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         filename.push("omg.fixme.soon");
         if let Ok(file) = File::open(&filename) {
             chain.load_secret_key(file)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
@@ -153,14 +160,12 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
             if file.read_exact(obj.as_mut_header()).is_ok() {
                 obj.resize_to_info();
                 file.read_exact(obj.as_mut_data())?;
-                if ! obj.is_valid() {
+                if !obj.is_valid() {
                     panic!("Invalid object: {}", obj.hash());
                 }
             }
         }
-        Ok(
-            TrackingList::deserialize(obj.as_data())
-        )
+        Ok(TrackingList::deserialize(obj.as_data()))
     }
 
     pub fn save_tracking_list(&self, obj: &mut Object<H, N>, tl: &TrackingList) -> IoResult<()> {
@@ -174,9 +179,6 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
         file.flush()
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -305,4 +307,3 @@ mod tests {
         assert!(DefaultTub::open(dotdir.clone()).is_ok());
     }
 }
-

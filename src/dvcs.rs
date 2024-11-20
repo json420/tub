@@ -2,23 +2,21 @@
 
 use std::collections::{HashMap, HashSet};
 use std::convert::Into;
-use std::path::{PathBuf, Path};
-use std::io::Result as IoResult;
+use std::fs::{create_dir_all, metadata, read_dir, read_link, File, Permissions};
 use std::io::prelude::*;
+use std::io::Result as IoResult;
 use std::io::{BufReader, BufWriter};
-use std::fs::{File, Permissions, read_dir, read_link, metadata, create_dir_all};
-use std::os::unix::fs::{PermissionsExt, symlink};
+use std::os::unix::fs::{symlink, PermissionsExt};
+use std::path::{Path, PathBuf};
 
-use crate::protocol::{Hasher, Blake3};
-use crate::chaos::{Object, Store, Name};
-use crate::inception::{import_file, restore_file, hash_file};
-use crate::base::{DOTDIR, DOTIGNORE, ObjKind};
-
+use crate::base::{ObjKind, DOTDIR, DOTIGNORE};
+use crate::chaos::{Name, Object, Store};
+use crate::inception::{hash_file, import_file, restore_file};
+use crate::protocol::{Blake3, Hasher};
 
 const MAX_DEPTH: usize = 32;
 pub type DefaultTree<'a> = Tree<'a, Blake3, 30>;
 pub type DefaultCommit = Commit<30>;
-
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
@@ -44,7 +42,6 @@ impl From<u8> for Kind {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Item<const N: usize> {
     EmptyDir,
@@ -55,22 +52,19 @@ pub enum Item<const N: usize> {
     SymLink(String),
 }
 
-
 pub type ItemMap<const N: usize> = HashMap<String, Item<N>>;
-
 
 #[inline]
 fn item_to_kind<const N: usize>(item: &Item<N>) -> Kind {
     match item {
-        Item::EmptyDir   => { Kind::EmptyDir }
-        Item::EmptyFile  => { Kind::EmptyFile }
-        Item::Dir(_)     => { Kind::Dir }
-        Item::File(_)    => { Kind::File }
-        Item::ExeFile(_) => { Kind::ExeFile }
-        Item::SymLink(_) => { Kind::SymLink }
+        Item::EmptyDir => Kind::EmptyDir,
+        Item::EmptyFile => Kind::EmptyFile,
+        Item::Dir(_) => Kind::Dir,
+        Item::File(_) => Kind::File,
+        Item::ExeFile(_) => Kind::ExeFile,
+        Item::SymLink(_) => Kind::SymLink,
     }
 }
-
 
 /// Stores entries in a directory
 #[derive(Debug, PartialEq, Default)]
@@ -80,7 +74,9 @@ pub struct Dir<const N: usize> {
 
 impl<const N: usize> Dir<N> {
     pub fn new() -> Self {
-        Self {map: HashMap::new()}
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -105,42 +101,29 @@ impl<const N: usize> Dir<N> {
             assert!(size > 0);
             offset += 1;
 
-            let key = String::from_utf8(
-                buf[offset..offset + size].to_vec()
-            ).unwrap();
+            let key = String::from_utf8(buf[offset..offset + size].to_vec()).unwrap();
             offset += size;
 
             let val: Item<N> = match kind {
-                Kind::EmptyDir => {
-                    Item::EmptyDir
-                }
-                Kind::EmptyFile => {
-                    Item::EmptyFile
-                }
+                Kind::EmptyDir => Item::EmptyDir,
+                Kind::EmptyFile => Item::EmptyFile,
                 Kind::Dir | Kind::File | Kind::ExeFile => {
                     let hash = Name::from(&buf[offset..offset + N]);
                     offset += N;
                     match kind {
-                        Kind::Dir => {
-                            Item::Dir(hash)
+                        Kind::Dir => Item::Dir(hash),
+                        Kind::File => Item::File(hash),
+                        Kind::ExeFile => Item::ExeFile(hash),
+                        _ => {
+                            panic!("nope")
                         }
-                        Kind::File => {
-                            Item::File(hash)
-                        }
-                        Kind::ExeFile => {
-                            Item::ExeFile(hash)
-                        }
-                        _ => { panic!("nope") }
                     }
                 }
                 Kind::SymLink => {
-                    let size = u16::from_le_bytes(
-                        buf[offset..offset + 2].try_into().unwrap()
-                    ) as usize;
+                    let size =
+                        u16::from_le_bytes(buf[offset..offset + 2].try_into().unwrap()) as usize;
                     offset += 2;
-                    let target = String::from_utf8(
-                        buf[offset.. offset + size].to_vec()
-                    ).unwrap();
+                    let target = String::from_utf8(buf[offset..offset + size].to_vec()).unwrap();
                     offset += size;
                     Item::SymLink(target)
                 }
@@ -148,7 +131,7 @@ impl<const N: usize> Dir<N> {
             map.insert(key, val);
         }
         assert_eq!(offset, buf.len());
-        Self {map}
+        Self { map }
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
@@ -209,7 +192,6 @@ impl<const N: usize> Dir<N> {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Tracked {
     Invalid,
@@ -231,23 +213,20 @@ impl From<u8> for Tracked {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum TrackedItem {
     Added,
     Removed,
-    Renamed(String)
+    Renamed(String),
 }
-
 
 fn item_to_tracked(val: &TrackedItem) -> Tracked {
     match val {
-        TrackedItem::Added      => { Tracked::Added }
-        TrackedItem::Removed    => { Tracked::Removed }
-        TrackedItem::Renamed(_) => { Tracked::Renamed }
+        TrackedItem::Added => Tracked::Added,
+        TrackedItem::Removed => Tracked::Removed,
+        TrackedItem::Renamed(_) => Tracked::Renamed,
     }
 }
-
 
 /// List of paths to be tracked
 #[derive(Debug, PartialEq, Default)]
@@ -256,8 +235,10 @@ pub struct TrackingList {
 }
 
 impl TrackingList {
-    pub fn new () -> Self {
-        Self {map: HashMap::new()}
+    pub fn new() -> Self {
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     pub fn deserialize(buf: &[u8]) -> Self {
@@ -266,35 +247,31 @@ impl TrackingList {
         while offset < buf.len() {
             let kind: Tracked = buf[offset].into();
             offset += 1;
-            let size = u16::from_le_bytes(
-                buf[offset..offset + 2].try_into().expect("oops")
-            ) as usize;
+            let size =
+                u16::from_le_bytes(buf[offset..offset + 2].try_into().expect("oops")) as usize;
             offset += 2;
-            let path = String::from_utf8(
-                buf[offset..offset + size].to_vec()
-            ).unwrap();
+            let path = String::from_utf8(buf[offset..offset + size].to_vec()).unwrap();
             offset += size;
 
             let item = match kind {
-                Tracked::Added   => { TrackedItem::Added }
-                Tracked::Removed => { TrackedItem::Removed }
+                Tracked::Added => TrackedItem::Added,
+                Tracked::Removed => TrackedItem::Removed,
                 Tracked::Renamed => {
-                    let size = u16::from_le_bytes(
-                        buf[offset..offset + 2].try_into().expect("oops")
-                    ) as usize;
+                    let size = u16::from_le_bytes(buf[offset..offset + 2].try_into().expect("oops"))
+                        as usize;
                     offset += 2;
-                    let new = String::from_utf8(
-                        buf[offset..offset + size].to_vec()
-                    ).unwrap();
+                    let new = String::from_utf8(buf[offset..offset + size].to_vec()).unwrap();
                     offset += size;
                     TrackedItem::Renamed(new)
                 }
-                _ => { panic!("nope") }
+                _ => {
+                    panic!("nope")
+                }
             };
             map.insert(path, item);
         }
         assert_eq!(offset, buf.len());
-        Self {map}
+        Self { map }
     }
 
     pub fn serialize(&self, buf: &mut Vec<u8>) {
@@ -315,7 +292,7 @@ impl TrackingList {
 
     pub fn as_sorted_vec(&self) -> Vec<(&String, &TrackedItem)> {
         let mut list = Vec::from_iter(self.map.iter());
-        list.sort_by(|a, b|  a.0.cmp(b.0));
+        list.sort_by(|a, b| a.0.cmp(b.0));
         list
     }
 
@@ -349,7 +326,6 @@ impl TrackingList {
     }
 }
 
-
 #[derive(Debug)]
 pub struct Commit<const N: usize> {
     pub tree: Name<N>,
@@ -358,7 +334,7 @@ pub struct Commit<const N: usize> {
 
 impl<const N: usize> Commit<N> {
     pub fn new(tree: Name<N>, msg: String) -> Self {
-        Self {tree, msg}
+        Self { tree, msg }
     }
 
     pub fn deserialize(buf: &[u8]) -> Self {
@@ -379,7 +355,6 @@ pub enum ScanMode {
     Scan,
     Import,
 }
-
 
 pub struct Tree<'a, H: Hasher, const N: usize> {
     mode: ScanMode,
@@ -427,8 +402,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 self.ignore.insert(relpath);
             }
             Ok(true)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
@@ -452,8 +426,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         Ok(())
     }
 
-    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> IoResult<Option<Name<N>>>
-    {
+    fn scan_tree_inner(&mut self, dir: &Path, depth: usize) -> IoResult<Option<Name<N>>> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
@@ -462,7 +435,12 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
             let entry = entry?;
             let ft = entry.file_type()?;
             let path = entry.path();
-            let relpath = path.strip_prefix(&self.dir).unwrap().to_str().unwrap().to_string();
+            let relpath = path
+                .strip_prefix(&self.dir)
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
             if self.ignore.contains(&relpath) {
                 continue;
             }
@@ -471,35 +449,28 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 let target = read_link(&path)?.to_str().unwrap().to_string();
                 //println!("S {:?} {}", path, target);
                 tree.add_symlink(name, target)
-            }
-            else if ft.is_file() {
+            } else if ft.is_file() {
                 let meta = metadata(&path)?;
                 let size = meta.len();
                 if size > 0 {
                     let file = File::open(&path)?;
                     let hash = match self.mode {
-                        ScanMode::Scan => {
-                            hash_file(&mut self.obj, file, size)?
-                        }
-                        ScanMode::Import => {
-                            import_file(self.store, &mut self.obj, file, size)?
-                        }
+                        ScanMode::Scan => hash_file(&mut self.obj, file, size)?,
+                        ScanMode::Import => import_file(self.store, &mut self.obj, file, size)?,
                     };
-                    if meta.permissions().mode() & 0o111 != 0 {  // Executable?
+                    if meta.permissions().mode() & 0o111 != 0 {
+                        // Executable?
                         //println!("X {} {:?}", hash, path);
                         tree.add_exefile(name, hash)
-                    }
-                    else {
+                    } else {
                         //println!("F {} {:?}", hash, path);
                         tree.add_file(name, hash)
                     }
-                }
-                else {
+                } else {
                     //println!("EF {:?}", path);
                     tree.add_empty_file(name)
                 }
-            }
-            else if ft.is_dir() {
+            } else if ft.is_dir() {
                 /*
                 if name == DOTDIR || name == ".git" {
                     eprintln!("Skipping {}", name);
@@ -509,13 +480,11 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 if let Some(hash) = self.scan_tree_inner(&path, depth + 1)? {
                     //println!("D {} {:?}", hash, path);
                     tree.add_dir(name, hash)
-                }
-                else {
+                } else {
                     //println!("ED {:?}", path);
                     tree.add_empty_dir(name)
                 }
-            }
-            else {
+            } else {
                 panic!("nope");
             };
 
@@ -523,7 +492,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 self.flatmap.insert(relpath, item);
             }
         }
-        if ! tree.is_empty() {
+        if !tree.is_empty() {
             self.obj.clear();
             tree.serialize(self.obj.as_mut_vec());
             let hash = self.obj.finalize_with_kind(ObjKind::Tree as u8);
@@ -531,8 +500,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                 self.store.save(&self.obj)?;
             }
             Ok(Some(hash))
-        }
-        else {
+        } else {
             Ok(None)
         }
     }
@@ -568,9 +536,7 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             if let Item::ExeFile(_) = entry {
                                 file.set_permissions(Permissions::from_mode(0o755))?;
                             }
-                            restore_file(
-                                self.store, &mut self.obj, &mut file, hash
-                            )?;
+                            restore_file(self.store, &mut self.obj, &mut file, hash)?;
                         } else {
                             panic!("could not find object {}", hash);
                         }
@@ -592,9 +558,13 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         self.restore_tree_inner(root, &dir, 0)
     }
 
-    fn flatten_tree_inner(&mut self, flat: &mut ItemMap<N>, root: &Name<N>, parent: &Path, depth: usize)
-            -> IoResult<()>
-    {
+    fn flatten_tree_inner(
+        &mut self,
+        flat: &mut ItemMap<N>,
+        root: &Name<N>,
+        parent: &Path,
+        depth: usize,
+    ) -> IoResult<()> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
@@ -625,9 +595,13 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         compare_trees(other, &self.flatmap)
     }
 
-    fn diff_inner(&mut self, flat: &mut HashMap<String, String>, root: &Name<N>, parent: &Path, depth: usize)
-            -> IoResult<()>
-    {
+    fn diff_inner(
+        &mut self,
+        flat: &mut HashMap<String, String>,
+        root: &Name<N>,
+        parent: &Path,
+        depth: usize,
+    ) -> IoResult<()> {
         if depth >= MAX_DEPTH {
             panic!("Depth {} is >= MAX_DEPTH {}", depth, MAX_DEPTH);
         }
@@ -650,11 +624,9 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
                             if &newhash != hash {
                                 let after = self.obj.as_data().to_vec();
                                 assert!(self.store.load(hash, &mut self.obj)?);
-                                if let Some(diff) = compute_diff(self.obj.as_data(), after.as_ref()) {
-                                    flat.insert(
-                                        dir.to_str().unwrap().to_owned(),
-                                        diff
-                                    );
+                                if let Some(diff) = compute_diff(self.obj.as_data(), after.as_ref())
+                                {
+                                    flat.insert(dir.to_str().unwrap().to_owned(), diff);
                                 }
                             }
                         }
@@ -676,7 +648,6 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
     }
 }
 
-
 #[derive(Debug, Default)]
 pub struct Status<const N: usize> {
     pub removed: Vec<String>,
@@ -696,43 +667,43 @@ impl<const N: usize> Status<N> {
     }
 }
 
-
-pub fn compare_trees<const N:usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N>
-{
+pub fn compare_trees<const N: usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N> {
     let mut status = Status::new();
     let mut keys = Vec::from_iter(a.keys());
     keys.sort();
     let keys = keys;
     for path in keys.iter() {
-        let p = &(*path).clone();  // FIXME
+        let p = &(*path).clone(); // FIXME
         let old = a.get(p).unwrap();
         if let Some(new) = b.get(p) {
             if new != old {
                 status.changed.push(p.to_string());
-                status.newch.push((p.to_string(), old.to_owned(), new.to_owned()));
+                status
+                    .newch
+                    .push((p.to_string(), old.to_owned(), new.to_owned()));
             }
-        }
-        else {
+        } else {
             status.removed.push(p.to_string());
         }
     }
     for key in b.keys() {
-        if ! a.contains_key(key) {
+        if !a.contains_key(key) {
             status.unknown.push(key.clone());
         }
     }
     status
 }
 
-
-
 fn compute_diff_inner(before: &str, after: &str) -> String {
     use imara_diff::intern::InternedInput;
     use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
     let input = InternedInput::new(before, after);
-    diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input))
+    diff(
+        Algorithm::Histogram,
+        &input,
+        UnifiedDiffBuilder::new(&input),
+    )
 }
-
 
 pub fn compute_diff(before: &[u8], after: &[u8]) -> Option<String> {
     use std::str::from_utf8;
@@ -743,7 +714,6 @@ pub fn compute_diff(before: &[u8], after: &[u8]) -> Option<String> {
     }
     None
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -826,7 +796,10 @@ mod tests {
         tree.add_file("d".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
-        assert_eq!(buf, [3, 1, 100, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]);
+        assert_eq!(
+            buf,
+            [3, 1, 100, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
+        );
         assert_eq!(Dir::deserialize(&buf), tree);
 
         // ExeFile
@@ -835,7 +808,10 @@ mod tests {
         tree.add_exefile("e".to_string(), hash.clone());
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
-        assert_eq!(buf, [4, 1, 101, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]);
+        assert_eq!(
+            buf,
+            [4, 1, 101, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        );
         assert_eq!(Dir::deserialize(&buf), tree);
 
         // SymLink
@@ -859,7 +835,6 @@ mod tests {
         hash.as_mut_buf().fill(7);
         tree.add_dir("D".to_string(), hash.clone());
 
-
         hash.as_mut_buf().fill(5);
         tree.add_file("C".to_string(), hash.clone());
 
@@ -871,25 +846,18 @@ mod tests {
         let mut buf = Vec::new();
         tree.serialize(&mut buf);
         assert_eq!(Dir::deserialize(&buf), tree);
-        assert_eq!(buf, [
-            // "A" SymLink
-            5, 1, 65, 7, 0, 102, 111, 111, 47, 98, 97, 114,
-
-            // "D" ExeFile
-            4, 1, 66, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-
-            // "C" File
-            3, 1, 67, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
-
-            // "D" Dir
-            2, 1, 68, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-
-            // "E" EmptyDir
-            1, 1, 69,
-
-            // "F" EmptyDir
-            0, 1, 70,
-        ]);
+        assert_eq!(
+            buf,
+            [
+                // "A" SymLink
+                5, 1, 65, 7, 0, 102, 111, 111, 47, 98, 97, 114, // "D" ExeFile
+                4, 1, 66, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, // "C" File
+                3, 1, 67, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, // "D" Dir
+                2, 1, 68, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, // "E" EmptyDir
+                1, 1, 69, // "F" EmptyDir
+                0, 1, 70,
+            ]
+        );
     }
 
     #[test]
@@ -926,7 +894,7 @@ mod tests {
 
     #[test]
     fn test_tracking_list() {
-        let mut tl  = TrackingList::new();
+        let mut tl = TrackingList::new();
         assert_eq!(tl.len(), 0);
         let mut buf = Vec::new();
         tl.serialize(&mut buf);
@@ -934,11 +902,12 @@ mod tests {
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("test");
-        assert!(! tl.contains(&pb));
+        assert!(!tl.contains(&pb));
         tl.add(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 1);
-        assert_eq!(tl.as_sorted_vec(),
+        assert_eq!(
+            tl.as_sorted_vec(),
             vec![(&String::from("test"), &TrackedItem::Added)]
         );
         tl.serialize(&mut buf);
@@ -946,39 +915,53 @@ mod tests {
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("foo");
-        assert!(! tl.contains(&pb));
+        assert!(!tl.contains(&pb));
         tl.rename(pb.clone(), "bar".to_owned());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 2);
-        assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"),  &TrackedItem::Renamed("bar".to_owned())),
-            (&String::from("test"), &TrackedItem::Added),
-        ]);
+        assert_eq!(
+            tl.as_sorted_vec(),
+            vec![
+                (
+                    &String::from("foo"),
+                    &TrackedItem::Renamed("bar".to_owned())
+                ),
+                (&String::from("test"), &TrackedItem::Added),
+            ]
+        );
         buf.clear();
         tl.serialize(&mut buf);
-        assert_eq!(buf, vec![
-            3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114,
-            1, 4, 0, 116, 101, 115, 116,
-        ]);
+        assert_eq!(
+            buf,
+            vec![3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114, 1, 4, 0, 116, 101, 115, 116,]
+        );
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
         let pb = String::from("sparse");
-        assert!(! tl.contains(&pb));
+        assert!(!tl.contains(&pb));
         tl.remove(pb.clone());
         assert!(tl.contains(&pb));
         assert_eq!(tl.len(), 3);
-        assert_eq!(tl.as_sorted_vec(), vec![
-            (&String::from("foo"),    &TrackedItem::Renamed("bar".to_owned())),
-            (&String::from("sparse"), &TrackedItem::Removed),
-            (&String::from("test"),   &TrackedItem::Added),
-        ]);
+        assert_eq!(
+            tl.as_sorted_vec(),
+            vec![
+                (
+                    &String::from("foo"),
+                    &TrackedItem::Renamed("bar".to_owned())
+                ),
+                (&String::from("sparse"), &TrackedItem::Removed),
+                (&String::from("test"), &TrackedItem::Added),
+            ]
+        );
         buf.clear();
         tl.serialize(&mut buf);
-        assert_eq!(buf, vec![
-            3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114,
-            2, 6, 0, 115, 112, 97, 114, 115, 101,
-            1, 4, 0, 116, 101, 115, 116,
-        ]);
+        assert_eq!(
+            buf,
+            vec![
+                3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114, 2, 6, 0, 115, 112, 97, 114, 115, 101, 1,
+                4, 0, 116, 101, 115, 116,
+            ]
+        );
         assert_eq!(TrackingList::deserialize(&buf), tl);
     }
 
@@ -994,13 +977,16 @@ mod tests {
         assert_eq!(compute_diff_inner(a, b), expected);
 
         let input = InternedInput::new(a, b);
-        let d = diff(Algorithm::Histogram, &input, UnifiedDiffBuilder::new(&input));
+        let d = diff(
+            Algorithm::Histogram,
+            &input,
+            UnifiedDiffBuilder::new(&input),
+        );
         assert_eq!(d, expected);
     }
 
     #[test]
     fn test_compute_diff() {
-
         let bad = [255_u8; 10];
         assert_eq!(compute_diff(&bad, &bad), None);
 
@@ -1014,4 +1000,3 @@ mod tests {
         assert_eq!(compute_diff(a, b), Some(expected.to_owned()));
     }
 }
-

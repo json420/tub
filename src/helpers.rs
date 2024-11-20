@@ -2,18 +2,15 @@
 
 // (FIXME: should eventually be put somewhere else).
 
+use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::fs;
 use tempfile;
-
-
 
 #[derive(Debug)]
 pub struct TestTempDir {
     tmp: tempfile::TempDir,
 }
-
 
 impl TestTempDir {
     pub fn new() -> Self {
@@ -44,9 +41,7 @@ impl TestTempDir {
         let mut names: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(path) {
             for entry in entries.flatten() {
-                names.push(
-                    entry.file_name().into_string().unwrap()
-                );
+                names.push(entry.file_name().into_string().unwrap());
                 println!("{:?}", entry.file_name());
             }
         }
@@ -60,18 +55,30 @@ impl TestTempDir {
 
     pub fn read(&self, names: &[&str]) -> Vec<u8> {
         let mut buf: Vec<u8> = Vec::new();
-        fs::File::open(self.build(names)).unwrap().read_to_end(&mut buf).unwrap();
+        fs::File::open(self.build(names))
+            .unwrap()
+            .read_to_end(&mut buf)
+            .unwrap();
         buf
     }
 
     pub fn create(&self, names: &[&str]) -> fs::File {
         let pb = self.build(names);
-        fs::File::options().read(true).append(true).create_new(true).open(pb).unwrap()
+        fs::File::options()
+            .read(true)
+            .append(true)
+            .create_new(true)
+            .open(pb)
+            .unwrap()
     }
 
     pub fn open(&self, names: &[&str]) -> fs::File {
         let pb = self.build(names);
-        fs::File::options().read(true).append(true).open(pb).unwrap()
+        fs::File::options()
+            .read(true)
+            .append(true)
+            .open(pb)
+            .unwrap()
     }
 
     pub fn touch(&self, names: &[&str]) {
@@ -79,12 +86,19 @@ impl TestTempDir {
     }
 
     pub fn write(&self, names: &[&str], data: &[u8]) {
-        fs::File::create(self.build(names)).unwrap().write_all(data).unwrap();
+        fs::File::create(self.build(names))
+            .unwrap()
+            .write_all(data)
+            .unwrap();
     }
 
     pub fn append(&self, names: &[&str], data: &[u8]) {
-        fs::File::options().append(true).open(self.build(names)).unwrap()
-            .write_all(data).unwrap();
+        fs::File::options()
+            .append(true)
+            .open(self.build(names))
+            .unwrap()
+            .write_all(data)
+            .unwrap();
     }
 
     pub fn mkdir(&self, names: &[&str]) -> PathBuf {
@@ -106,10 +120,9 @@ impl Default for TestTempDir {
     }
 }
 
-
 pub fn flip_bit_in(buf: &mut [u8], bit: usize) {
     assert!(bit < buf.len() * 8);
-    buf[bit / 8] ^= 1<<(bit % 8);
+    buf[bit / 8] ^= 1 << (bit % 8);
 }
 
 pub fn flip_bit(src: &[u8], bit: usize) -> Vec<u8> {
@@ -119,7 +132,6 @@ pub fn flip_bit(src: &[u8], bit: usize) -> Vec<u8> {
     copy
 }
 
-
 #[derive(Debug)]
 pub struct BitFlipIter<'a> {
     src: &'a [u8],
@@ -128,7 +140,7 @@ pub struct BitFlipIter<'a> {
 
 impl<'a> BitFlipIter<'a> {
     pub fn new(src: &'a [u8]) -> Self {
-        Self {src, bit: 0}
+        Self { src, bit: 0 }
     }
 }
 
@@ -140,19 +152,17 @@ impl<'a> Iterator for BitFlipIter<'a> {
             let buf = flip_bit(self.src, self.bit);
             self.bit += 1;
             Some(buf)
-        }
-        else {
+        } else {
             None
         }
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use super::*;
     use getrandom::getrandom;
+    use std::collections::HashSet;
 
     #[test]
     fn test_tempdir() {
@@ -165,22 +175,21 @@ mod tests {
         assert_eq!(tmp.list_root().len(), 0);
         tmp.touch(&["a"]);
         assert_eq!(tmp.list_root(), vec!["a"]);
-    
     }
 
     #[test]
     fn test_flip_bit() {
         let src = [0_u8; 2];
-        assert_eq!(flip_bit(&src,  0), vec![0b00000001, 0b00000000]);
-        assert_eq!(flip_bit(&src,  1), vec![0b00000010, 0b00000000]);
-        assert_eq!(flip_bit(&src,  2), vec![0b00000100, 0b00000000]);
-        assert_eq!(flip_bit(&src,  3), vec![0b00001000, 0b00000000]);
-        assert_eq!(flip_bit(&src,  4), vec![0b00010000, 0b00000000]);
-        assert_eq!(flip_bit(&src,  5), vec![0b00100000, 0b00000000]);
-        assert_eq!(flip_bit(&src,  6), vec![0b01000000, 0b00000000]);
-        assert_eq!(flip_bit(&src,  7), vec![0b10000000, 0b00000000]);
-        assert_eq!(flip_bit(&src,  8), vec![0b00000000, 0b00000001]);
-        assert_eq!(flip_bit(&src,  9), vec![0b00000000, 0b00000010]);
+        assert_eq!(flip_bit(&src, 0), vec![0b00000001, 0b00000000]);
+        assert_eq!(flip_bit(&src, 1), vec![0b00000010, 0b00000000]);
+        assert_eq!(flip_bit(&src, 2), vec![0b00000100, 0b00000000]);
+        assert_eq!(flip_bit(&src, 3), vec![0b00001000, 0b00000000]);
+        assert_eq!(flip_bit(&src, 4), vec![0b00010000, 0b00000000]);
+        assert_eq!(flip_bit(&src, 5), vec![0b00100000, 0b00000000]);
+        assert_eq!(flip_bit(&src, 6), vec![0b01000000, 0b00000000]);
+        assert_eq!(flip_bit(&src, 7), vec![0b10000000, 0b00000000]);
+        assert_eq!(flip_bit(&src, 8), vec![0b00000000, 0b00000001]);
+        assert_eq!(flip_bit(&src, 9), vec![0b00000000, 0b00000010]);
         assert_eq!(flip_bit(&src, 10), vec![0b00000000, 0b00000100]);
         assert_eq!(flip_bit(&src, 11), vec![0b00000000, 0b00001000]);
         assert_eq!(flip_bit(&src, 12), vec![0b00000000, 0b00010000]);
@@ -189,16 +198,16 @@ mod tests {
         assert_eq!(flip_bit(&src, 15), vec![0b00000000, 0b10000000]);
 
         let src = [255_u8; 2];
-        assert_eq!(flip_bit(&src,  0), vec![0b11111110, 0b11111111]);
-        assert_eq!(flip_bit(&src,  1), vec![0b11111101, 0b11111111]);
-        assert_eq!(flip_bit(&src,  2), vec![0b11111011, 0b11111111]);
-        assert_eq!(flip_bit(&src,  3), vec![0b11110111, 0b11111111]);
-        assert_eq!(flip_bit(&src,  4), vec![0b11101111, 0b11111111]);
-        assert_eq!(flip_bit(&src,  5), vec![0b11011111, 0b11111111]);
-        assert_eq!(flip_bit(&src,  6), vec![0b10111111, 0b11111111]);
-        assert_eq!(flip_bit(&src,  7), vec![0b01111111, 0b11111111]);
-        assert_eq!(flip_bit(&src,  8), vec![0b11111111, 0b11111110]);
-        assert_eq!(flip_bit(&src,  9), vec![0b11111111, 0b11111101]);
+        assert_eq!(flip_bit(&src, 0), vec![0b11111110, 0b11111111]);
+        assert_eq!(flip_bit(&src, 1), vec![0b11111101, 0b11111111]);
+        assert_eq!(flip_bit(&src, 2), vec![0b11111011, 0b11111111]);
+        assert_eq!(flip_bit(&src, 3), vec![0b11110111, 0b11111111]);
+        assert_eq!(flip_bit(&src, 4), vec![0b11101111, 0b11111111]);
+        assert_eq!(flip_bit(&src, 5), vec![0b11011111, 0b11111111]);
+        assert_eq!(flip_bit(&src, 6), vec![0b10111111, 0b11111111]);
+        assert_eq!(flip_bit(&src, 7), vec![0b01111111, 0b11111111]);
+        assert_eq!(flip_bit(&src, 8), vec![0b11111111, 0b11111110]);
+        assert_eq!(flip_bit(&src, 9), vec![0b11111111, 0b11111101]);
         assert_eq!(flip_bit(&src, 10), vec![0b11111111, 0b11111011]);
         assert_eq!(flip_bit(&src, 11), vec![0b11111111, 0b11110111]);
         assert_eq!(flip_bit(&src, 12), vec![0b11111111, 0b11101111]);
@@ -231,4 +240,3 @@ mod tests {
         assert_eq!(set.len(), 69 * 8 + 1);
     }
 }
-

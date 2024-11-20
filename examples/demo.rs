@@ -1,8 +1,7 @@
 use std::io;
+use tub::blockchain::Chain;
 use tub::chaos::DefaultName;
 use tub::helpers::TestTempDir;
-use tub::blockchain::Chain;
-
 
 const COUNT: usize = 65536;
 
@@ -24,7 +23,7 @@ fn main() -> io::Result<()> {
     let file = chain.into_file();
     let mut chain = Chain::open(file)?;
     for i in 0..65536 {
-       assert!(chain.load_block_at(i)?);
+        assert!(chain.load_block_at(i)?);
     }
     //chain.verify();
     chain.seek_to_beyond();

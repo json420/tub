@@ -8,7 +8,7 @@ Python and C:
 
 Dbase32 uses an encoding table whose symbols are in ASCII/UTF-8 sorted order:
 
-    3456789ABCDEFGHIJKLMNOPQRSTUVWXY
+3456789ABCDEFGHIJKLMNOPQRSTUVWXY
 
 This means that unlike RFC-3548 Base32 encoding, the sort-order of the encoded
 data will match the sort-order of the binary data.
@@ -61,7 +61,6 @@ extra bytes.  An obvious thing is to use 2 of those bytes for the object type
 byte
 */
 
-
 /*
  * To mitigate timing attacks when decoding or validating a *valid* Dbase32
  * encoded ID, the REVERSE table is rotated to the left by *42* bytes.  Haha!
@@ -102,60 +101,59 @@ use std::iter::FusedIterator;
 
 static FORWARD: &[u8; 32] = b"3456789ABCDEFGHIJKLMNOPQRSTUVWXY";
 static REVERSE: &[u8; 256] = &[
-    255,255,255,255,255,255,255,255,255,
-        // [Original] -> [Rotated]
-      0,  // '3' [51] -> [ 9]
-      1,  // '4' [52] -> [10]
-      2,  // '5' [53] -> [11]
-      3,  // '6' [54] -> [12]
-      4,  // '7' [55] -> [13]
-      5,  // '8' [56] -> [14]
-      6,  // '9' [57] -> [15]
-    255,  // ':' [58] -> [16]
-    255,  // ';' [59] -> [17]
-    255,  // '<' [60] -> [18]
-    255,  // '=' [61] -> [19]
-    255,  // '>' [62] -> [20]
-    255,  // '?' [63] -> [21]
-    255,  // '@' [64] -> [22]
-      7,  // 'A' [65] -> [23]
-      8,  // 'B' [66] -> [24]
-      9,  // 'C' [67] -> [25]
-     10,  // 'D' [68] -> [26]
-     11,  // 'E' [69] -> [27]
-     12,  // 'F' [70] -> [28]
-     13,  // 'G' [71] -> [29]
-     14,  // 'H' [72] -> [30]
-     15,  // 'I' [73] -> [31]
-     16,  // 'J' [74] -> [32]
-     17,  // 'K' [75] -> [33]
-     18,  // 'L' [76] -> [34]
-     19,  // 'M' [77] -> [35]
-     20,  // 'N' [78] -> [36]
-     21,  // 'O' [79] -> [37]
-     22,  // 'P' [80] -> [38]
-     23,  // 'Q' [81] -> [39]
-     24,  // 'R' [82] -> [40]
-     25,  // 'S' [83] -> [41]
-     26,  // 'T' [84] -> [42]
-     27,  // 'U' [85] -> [43]
-     28,  // 'V' [86] -> [44]
-     29,  // 'W' [87] -> [45]
-     30,  // 'X' [88] -> [46]
-     31,  // 'Y' [89] -> [47]
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
-    255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255,
+    // [Original] -> [Rotated]
+    0,   // '3' [51] -> [ 9]
+    1,   // '4' [52] -> [10]
+    2,   // '5' [53] -> [11]
+    3,   // '6' [54] -> [12]
+    4,   // '7' [55] -> [13]
+    5,   // '8' [56] -> [14]
+    6,   // '9' [57] -> [15]
+    255, // ':' [58] -> [16]
+    255, // ';' [59] -> [17]
+    255, // '<' [60] -> [18]
+    255, // '=' [61] -> [19]
+    255, // '>' [62] -> [20]
+    255, // '?' [63] -> [21]
+    255, // '@' [64] -> [22]
+    7,   // 'A' [65] -> [23]
+    8,   // 'B' [66] -> [24]
+    9,   // 'C' [67] -> [25]
+    10,  // 'D' [68] -> [26]
+    11,  // 'E' [69] -> [27]
+    12,  // 'F' [70] -> [28]
+    13,  // 'G' [71] -> [29]
+    14,  // 'H' [72] -> [30]
+    15,  // 'I' [73] -> [31]
+    16,  // 'J' [74] -> [32]
+    17,  // 'K' [75] -> [33]
+    18,  // 'L' [76] -> [34]
+    19,  // 'M' [77] -> [35]
+    20,  // 'N' [78] -> [36]
+    21,  // 'O' [79] -> [37]
+    22,  // 'P' [80] -> [38]
+    23,  // 'Q' [81] -> [39]
+    24,  // 'R' [82] -> [40]
+    25,  // 'S' [83] -> [41]
+    26,  // 'T' [84] -> [42]
+    27,  // 'U' [85] -> [43]
+    28,  // 'V' [86] -> [44]
+    29,  // 'W' [87] -> [45]
+    30,  // 'X' [88] -> [46]
+    31,  // 'Y' [89] -> [47]
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 ];
-
 
 /// Iterates over the 1024 2-character Dbase32 directory names.
 /// Will yield "33", "34", ... "YX", "YY".
@@ -166,7 +164,7 @@ pub struct DirNameIter {
 
 impl DirNameIter {
     pub fn new() -> Self {
-        Self {i: 0}
+        Self { i: 0 }
     }
 }
 
@@ -180,8 +178,7 @@ impl Iterator for DirNameIter {
             buf[1] = FORWARD[self.i & 31];
             self.i += 1;
             Some(String::from_utf8(buf).unwrap())
-        }
-        else {
+        } else {
             None
         }
     }
@@ -189,39 +186,38 @@ impl Iterator for DirNameIter {
 
 impl FusedIterator for DirNameIter {}
 
-
-
-
 macro_rules! bin_at {
     ($bin:ident, $i:ident, $j:literal) => {
         $bin[$i * 5 + $j]
-    }
+    };
 }
 
 macro_rules! txt_at {
     ($txt:ident, $i:ident, $j:literal) => {
         $txt[$i * 8 + $j]
-    }
+    };
 }
 
 macro_rules! rotate {
     ($txt:ident, $i:ident, $j:literal) => {
         REVERSE[(txt_at!($txt, $i, $j).wrapping_sub(42)) as usize]
-    }
+    };
 }
 
-
 fn check_bin_txt(bin: &[u8], txt: &[u8]) {
-    if bin.is_empty() || bin.len() % 5 != 0
-    || txt.is_empty() || txt.len() % 8 != 0
-    || txt.len() != bin.len() * 8 / 5
+    if bin.is_empty()
+        || bin.len() % 5 != 0
+        || txt.is_empty()
+        || txt.len() % 8 != 0
+        || txt.len() != bin.len() * 8 / 5
     {
-        panic!("Bad dbase32 call: bin.len()=={}, txt.len()=={}",
-            bin.len(), txt.len()
+        panic!(
+            "Bad dbase32 call: bin.len()=={}, txt.len()=={}",
+            bin.len(),
+            txt.len()
         );
     }
 }
-
 
 pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
     check_bin_txt(bin, txt);
@@ -241,11 +237,10 @@ pub fn db32enc_into(bin: &[u8], txt: &mut [u8]) {
         txt_at!(txt, i, 3) = FORWARD[((taxi >> 20) & 31) as usize];
         txt_at!(txt, i, 4) = FORWARD[((taxi >> 15) & 31) as usize];
         txt_at!(txt, i, 5) = FORWARD[((taxi >> 10) & 31) as usize];
-        txt_at!(txt, i, 6) = FORWARD[((taxi >>  5) & 31) as usize];
+        txt_at!(txt, i, 6) = FORWARD[((taxi >> 5) & 31) as usize];
         txt_at!(txt, i, 7) = FORWARD[(taxi & 31) as usize];
     }
 }
-
 
 pub fn db32enc(bin: &[u8]) -> String {
     let mut txt = vec![0; bin.len() * 8 / 5];
@@ -253,9 +248,8 @@ pub fn db32enc(bin: &[u8]) -> String {
     String::from_utf8(txt).unwrap()
 }
 
-
 pub fn isdb32(txt: &[u8]) -> bool {
-    if ! txt.is_empty() && txt.len() % 8 == 0 {
+    if !txt.is_empty() && txt.len() % 8 == 0 {
         let mut r = 0_u8;
         for i in 0..txt.len() / 8 {
             r |= rotate!(txt, i, 0);
@@ -268,12 +262,10 @@ pub fn isdb32(txt: &[u8]) -> bool {
             r |= rotate!(txt, i, 7);
         }
         r & 224 == 0
-    }
-    else {
+    } else {
         false
     }
 }
-
 
 pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     check_bin_txt(bin, txt);
@@ -281,44 +273,49 @@ pub fn db32dec_into(txt: &[u8], bin: &mut [u8]) -> bool {
     let mut r: u8 = 0;
     for i in 0..txt.len() / 8 {
         /* Pack 40 bits into the taxi (5 bits at a time) */
-        r = rotate!(txt, i, 0) | (r & 224);    taxi = r as u64;
-        r = rotate!(txt, i, 1) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 2) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 3) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 4) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 5) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 6) | (r & 224);    taxi = r as u64 | (taxi << 5);
-        r = rotate!(txt, i, 7) | (r & 224);    taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 0) | (r & 224);
+        taxi = r as u64;
+        r = rotate!(txt, i, 1) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 2) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 3) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 4) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 5) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 6) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
+        r = rotate!(txt, i, 7) | (r & 224);
+        taxi = r as u64 | (taxi << 5);
 
         /* Unpack 40 bits from the taxi (8 bits at a time) */
         bin_at!(bin, i, 0) = (taxi >> 32) as u8;
         bin_at!(bin, i, 1) = (taxi >> 24) as u8;
         bin_at!(bin, i, 2) = (taxi >> 16) as u8;
-        bin_at!(bin, i, 3) = (taxi >>  8) as u8;
+        bin_at!(bin, i, 3) = (taxi >> 8) as u8;
         bin_at!(bin, i, 4) = taxi as u8;
     }
     /*
-         31: 00011111 <= bits set in REVERSE for valid characters
-        224: 11100000 <= bits set in REVERSE for invalid characters */
+     31: 00011111 <= bits set in REVERSE for valid characters
+    224: 11100000 <= bits set in REVERSE for invalid characters */
     r & 224 == 0
 }
-
 
 pub fn db32dec(txt: &[u8]) -> Option<Vec<u8>> {
     let mut bin = vec![0; txt.len() * 5 / 8];
     if db32dec_into(txt, &mut bin) {
-        return Some(bin)
+        return Some(bin);
     }
     None
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
-    use getrandom::getrandom;
     use super::*;
+    use getrandom::getrandom;
+    use std::collections::HashSet;
 
     #[test]
     fn test_forward_table() {
@@ -348,8 +345,7 @@ mod tests {
             let new = set.insert(v);
             if v < 32 {
                 assert!(new);
-            }
-            else {
+            } else {
                 assert_eq!(v, 255);
             }
         }
@@ -387,37 +383,37 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==0, txt.len()==48")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==0, txt.len()==48")]
     fn test_empty_bin_panic() {
         check_bin_txt(&[], &[0_u8; 48]);
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==31, txt.len()==48")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==31, txt.len()==48")]
     fn test_bin_mod_5_panic() {
         check_bin_txt(&[0_u8; 31], &[0_u8; 48]);
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==30, txt.len()==0")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==30, txt.len()==0")]
     fn test_empty_txt_panic() {
         check_bin_txt(&[0_u8; 30], &[]);
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==30, txt.len()==49")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==30, txt.len()==49")]
     fn test_txt_mod_8_panic() {
         check_bin_txt(&[0_u8; 30], &[0_u8; 49]);
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==30, txt.len()==24")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==30, txt.len()==24")]
     fn test_bin_txt_mismatch_panic() {
         check_bin_txt(&[0_u8; 30], &[0_u8; 24]);
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==10, txt.len()==15")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==10, txt.len()==15")]
     fn test_db32enc_into_panic_low() {
         let bin = b"binary foo";
         let mut txt = [0_u8; 16];
@@ -429,7 +425,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==10, txt.len()==17")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==10, txt.len()==17")]
     fn test_db32enc_into_panic_high() {
         let bin = b"binary foo";
         let mut txt = [0_u8; 16];
@@ -441,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==9, txt.len()==16")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==9, txt.len()==16")]
     fn test_db32dec_into_panic_low() {
         let txt = b"FCNPVRELI7J9FUUI";
         let mut bin = [0_u8; 10];
@@ -453,7 +449,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic (expected="Bad dbase32 call: bin.len()==11, txt.len()==16")]
+    #[should_panic(expected = "Bad dbase32 call: bin.len()==11, txt.len()==16")]
     fn test_db32dec_into_panic_high() {
         let txt = b"FCNPVRELI7J9FUUI";
         let mut bin = [0_u8; 10];
@@ -519,12 +515,10 @@ mod tests {
                     assert_eq!(isdb32(&copy.as_bytes()), true);
                     if copy == txt {
                         assert_eq!(db32dec(&copy.as_bytes()).unwrap(), bin);
-                    }
-                    else {
+                    } else {
                         assert_ne!(db32dec(&copy.as_bytes()).unwrap(), bin);
                     }
-                }
-                else {
+                } else {
                     assert_eq!(isdb32(&copy.as_bytes()), false);
                     assert_eq!(db32dec(&copy.as_bytes()), None);
                 }
@@ -543,6 +537,6 @@ mod tests {
     #[test]
     fn test_db32dec() {
         assert_eq!(db32dec(b"FCNPVRELI7J9FUUI").unwrap(), b"binary foo");
-        assert_eq!(db32dec(b"fcnpvreli7j9fuui"), None); 
+        assert_eq!(db32dec(b"fcnpvreli7j9fuui"), None);
     }
 }

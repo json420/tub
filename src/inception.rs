@@ -4,16 +4,15 @@
 //! storage, compression, delta compression, and encryption.  All these high
 //! level operations are very deliberately kept out of `chaos`.
 
-use std::slice::Iter;
-use std::io::prelude::*;
-use std::collections::HashMap;
-use std::{io, fs, cmp};
-use zstd;
 use crate::base::*;
+use crate::chaos::{Name, Object, Store};
 use crate::protocol::Hasher;
-use crate::chaos::{Object, Store, Name};
+use std::collections::HashMap;
+use std::io::prelude::*;
 use std::marker::PhantomData;
-
+use std::slice::Iter;
+use std::{cmp, fs, io};
+use zstd;
 
 /*
 We want a generalized Container type that stores an encoded object stream,
@@ -62,8 +61,6 @@ can test quickly with Store.load()), then we need lookup in this tree.  We'll be
 aggressively iterating on these details for a while, so hold on, partner!
 */
 
-
-
 /*
 We should probably define a trait for a common object stream interface, one we
 use whether the steam is being decoded out of a container object, read out of
@@ -76,7 +73,6 @@ pub trait Stream<R: Read, H: Hasher, const N: usize> {
     fn recv(&mut self, obj: &mut Object<H, N>) -> io::Result<()>;
 }
 
-
 #[derive(Debug)]
 pub struct Container<H: Hasher, const N: usize> {
     inner: Object<H, N>,
@@ -84,14 +80,13 @@ pub struct Container<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> Container<H, N> {
     pub fn new(inner: Object<H, N>) -> Self {
-        Self {inner}
+        Self { inner }
     }
 
     pub fn has_space(&self, obj: &Object<H, N>) -> bool {
         obj.len() < self.inner.remaining()
     }
 }
-
 
 // Wrapper around Object, implements Read trait to read from Object data.
 #[derive(Debug)]
@@ -102,7 +97,7 @@ pub struct ReadFrom<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> ReadFrom<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
-        Self {obj, pos: 0}
+        Self { obj, pos: 0 }
     }
 
     pub fn into_inner(self) -> Object<H, N> {
@@ -122,13 +117,11 @@ impl<H: Hasher, const N: usize> io::Read for ReadFrom<H, N> {
             assert!(self.pos <= data.len());
             buf[0..amount].copy_from_slice(&data[start..stop]);
             Ok(amount)
-        }
-        else {
+        } else {
             Ok(0)
         }
     }
 }
-
 
 // Wrapper around Object, implements Write trait to write into Object data.
 #[derive(Debug)]
@@ -138,7 +131,7 @@ pub struct WriteTo<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> WriteTo<H, N> {
     pub fn new(obj: Object<H, N>) -> Self {
-        Self {obj}
+        Self { obj }
     }
 
     pub fn into_inner(self) -> Object<H, N> {
@@ -146,15 +139,13 @@ impl<H: Hasher, const N: usize> WriteTo<H, N> {
     }
 }
 
-impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
-{
+impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let remaining = cmp::min(buf.len(), self.obj.remaining());
         if remaining > 0 {
             self.obj.as_mut_vec().extend_from_slice(&buf[0..remaining]);
             Ok(remaining)
-        }
-        else {
+        } else {
             Ok(0)
         }
     }
@@ -163,8 +154,6 @@ impl<H: Hasher, const N: usize> io::Write for WriteTo<H, N>
         Ok(())
     }
 }
-
-
 
 // FIXME: This is currently way the fuck too slow (but is ok for now).
 #[derive(Debug, Default)]
@@ -192,7 +181,7 @@ impl<const N: usize> LocationMap<N> {
     }
 
     pub fn deserialize(&mut self, buf: &[u8]) {
-        assert!(! buf.is_empty());
+        assert!(!buf.is_empty());
         assert!(buf.len() % (N + N) == 0);
         self.map.clear();
         let mut offset = 0;
@@ -215,7 +204,6 @@ impl<const N: usize> LocationMap<N> {
         }
     }
 }
-
 
 pub struct Fanout<H: Hasher, const N: usize> {
     store: Store<H, N>,
@@ -249,12 +237,10 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
                 self.obj.finalize_with_kind(ObjKind::Fanout as u8);
                 self.store.save(&self.obj)?;
                 self.table[i] = Some(self.obj.hash());
-            }
-            else {
+            } else {
                 panic!("Crap 💩, cannot find {}", old);
             }
-        }
-        else {
+        } else {
             self.map.insert(key, val);
             self.obj.clear();
             self.map.serialize(self.obj.as_mut_vec());
@@ -271,13 +257,11 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
             if self.store.load(&container, &mut self.obj)? {
                 let data = self.obj.as_data();
                 let mut offset = 0;
-                assert!(! data.is_empty() && data.len() % (N * 2) == 0);
+                assert!(!data.is_empty() && data.len() % (N * 2) == 0);
                 // FIXME: Make faster and more better
                 while offset < data.len() {
                     if &data[offset..offset + N] == key.as_buf() {
-                        return Ok( Some(
-                            Name::from(&data[offset + N..offset + N * 2])
-                        ));
+                        return Ok(Some(Name::from(&data[offset + N..offset + N * 2])));
                     }
                     offset += N * 2;
                 }
@@ -292,7 +276,6 @@ impl<H: Hasher, const N: usize> Fanout<H, N> {
         Ok(None)
     }
 }
-
 
 /// Compress an object stream and store in inside of an object.
 ///
@@ -309,7 +292,7 @@ pub struct Encoder<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> Encoder<H, N> {
     fn new(dst: Object<H, N>, level: i32) -> io::Result<Self> {
-        Ok( Self {
+        Ok(Self {
             phantom: PhantomData,
             inner: zstd::Encoder::new(WriteTo::new(dst), level)?,
         })
@@ -317,16 +300,15 @@ impl<H: Hasher, const N: usize> Encoder<H, N> {
 
     fn write_next(&mut self, obj: &Object<H, N>) -> io::Result<bool> {
         self.inner.write_all(obj.as_buf())?;
-        Ok(true)  // FIXME
+        Ok(true) // FIXME
     }
 
     fn finish(self) -> io::Result<Object<H, N>> {
         let mut obj = self.inner.finish()?.into_inner();
-        obj.finalize_with_kind(ObjKind::Stream as u8);  // FIXME: How to handle kind?
+        obj.finalize_with_kind(ObjKind::Stream as u8); // FIXME: How to handle kind?
         Ok(obj)
     }
 }
-
 
 pub struct Decoder<H: Hasher, const N: usize> {
     phantom: PhantomData<H>,
@@ -335,7 +317,7 @@ pub struct Decoder<H: Hasher, const N: usize> {
 
 impl<H: Hasher, const N: usize> Decoder<H, N> {
     pub fn new(src: Object<H, N>) -> io::Result<Self> {
-        Ok( Self {
+        Ok(Self {
             phantom: PhantomData,
             inner: zstd::Decoder::new(ReadFrom::new(src))?,
         })
@@ -346,17 +328,15 @@ impl<H: Hasher, const N: usize> Decoder<H, N> {
         if self.inner.read_exact(obj.as_mut_header()).is_ok() {
             obj.resize_to_info();
             self.inner.read_exact(obj.as_mut_data())?;
-            if ! obj.is_valid() {
-                panic!("Not valid {}", obj.hash());  // FIXME: handle more better
+            if !obj.is_valid() {
+                panic!("Not valid {}", obj.hash()); // FIXME: handle more better
             }
             Ok(true)
-        }
-        else {
+        } else {
             Ok(false)
         }
     }
 }
-
 
 #[derive(Debug, Default)]
 pub struct LeafHashes<const N: usize> {
@@ -366,7 +346,10 @@ pub struct LeafHashes<const N: usize> {
 
 impl<const N: usize> LeafHashes<N> {
     pub fn new() -> Self {
-        Self {total: 0, hashes: Vec::new()}
+        Self {
+            total: 0,
+            hashes: Vec::new(),
+        }
     }
 
     pub fn iter(&self) -> Iter<Name<N>> {
@@ -395,16 +378,15 @@ impl<const N: usize> LeafHashes<N> {
             offset += N;
         }
         assert_eq!(offset, buf.len());
-        Self {total, hashes}
+        Self { total, hashes }
     }
 }
 
-
-pub fn hash_file<H: Hasher, const N: usize> (
-        obj: &mut Object<H, N>,
-        mut file: fs::File,
-        size: u64
-    ) -> io::Result<Name<N>> {
+pub fn hash_file<H: Hasher, const N: usize>(
+    obj: &mut Object<H, N>,
+    mut file: fs::File,
+    size: u64,
+) -> io::Result<Name<N>> {
     if size == 0 {
         panic!("No good, yo, your size is ZERO!");
     }
@@ -421,21 +403,19 @@ pub fn hash_file<H: Hasher, const N: usize> (
         obj.clear();
         leaves.serialize(obj.as_mut_vec());
         Ok(obj.finalize_with_kind(ObjKind::BigData as u8))
-    }
-    else {
+    } else {
         obj.reset(size as usize, ObjKind::Data as u8);
         file.read_exact(obj.as_mut_data())?;
         Ok(obj.finalize())
     }
 }
 
-
 pub fn import_file<H: Hasher, const N: usize>(
-        store: &mut Store<H, N>,
-        obj: &mut Object<H, N>,
-        mut file: fs::File,
-        size: u64
-    ) -> io::Result<Name<N>> {
+    store: &mut Store<H, N>,
+    obj: &mut Object<H, N>,
+    mut file: fs::File,
+    size: u64,
+) -> io::Result<Name<N>> {
     if size == 0 {
         panic!("No good, yo, your size is ZERO!");
     }
@@ -455,8 +435,7 @@ pub fn import_file<H: Hasher, const N: usize>(
         let root = obj.finalize_with_kind(ObjKind::BigData as u8);
         store.save(obj)?;
         Ok(root)
-    }
-    else {
+    } else {
         obj.reset(size as usize, ObjKind::Data as u8);
         file.read_exact(obj.as_mut_data())?;
         let hash = obj.finalize();
@@ -465,12 +444,12 @@ pub fn import_file<H: Hasher, const N: usize>(
     }
 }
 
-pub fn restore_file<H: Hasher, const N: usize> (
-        store: &mut Store<H, N>,
-        obj: &mut Object<H, N>,
-        file: &mut fs::File,
-        root: &Name<N>,
-    ) -> io::Result<bool> {
+pub fn restore_file<H: Hasher, const N: usize>(
+    store: &mut Store<H, N>,
+    obj: &mut Object<H, N>,
+    file: &mut fs::File,
+    root: &Name<N>,
+) -> io::Result<bool> {
     if store.load(root, obj)? {
         let kind = obj.kind();
         //assert_eq!(kind as u8, obj.info().kind());
@@ -483,8 +462,7 @@ pub fn restore_file<H: Hasher, const N: usize> (
                 for hash in hashes.iter() {
                     if store.load(hash, obj)? {
                         file.write_all(obj.as_data())?;
-                    }
-                    else {
+                    } else {
                         panic!("Cannot find {} leaf {}", root, hash);
                     }
                 }
@@ -494,20 +472,18 @@ pub fn restore_file<H: Hasher, const N: usize> (
             }
         }
         Ok(true)
-    }
-    else {
+    } else {
         Ok(false)
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use getrandom::getrandom;
-    use crate::protocol::Blake3;
     use crate::chaos::{DefaultName, DefaultObject, DefaultStore};
     use crate::helpers::TestTempDir;
+    use crate::protocol::Blake3;
+    use getrandom::getrandom;
 
     #[test]
     fn test_fanout() {
@@ -598,8 +574,8 @@ mod tests {
     fn test_zstd_roundtrip() {
         let dst = DefaultObject::new();
         let wto = WriteTo::new(dst);
-        let mut enc: zstd::Encoder<'static, WriteTo<Blake3, 30>>
-            = zstd::Encoder::new(wto, 0).unwrap();
+        let mut enc: zstd::Encoder<'static, WriteTo<Blake3, 30>> =
+            zstd::Encoder::new(wto, 0).unwrap();
         let mut obj = DefaultObject::new();
         let mut expected = Vec::new();
         for _ in 0..100 {
@@ -610,8 +586,8 @@ mod tests {
 
         let src: DefaultObject = enc.finish().unwrap().into_inner();
         let rfo = ReadFrom::new(src);
-        let mut dec: zstd::Decoder<'static, io::BufReader<ReadFrom<Blake3, 30>>>
-            = zstd::Decoder::new(rfo).unwrap();
+        let mut dec: zstd::Decoder<'static, io::BufReader<ReadFrom<Blake3, 30>>> =
+            zstd::Decoder::new(rfo).unwrap();
         let mut buf = vec![0; expected.len()];
         assert_eq!(dec.read(&mut buf).unwrap(), expected.len());
         assert_eq!(expected, buf);
@@ -637,8 +613,7 @@ mod tests {
             assert!(obj.is_valid());
             assert_eq!(obj.as_buf(), &expected[i]);
         }
-        assert!(! dec.read_next(&mut obj).unwrap());
+        assert!(!dec.read_next(&mut obj).unwrap());
         assert_eq!(obj.as_buf(), &[0; 34]);
     }
 }
-

@@ -1,17 +1,8 @@
 //! New blockchain stuffs
 
-use std::ops::Range;
+use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
-use ed25519_dalek::{
-    SigningKey,
-    Signer,
-    Signature,
-    SignatureError,
-    VerifyingKey,
-    Verifier,
-};
-
-
+use std::ops::Range;
 
 /*
 First pass:
@@ -27,7 +18,6 @@ N    64        32     8       8         N  N    N        N
 HASH SIGNATURE PUBKEY COUNTER TIMESTAMP ID NEXT PREVIOUS PAYLOAD
 HASH SIGNATURE PUBKEY NEXT
 */
-
 
 pub struct Math<const N: usize> {}
 
@@ -65,14 +55,13 @@ impl<const N: usize> Math<N> {
     }
 }
 
-
 pub struct Block<'a, const N: usize> {
     buf: &'a [u8],
 }
 
 impl<'a, const N: usize> Block<'a, N> {
     pub fn new(buf: &'a [u8]) -> Self {
-        Self {buf}
+        Self { buf }
     }
 
     pub fn as_hash(&self) -> &[u8] {
@@ -100,14 +89,13 @@ impl<'a, const N: usize> Block<'a, N> {
     }
 }
 
-
 pub struct MutBlock<'a, const N: usize> {
     buf: &'a mut [u8],
 }
 
 impl<'a, const N: usize> MutBlock<'a, N> {
     pub fn new(buf: &'a mut [u8]) -> Self {
-        Self {buf}
+        Self { buf }
     }
 
     pub fn as_hash(&mut self) -> &mut [u8] {
@@ -133,9 +121,7 @@ impl<'a, const N: usize> MutBlock<'a, N> {
     pub fn as_payload(&mut self) -> &mut [u8] {
         &mut self.buf[Math::<N>::payload_range()]
     }
-
 }
-
 
 pub struct Read<'a> {
     buf: &'a [u8],
@@ -143,7 +129,7 @@ pub struct Read<'a> {
 
 impl<'a> Read<'a> {
     pub fn new(buf: &'a [u8]) -> Self {
-        Self {buf}
+        Self { buf }
     }
 }
 
@@ -153,11 +139,9 @@ pub struct Write<'a> {
 
 impl<'a> Write<'a> {
     pub fn new(buf: &'a mut [u8]) -> Self {
-        Self {buf}
+        Self { buf }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -190,4 +174,3 @@ mod tests {
         assert_eq!(Math40::payload_range(), 216..256);
     }
 }
-

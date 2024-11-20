@@ -1,36 +1,34 @@
 //! CLI commands for WIP version control tool `tub`.
 
-use std::path::{Path, PathBuf};
 use std::env;
+use std::fs;
 use std::io;
 use std::io::Result as IoResult;
-use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::time::Instant;
 
 use clap::{Parser, Subcommand};
 use yansi::Paint;
 
-use crate::chaos::{DefaultObject, DefaultName};
-use crate::tub::{find_dotdir, DefaultTub};
-use crate::dvcs::{DefaultTree, DefaultCommit};
-use crate::inception::hash_file;
 use crate::base::ObjKind;
+use crate::chaos::{DefaultName, DefaultObject};
+use crate::dvcs::{DefaultCommit, DefaultTree};
+use crate::inception::hash_file;
+use crate::tub::{find_dotdir, DefaultTub};
 
 type OptPath = Option<PathBuf>;
 
 #[derive(Debug, Parser)]
-#[command(name="tub")]
-#[command(about="🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦀 🦓")]
+#[command(name = "tub")]
+#[command(about = "🛁 Tub: Relaxing version control for everyone! 🌎 💖 🦀 🦓")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
 
-
 #[derive(Debug, Subcommand)]
 enum Commands {
-
     #[command(about = "😎 Create a new Tub repository 🛁")]
     Init {
         #[arg(help = "Target directory (defaults to CWD)")]
@@ -42,72 +40,72 @@ enum Commands {
 
     #[command(about = "🔴 Remove paths from tracking list")]
     Rm {
-        #[arg(help="Path to remove")]
+        #[arg(help = "Path to remove")]
         paths: Vec<PathBuf>,
 
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "🟡 Rename a tracked path")]
     Mv {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
 
-        #[arg(help="Path to rename")]
+        #[arg(help = "Path to rename")]
         src: PathBuf,
 
-        #[arg(help="New name")]
+        #[arg(help = "New name")]
         dst: PathBuf,
     },
 
     #[command(about = "🟢 Add paths to tracking list")]
     Add {
-        #[arg(help="Paths to add to tracking list")]
+        #[arg(help = "Paths to add to tracking list")]
         paths: Vec<PathBuf>,
 
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "🚫 Add paths to ignore list")]
     Ignore {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
 
-        #[arg(help="path names to ignore (or unignore)")]
+        #[arg(help = "path names to ignore (or unignore)")]
         paths: Vec<String>,
 
-        #[arg(short, long, help="Remove paths from ignore list")]
+        #[arg(short, long, help = "Remove paths from ignore list")]
         remove: bool,
     },
 
     #[command(about = "🔎 Examine changes in working tree")]
     Diff {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "🤔 Sumarize changes in working tree")]
     Status {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "💖 Take a snapshot 📸 of your work 🤓")]
     Commit {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory", hide=true)]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory", hide = true)]
         tub: Option<PathBuf>,
 
-        #[arg(short, long, value_name="MESSAGE")]
-        #[arg(help="Short description of this commit")]
+        #[arg(short, long, value_name = "MESSAGE")]
+        #[arg(help = "Short description of this commit")]
         msg: Option<String>,
     },
 
@@ -116,148 +114,104 @@ enum Commands {
 
     #[command(about = "🚽 Undo 💩 changes in working tree")]
     Revert {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
 
-        #[arg(help="Dbase32-encoded hash")]
+        #[arg(help = "Dbase32-encoded hash")]
         hash: String,
     },
 
     #[command(about = "📜 View commit history")]
     Log {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory (defaults to CWD)")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory (defaults to CWD)")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "🔗 Verify all objects and blockchains 💵")]
     Check {
-        #[arg(short, long, value_name="DIR")]
-        #[arg(help="Path of Tub control directory")]
+        #[arg(short, long, value_name = "DIR")]
+        #[arg(help = "Path of Tub control directory")]
         tub: Option<PathBuf>,
     },
 
     #[command(about = "🚀 Compare 🛁 hashing performance with git hash-object! 😜")]
     Hash {
-        #[arg(help="Path of input file")]
+        #[arg(help = "Path of input file")]
         path: PathBuf,
     },
 }
 
-
 pub fn run() -> IoResult<()> {
     let args = Cli::parse();
     match args.command {
-        Commands::Init {target} => {
-            cmd_init(target)
-        }
-        Commands::Branch {} => {
-            not_yet()
-        }
-        Commands::Merge {} => {
-            not_yet()
-        }
-        Commands::Add {tub, paths} => {
-            cmd_add(tub, paths)
-        }
-        Commands::Mv {tub, src, dst} => {
-            cmd_mov(tub, src, dst)
-        }
-        Commands::Rm {tub, paths} => {
-            cmd_rem(tub, paths)
-        }
-        Commands::Ignore {tub, paths, remove} => {
-            cmd_ignore(tub, paths, remove)
-        }
-        Commands::Diff {tub} => {
-            cmd_dif(tub)
-        }
-        Commands::Status {tub} => {
-            cmd_status(tub)
-        }
-        Commands::Commit {tub, msg} => {
-            cmd_commit(tub, msg)
-        }
-        Commands::Revert {tub, hash} => {
-            cmd_revert(tub, hash)
-        }
-        Commands::Log {tub} => {
-            cmd_log(tub)
-        }
-        Commands::Check {tub} => {
-            cmd_check(tub)
-        }
-        Commands::Hash {path} => {
-            cmd_hash(&path)
-        }
+        Commands::Init { target } => cmd_init(target),
+        Commands::Branch {} => not_yet(),
+        Commands::Merge {} => not_yet(),
+        Commands::Add { tub, paths } => cmd_add(tub, paths),
+        Commands::Mv { tub, src, dst } => cmd_mov(tub, src, dst),
+        Commands::Rm { tub, paths } => cmd_rem(tub, paths),
+        Commands::Ignore { tub, paths, remove } => cmd_ignore(tub, paths, remove),
+        Commands::Diff { tub } => cmd_dif(tub),
+        Commands::Status { tub } => cmd_status(tub),
+        Commands::Commit { tub, msg } => cmd_commit(tub, msg),
+        Commands::Revert { tub, hash } => cmd_revert(tub, hash),
+        Commands::Log { tub } => cmd_log(tub),
+        Commands::Check { tub } => cmd_check(tub),
+        Commands::Hash { path } => cmd_hash(&path),
     }
 }
-
 
 macro_rules! other_err {
     ($msg:literal) => {
         Err(io::Error::new(io::ErrorKind::Other, $msg))
-    }
+    };
 }
 
-
-fn dir_or_cwd(target: OptPath) -> IoResult<PathBuf>
-{
+fn dir_or_cwd(target: OptPath) -> IoResult<PathBuf> {
     let pb = match target {
         Some(dir) => dir,
         None => env::current_dir()?,
     };
     if pb.is_dir() {
         pb.canonicalize()
-    }
-    else {
+    } else {
         eprintln!("🛁❗ Not a directory: {:?}", pb);
         other_err!("Not a dir")
     }
 }
 
-
-fn get_tub(target: &Path) -> IoResult<DefaultTub>
-{
+fn get_tub(target: &Path) -> IoResult<DefaultTub> {
     if let Some(dotdir) = find_dotdir(target) {
         let mut tub = DefaultTub::open(dotdir)?;
         tub.reindex()?;
         Ok(tub)
-    }
-    else {
+    } else {
         other_err!("Could not find Tub")
     }
 }
 
-
-fn get_tub_exit(target: &Path) -> IoResult<DefaultTub>
-{
+fn get_tub_exit(target: &Path) -> IoResult<DefaultTub> {
     if let Ok(tub) = get_tub(target) {
         Ok(tub)
-    }
-    else {
+    } else {
         eprintln!("🛁❗ Could not find Tub in {:?}", &target);
         exit(42);
     }
 }
 
-
-fn not_yet() -> IoResult<()>
-{
+fn not_yet() -> IoResult<()> {
     eprintln!("🛁❗ Yo dawg, this command hasn't been implemented yet! 🤪");
     Ok(())
 }
 
-
-fn cmd_init(target: OptPath) -> IoResult<()>
-{
+fn cmd_init(target: OptPath) -> IoResult<()> {
     let target = dir_or_cwd(target)?;
     if let Ok(tub) = get_tub(&target) {
         eprintln!("🛁❗ Tub already exists: {:?}", tub.dotdir());
         exit(42);
-    }
-    else {
+    } else {
         let tub = DefaultTub::create(&target)?;
         tub.create_branch()?;
         eprintln!("🛁 Created new Tub repository: {:?}", tub.dotdir());
@@ -266,13 +220,12 @@ fn cmd_init(target: OptPath) -> IoResult<()>
     }
 }
 
-
 fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut obj = tub.store.new_object();
     let mut tl = tub.load_tracking_list(&mut obj)?;
     for p in paths {
-        if ! p.exists() {
+        if !p.exists() {
             eprintln!("🛁❗Path does not exists: {:?}", p);
             exit(42);
         }
@@ -280,7 +233,6 @@ fn cmd_add(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     }
     tub.save_tracking_list(&mut obj, &tl)
 }
-
 
 fn cmd_mov(tub: OptPath, old: PathBuf, new: PathBuf) -> IoResult<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
@@ -295,30 +247,25 @@ fn cmd_mov(tub: OptPath, old: PathBuf, new: PathBuf) -> IoResult<()> {
     tub.save_tracking_list(&mut obj, &tl)
 }
 
-
-
 fn cmd_rem(tub: OptPath, paths: Vec<PathBuf>) -> IoResult<()> {
     let tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let mut obj = tub.store.new_object();
     let mut tl = tub.load_tracking_list(&mut obj)?;
     for p in paths {
-        if ! p.exists() {
+        if !p.exists() {
             eprintln!("🛁❗Path does not exists: {:?}", p);
             exit(42);
         }
         tl.remove(p.to_str().unwrap().to_owned());
-    
     }
     tub.save_tracking_list(&mut obj, &tl)
 }
 
-
-fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()>
-{
+fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
-    if ! tub.load_branch_seckey(&mut chain)? {
+    if !tub.load_branch_seckey(&mut chain)? {
         eprintln!("🛁❗ Cannot find key for {}", chain.header.hash());
         exit(42);
     }
@@ -341,9 +288,7 @@ fn cmd_commit(tub: OptPath, msg: Option<String>) -> IoResult<()>
     Ok(())
 }
 
-
-fn cmd_dif(tub: OptPath) -> IoResult<()>
-{
+fn cmd_dif(tub: OptPath) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
@@ -367,11 +312,9 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
                 for line in v.lines() {
                     if line.starts_with('-') {
                         println!("{}", Paint::red(line));
-                    }
-                    else if line.starts_with('+') {
+                    } else if line.starts_with('+') {
                         println!("{}", Paint::green(line));
-                    }
-                    else {
+                    } else {
                         println!("{}", line);
                     }
                 }
@@ -381,9 +324,7 @@ fn cmd_dif(tub: OptPath) -> IoResult<()>
     Ok(())
 }
 
-
-fn cmd_status(tub: OptPath) -> IoResult<()>
-{
+fn cmd_status(tub: OptPath) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
     let mut chain = tub.open_branch()?;
@@ -402,39 +343,34 @@ fn cmd_status(tub: OptPath) -> IoResult<()>
             let root = scanner.scan_tree()?.unwrap();
             eprintln!("   new: {}", root);
             let status = scanner.compare_with_flatmap(&a);
-            if ! status.removed.is_empty() {
+            if !status.removed.is_empty() {
                 println!("Removed:");
                 for relname in status.removed.iter() {
                     println!("  {}", relname);
                 }
             }
-            if ! status.changed.is_empty() {
+            if !status.changed.is_empty() {
                 println!("Changed:");
                 for relname in status.changed.iter() {
                     println!("  {}", relname);
                 }
             }
-            if ! status.unknown.is_empty() {
+            if !status.unknown.is_empty() {
                 println!("Unknown:");
                 for relname in status.unknown.iter() {
                     println!("  {}", relname);
                 }
             }
         }
-    }
-    else {
+    } else {
         eprintln!("🛁 Status: it's complicated! 🤣");
         eprintln!("🛁 Status: empty project, get to work, yo!");
     }
     Ok(())
 }
 
-
-
-
 // FIXME: Use this - https://docs.rs/glob/latest/glob/struct.Pattern.html
-fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
-{
+fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let source = tub.treedir().to_owned();
     let mut tree = DefaultTree::new(&mut tub.store, &source);
@@ -444,13 +380,12 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
         for relpath in paths.iter() {
             tree.unignore(relpath);
         }
-    }
-    else {
+    } else {
         for relpath in paths.iter() {
             tree.ignore(relpath.to_owned());
         }
     }
-    if ! paths.is_empty() {
+    if !paths.is_empty() {
         tree.save_ignore()?;
     }
 
@@ -460,7 +395,6 @@ fn cmd_ignore(tub: OptPath, paths: Vec<String>, remove: bool) -> IoResult<()>
     }
     Ok(())
 }
-
 
 fn cmd_revert(tub: OptPath, txt: String) -> IoResult<()> {
     let hash = DefaultName::from_dbase32(&txt);
@@ -472,8 +406,7 @@ fn cmd_revert(tub: OptPath, txt: String) -> IoResult<()> {
     Ok(())
 }
 
-fn cmd_log(tub: OptPath) -> IoResult<()>
-{
+fn cmd_log(tub: OptPath) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     if let Ok(mut chain) = tub.open_branch() {
         let mut obj = tub.store.new_object();
@@ -488,15 +421,13 @@ fn cmd_log(tub: OptPath) -> IoResult<()>
             }
             println!();
         }
-    }
-    else {
+    } else {
         eprintln!("🛁 No commits yet, get to work! 💵");
     }
     Ok(())
 }
 
-fn cmd_check(tub: OptPath) -> IoResult<()>
-{
+fn cmd_check(tub: OptPath) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
     let start = Instant::now();
     eprintln!("🛁 Verifying {} objects...", tub.store.len());
@@ -504,13 +435,14 @@ fn cmd_check(tub: OptPath) -> IoResult<()>
     let elapsed = start.elapsed().as_secs_f64();
     let size = tub.store.size();
     let rate = (size as f64 / elapsed) as u64;
-    eprintln!("🛁 Verified {} bytes in {}s, {} bytes/s", size, elapsed, rate);
+    eprintln!(
+        "🛁 Verified {} bytes in {}s, {} bytes/s",
+        size, elapsed, rate
+    );
     Ok(())
 }
 
-
-fn cmd_hash(path: &Path) -> IoResult<()>
-{
+fn cmd_hash(path: &Path) -> IoResult<()> {
     let start = Instant::now();
     let pb = path.canonicalize()?;
     let size = fs::metadata(&pb)?.len();
@@ -527,4 +459,3 @@ fn cmd_hash(path: &Path) -> IoResult<()>
     eprintln!("🛁 Tub 💖 Rust, Tub 💖 Blake3");
     Ok(())
 }
-

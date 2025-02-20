@@ -395,15 +395,16 @@ impl<'a, H: Hasher, const N: usize> Tree<'a, H, N> {
         self.ignore.clear();
         self.ignore.insert(".git".to_string());
         self.ignore.insert(DOTDIR.to_string());
-        if let Ok(file) = File::open(&filename) {
-            let file = BufReader::new(file);
-            for relpath in file.lines() {
-                let relpath = relpath?;
-                self.ignore.insert(relpath);
+        match File::open(&filename) {
+            Ok(file) => {
+                let file = BufReader::new(file);
+                for relpath in file.lines() {
+                    let relpath = relpath?;
+                    self.ignore.insert(relpath);
+                }
+                Ok(true)
             }
-            Ok(true)
-        } else {
-            Ok(false)
+            _ => Ok(false),
         }
     }
 

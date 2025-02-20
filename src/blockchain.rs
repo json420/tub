@@ -84,12 +84,12 @@ impl Header {
     }
 
     pub fn verify_signature(&self) -> bool {
-        if let Ok(sig) = self.signature() {
-            self.pubkey()
+        match self.signature() {
+            Ok(sig) => self
+                .pubkey()
                 .verify(&self.buf[HEADER_PUBKEY_RANGE], &sig)
-                .is_ok()
-        } else {
-            false
+                .is_ok(),
+            _ => false,
         }
     }
 
@@ -197,10 +197,9 @@ impl Block {
     }
 
     pub fn verify_signature(&self) -> bool {
-        if let Ok(sig) = self.signature() {
-            self.pk.verify(self.as_signed(), &sig).is_ok()
-        } else {
-            false
+        match self.signature() {
+            Ok(sig) => self.pk.verify(self.as_signed(), &sig).is_ok(),
+            _ => false,
         }
     }
 

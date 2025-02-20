@@ -193,11 +193,12 @@ fn get_tub(target: &Path) -> IoResult<DefaultTub> {
 }
 
 fn get_tub_exit(target: &Path) -> IoResult<DefaultTub> {
-    if let Ok(tub) = get_tub(target) {
-        Ok(tub)
-    } else {
-        eprintln!("🛁❗ Could not find Tub in {:?}", &target);
-        exit(42);
+    match get_tub(target) {
+        Ok(tub) => Ok(tub),
+        _ => {
+            eprintln!("🛁❗ Could not find Tub in {:?}", &target);
+            exit(42);
+        }
     }
 }
 
@@ -208,15 +209,18 @@ fn not_yet() -> IoResult<()> {
 
 fn cmd_init(target: OptPath) -> IoResult<()> {
     let target = dir_or_cwd(target)?;
-    if let Ok(tub) = get_tub(&target) {
-        eprintln!("🛁❗ Tub already exists: {:?}", tub.dotdir());
-        exit(42);
-    } else {
-        let tub = DefaultTub::create(&target)?;
-        tub.create_branch()?;
-        eprintln!("🛁 Created new Tub repository: {:?}", tub.dotdir());
-        eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
-        Ok(())
+    match get_tub(&target) {
+        Ok(tub) => {
+            eprintln!("🛁❗ Tub already exists: {:?}", tub.dotdir());
+            exit(42);
+        }
+        _ => {
+            let tub = DefaultTub::create(&target)?;
+            tub.create_branch()?;
+            eprintln!("🛁 Created new Tub repository: {:?}", tub.dotdir());
+            eprintln!("🛁 Excellent first step, now reward yourself with two cookies! 🍪🍪");
+            Ok(())
+        }
     }
 }
 
@@ -408,21 +412,24 @@ fn cmd_revert(tub: OptPath, txt: String) -> IoResult<()> {
 
 fn cmd_log(tub: OptPath) -> IoResult<()> {
     let mut tub = get_tub_exit(&dir_or_cwd(tub)?)?;
-    if let Ok(mut chain) = tub.open_branch() {
-        let mut obj = tub.store.new_object();
-        chain.seek_to_beyond();
-        while chain.load_previous()? {
-            println!(" block: {} {}", chain.block.hash(), chain.block.index());
-            println!("commit: {}", chain.block.payload());
-            if tub.store.load(&chain.block.payload(), &mut obj)? {
-                let commit = DefaultCommit::deserialize(obj.as_data());
-                println!("  tree: {}", commit.tree);
-                println!("📜 {}", commit.msg);
+    match tub.open_branch() {
+        Ok(mut chain) => {
+            let mut obj = tub.store.new_object();
+            chain.seek_to_beyond();
+            while chain.load_previous()? {
+                println!(" block: {} {}", chain.block.hash(), chain.block.index());
+                println!("commit: {}", chain.block.payload());
+                if tub.store.load(&chain.block.payload(), &mut obj)? {
+                    let commit = DefaultCommit::deserialize(obj.as_data());
+                    println!("  tree: {}", commit.tree);
+                    println!("📜 {}", commit.msg);
+                }
+                println!();
             }
-            println!();
         }
-    } else {
-        eprintln!("🛁 No commits yet, get to work! 💵");
+        _ => {
+            eprintln!("🛁 No commits yet, get to work! 💵");
+        }
     }
     Ok(())
 }

@@ -97,10 +97,9 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn idx_file(&self) -> IoResult<File> {
         let mut pb = self.dotdir.clone();
         pb.push(INDEX_FILE);
-        if let Ok(file) = open_for_append(&pb) {
-            Ok(file)
-        } else {
-            create_for_append(&pb)
+        match open_for_append(&pb) {
+            Ok(file) => Ok(file),
+            _ => create_for_append(&pb),
         }
     }
 
@@ -145,10 +144,9 @@ impl<H: Hasher, const N: usize> Tub<H, N> {
     pub fn load_branch_seckey(&self, chain: &mut Chain) -> IoResult<bool> {
         let mut filename = self.dotdir.clone();
         filename.push("omg.fixme.soon");
-        if let Ok(file) = File::open(&filename) {
-            chain.load_secret_key(file)
-        } else {
-            Ok(false)
+        match File::open(&filename) {
+            Ok(file) => chain.load_secret_key(file),
+            _ => Ok(false),
         }
     }
 

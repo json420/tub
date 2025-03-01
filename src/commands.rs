@@ -15,7 +15,7 @@ use crate::base::ObjKind;
 use crate::chaos::{DefaultName, DefaultObject};
 use crate::dvcs::{DefaultCommit, DefaultTree};
 use crate::inception::hash_file;
-use crate::tub::{find_dotdir, DefaultTub};
+use crate::tub::{DefaultTub, find_dotdir};
 
 type OptPath = Option<PathBuf>;
 

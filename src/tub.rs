@@ -5,9 +5,9 @@ use crate::blockchain::Chain;
 use crate::chaos::{Name, Object, Store};
 use crate::dvcs::TrackingList;
 use crate::protocol::{DefaultHasher, Hasher};
-use std::fs::{create_dir, File};
-use std::io::prelude::*;
+use std::fs::{File, create_dir};
 use std::io::Result as IoResult;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 pub type DefaultTub = Tub<DefaultHasher, 30>;

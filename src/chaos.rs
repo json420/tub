@@ -34,8 +34,8 @@
 use getrandom::getrandom;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::prelude::*;
 use std::io::Result as IoResult;
+use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
 use std::marker::PhantomData;
 use std::os::unix::fs::FileExt;
@@ -531,7 +531,7 @@ impl<H: Hasher, const N: usize> Store<H, N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::helpers::{flip_bit_in, TestTempDir};
+    use crate::helpers::{TestTempDir, flip_bit_in};
     use std::collections::HashSet;
 
     #[test]

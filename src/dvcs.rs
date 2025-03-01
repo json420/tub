@@ -2,14 +2,14 @@
 
 use std::collections::{HashMap, HashSet};
 use std::convert::Into;
-use std::fs::{create_dir_all, metadata, read_dir, read_link, File, Permissions};
-use std::io::prelude::*;
+use std::fs::{File, Permissions, create_dir_all, metadata, read_dir, read_link};
 use std::io::Result as IoResult;
+use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
-use std::os::unix::fs::{symlink, PermissionsExt};
+use std::os::unix::fs::{PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
 
-use crate::base::{ObjKind, DOTDIR, DOTIGNORE};
+use crate::base::{DOTDIR, DOTIGNORE, ObjKind};
 use crate::chaos::{Name, Object, Store};
 use crate::inception::{hash_file, import_file, restore_file};
 use crate::protocol::{Blake3, Hasher};
@@ -697,7 +697,7 @@ pub fn compare_trees<const N: usize>(a: &ItemMap<N>, b: &ItemMap<N>) -> Status<N
 
 fn compute_diff_inner(before: &str, after: &str) -> String {
     use imara_diff::intern::InternedInput;
-    use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
+    use imara_diff::{Algorithm, UnifiedDiffBuilder, diff};
     let input = InternedInput::new(before, after);
     diff(
         Algorithm::Histogram,
@@ -934,7 +934,9 @@ mod tests {
         tl.serialize(&mut buf);
         assert_eq!(
             buf,
-            vec![3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114, 1, 4, 0, 116, 101, 115, 116,]
+            vec![
+                3, 3, 0, 102, 111, 111, 3, 0, 98, 97, 114, 1, 4, 0, 116, 101, 115, 116,
+            ]
         );
         assert_eq!(TrackingList::deserialize(&buf), tl);
 
@@ -969,7 +971,7 @@ mod tests {
     #[test]
     fn test_imara() {
         use imara_diff::intern::InternedInput;
-        use imara_diff::{diff, Algorithm, UnifiedDiffBuilder};
+        use imara_diff::{Algorithm, UnifiedDiffBuilder, diff};
 
         let a = "foo\nbar\nbaz\n";
         let b = "foo\nbaz\nbar\n";

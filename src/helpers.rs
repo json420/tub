@@ -161,7 +161,7 @@ impl<'a> Iterator for BitFlipIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use getrandom::getrandom;
+    use getrandom;
     use std::collections::HashSet;
 
     #[test]
@@ -230,7 +230,7 @@ mod tests {
 
         let mut set: HashSet<Vec<u8>> = HashSet::new();
         let mut src = vec![0; 69];
-        getrandom(&mut src).unwrap();
+        getrandom::fill(&mut src).unwrap();
         for dif in BitFlipIter::new(&src) {
             let new = set.insert(dif);
             assert!(new);

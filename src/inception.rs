@@ -483,7 +483,7 @@ mod tests {
     use crate::chaos::{DefaultName, DefaultObject, DefaultStore};
     use crate::helpers::TestTempDir;
     use crate::protocol::Blake3;
-    use getrandom::getrandom;
+    use getrandom;
 
     #[test]
     fn test_fanout() {
@@ -495,9 +495,9 @@ mod tests {
         let mut hash = DefaultName::new();
         let mut cont = DefaultName::new();
         for _ in 0..1024 {
-            getrandom(hash.as_mut_buf()).unwrap();
+            getrandom::fill(hash.as_mut_buf()).unwrap();
             assert!(fanout.get(&hash).unwrap().is_none());
-            getrandom(cont.as_mut_buf()).unwrap();
+            getrandom::fill(cont.as_mut_buf()).unwrap();
             fanout.insert(hash.clone(), cont.clone()).unwrap();
             assert_eq!(fanout.get(&hash).unwrap().unwrap(), cont);
         }
@@ -519,7 +519,7 @@ mod tests {
         let mut buf = [0; 69];
         let mut obj = DefaultObject::new();
         let mut data = [0; 42];
-        getrandom(&mut data).unwrap();
+        getrandom::fill(&mut data).unwrap();
         obj.as_mut_vec().extend_from_slice(&data);
         let mut rfo = ReadFrom::new(obj);
         assert_eq!(rfo.read(&mut buf).unwrap(), 42);
@@ -534,7 +534,7 @@ mod tests {
     fn test_rfo_max() {
         let mut obj = DefaultObject::new();
         obj.reset(OBJECT_MAX_SIZE, 0);
-        getrandom(obj.as_mut_data()).unwrap();
+        getrandom::fill(obj.as_mut_data()).unwrap();
         let mut rfo = ReadFrom::new(obj);
         let mut buf = [0; 69];
         let mut output = Vec::new();
@@ -556,14 +556,14 @@ mod tests {
         let obj = DefaultObject::new();
         let mut wto = WriteTo::new(obj);
         let mut buf = [0; 69];
-        getrandom(&mut buf).unwrap();
+        getrandom::fill(&mut buf).unwrap();
         let mut expected = Vec::new();
         while let Ok(s) = wto.write(&buf) {
             if s == 0 {
                 break;
             }
             expected.extend_from_slice(&buf[0..s]);
-            getrandom(&mut buf).unwrap();
+            getrandom::fill(&mut buf).unwrap();
         }
         assert_eq!(expected.len(), OBJECT_MAX_SIZE);
         let obj = wto.into_inner();

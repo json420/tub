@@ -385,7 +385,7 @@ mod tests {
     use super::*;
     use crate::chaos::DefaultName;
     use crate::helpers::flip_bit_in;
-    use getrandom::getrandom;
+    use getrandom;
 
     #[test]
     fn test_header_get_set() {
@@ -416,7 +416,7 @@ mod tests {
     fn test_header_verify_hash() {
         let mut header = Header::new();
         assert!(!header.verify_hash());
-        getrandom(header.as_mut_buf()).unwrap();
+        getrandom::fill(header.as_mut_buf()).unwrap();
         assert!(!header.verify_hash());
         header.set_hash(&header.compute());
         assert!(header.verify_hash());
@@ -495,7 +495,7 @@ mod tests {
         fn test_block_verify_hash() {
             let mut block = Header::new();
             assert!(! block.verify_hash());
-            getrandom(block.as_mut_buf()).unwrap();
+            getrandom::fill(block.as_mut_buf()).unwrap();
             assert!(! block.verify_hash());
             block.set_hash(&block.compute());
             assert!(block.verify_hash());

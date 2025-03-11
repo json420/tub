@@ -20,7 +20,7 @@ yansi = "0.5.1"
 zstd = "0.12.1"
 
 [dev-dependencies]
-criterion = "0.4.0"
+criterion = "0.5.1"
 
 [[bench]]
 name = "mybench"

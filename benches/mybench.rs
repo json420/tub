@@ -1,6 +1,6 @@
 use blake3;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use getrandom::getrandom;
+use getrandom;
 use tub::chaos::DefaultName;
 
 pub fn hash_blake3(data: &[u8]) -> DefaultName {
@@ -13,7 +13,7 @@ pub fn hash_blake3(data: &[u8]) -> DefaultName {
 
 fn bm_hash(c: &mut Criterion) {
     let mut buf = vec![0_u8; 4096];
-    getrandom(&mut buf[..]).unwrap();
+    getrandom::fill(&mut buf[..]).unwrap();
     c.bench_function("blake3 4 KiB", |b| {
         b.iter(|| hash_blake3(black_box(&buf[..])))
     });
@@ -21,7 +21,7 @@ fn bm_hash(c: &mut Criterion) {
 
 fn bm_hash2(c: &mut Criterion) {
     let mut buf = vec![0_u8; 65536];
-    getrandom(&mut buf[..]).unwrap();
+    getrandom::fill(&mut buf[..]).unwrap();
     c.bench_function("blake3 64 KiB", |b| {
         b.iter(|| hash_blake3(black_box(&buf[..])))
     });
